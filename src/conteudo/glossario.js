@@ -135,6 +135,80 @@ export const GLOSSARIO = [
     analogia: 'Achar uma palavra no dicionário de papel: abre no meio e decide se vai para a frente ou para trás.',
     exemplo: 'inicio, fim = 0, len(lista) - 1\nmeio = (inicio + fim) // 2',
   },
+
+  // ---------- Python para dados ----------
+  {
+    id: 'comprehension', termo: 'Compreensão de lista', padroes: ['compreens(ão|ões)', 'comprehensions?'],
+    definicao: 'Um jeito curto de montar uma lista (ou dicionário, ou conjunto) a partir de outra, com for e if dentro dos colchetes.',
+    analogia: 'Pedir "um suco de cada fruta madura da cesta" de uma vez, em vez de pedir fruta por fruta.',
+    exemplo: 'dobros = [n * 2 for n in [1, 2, 3]]\nprint(dobros)',
+  },
+  {
+    id: 'desempacotar', termo: 'Desempacotar', padroes: ['desempacot(ar|amento)', 'zip', 'enumerate'],
+    definicao: 'Abrir uma tupla ou lista em várias variáveis de uma vez. zip e enumerate entregam tuplas prontas para desempacotar.',
+    analogia: 'Abrir a sacola da feira e pôr cada coisa no seu lugar: o arroz no armário, o feijão na prateleira.',
+    exemplo: 'x, y = (3, 4)\nfor i, nome in enumerate(["Ana", "Bia"], start=1):\n    print(i, nome)',
+  },
+  {
+    id: 'counter', termo: 'Counter', padroes: ['Counter', 'most_common'],
+    definicao: 'Um dicionário que conta quantas vezes cada valor aparece. most_common(n) devolve os n mais frequentes.',
+    analogia: 'A urna da votação já apurada: cada candidato com o seu número de votos.',
+    exemplo: 'from collections import Counter\nprint(Counter("arara").most_common(1))',
+  },
+  {
+    id: 'defaultdict', termo: 'defaultdict', padroes: ['defaultdict', 'agrup(ar|e|a)'],
+    definicao: 'Um dicionário que cria um valor padrão (uma lista vazia, um zero) quando a chave ainda não existe. Ótimo para agrupar.',
+    analogia: 'Um arquivo de pastas em que, ao chegar um papel de um assunto novo, já aparece uma pasta vazia com o nome dele.',
+    exemplo: 'from collections import defaultdict\ngrupos = defaultdict(list)\ngrupos["CE"].append("Sobral")',
+  },
+  {
+    id: 'csv', termo: 'CSV', padroes: ['CSV', 'DictReader', 'csv\\.writer', 'cabeçalho'],
+    definicao: 'Uma tabela em texto: cada linha é um registro e as colunas são separadas por vírgula. A primeira linha costuma ser o cabeçalho.',
+    analogia: 'Uma planilha impressa em papel, com vírgulas no lugar das linhas que separam as colunas.',
+    exemplo: 'import csv\nwith open("vendas.csv") as f:\n    for linha in csv.DictReader(f):\n        print(linha["produto"])',
+  },
+  {
+    id: 'json-termo', termo: 'JSON', padroes: ['JSON', 'json\\.load', 'json\\.dump'],
+    definicao: 'Um formato de texto para guardar e trocar dados, parecido com dicionários e listas do Python.',
+    analogia: 'Um formulário padrão que qualquer sistema sabe preencher e ler, em qualquer língua de programação.',
+    exemplo: 'import json\ndados = json.loads(\'{"nome": "Ana"}\')\nprint(dados["nome"])',
+  },
+  {
+    id: 'datetime', termo: 'Datas (datetime)', padroes: ['datetime', 'timedelta', 'fromisoformat', 'weekday', 'datas?'],
+    definicao: 'O módulo datetime representa datas: dá para subtrair (o resultado é um timedelta) e saber o dia da semana.',
+    analogia: 'Um calendário de parede que também faz as contas de quantos dias faltam.',
+    exemplo: 'from datetime import date\nprint((date(2026, 12, 25) - date(2026, 10, 13)).days)',
+  },
+  {
+    id: 'gerador', termo: 'Gerador (yield)', padroes: ['geradore?s?', 'yield'],
+    definicao: 'Uma função com yield, que entrega um valor de cada vez, só quando alguém pede, em vez de montar a lista inteira.',
+    analogia: 'A torneira aberta, e não o balde cheio: a água sai conforme você precisa.',
+    exemplo: 'def contar(n):\n    for i in range(n):\n        yield i\nprint(list(contar(3)))',
+  },
+  {
+    id: 'lambda', termo: 'lambda', padroes: ['lambda'],
+    definicao: 'Uma função curta, sem nome, escrita numa linha. Muito usada como key do sorted e com map e filter.',
+    analogia: 'Um bilhete com uma instrução rápida, em vez de um manual completo.',
+    exemplo: 'dobro = lambda x: x * 2\nprint(sorted(["bb", "a"], key=lambda p: len(p)))',
+  },
+  {
+    id: 'map-filter', termo: 'map e filter', padroes: ['map', 'filter'],
+    definicao: 'map aplica uma função em cada item; filter fica só com os itens em que a função dá verdadeiro.',
+    analogia: 'Na esteira da fábrica, map embala cada peça; filter tira as peças com defeito.',
+    exemplo: 'print(list(map(str.upper, ["a", "b"])))\nprint(list(filter(lambda n: n > 0, [-1, 2])))',
+  },
+  {
+    id: 'reduce', termo: 'reduce', padroes: ['reduce'],
+    definicao: 'Junta todos os itens num valor só, aplicando a função passo a passo: primeiro com os dois primeiros, depois com o resultado e o próximo.',
+    analogia: 'A calculadora de fita que vai somando item por item até o total.',
+    exemplo: 'from functools import reduce\nprint(reduce(lambda a, b: a * b, [2, 3, 4], 1))',
+  },
+  {
+    id: 'itertools', termo: 'itertools', padroes: ['itertools', 'combinations', 'islice', 'accumulate', 'groupby'],
+    definicao: 'Um módulo com ferramentas prontas para percorrer dados: combinações, fatias de geradores, somas acumuladas e grupos.',
+    analogia: 'Uma caixa de ferramentas de marceneiro: cada peça faz um corte específico, sem precisar inventar.',
+    exemplo: 'from itertools import combinations\nprint(list(combinations("abc", 2)))',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
@@ -146,7 +220,7 @@ const REGEX = new Map(GLOSSARIO.map((t) => [
 
 // Nível de cada termo: o módulo em que ele aparece primeiro (a ordem do glossário).
 const ORDEM_MODULOS = ['basico', 'dados', 'paralelismo', 'pyspark', 'alem', 'projetos'];
-const INICIO_DO_NIVEL = { basico: 'variavel' };
+const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension' };
 const NIVEL = new Map();
 {
   let nivel = 0;

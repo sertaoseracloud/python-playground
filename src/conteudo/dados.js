@@ -3,6 +3,7 @@
 // Os exercícios com arquivos (CSV, JSON) e os de datas, geradores e itertools ficam
 // em dados-arquivos.js; aqui eles entram depois da lição de cada assunto.
 import { py, main, assinatura } from './util.js';
+import { exerciciosCsv, exerciciosJson, exerciciosDatas, exerciciosGeradores, exerciciosFuncional } from './dados-arquivos.js';
 
 const comCollections = (def) => main(`from collections import Counter, defaultdict\n\n\ndef ${def}:\n    pass\n`);
 
@@ -678,9 +679,14 @@ export const moduloDados = {
     licoes.collections,
     ...exerciciosCollections,
     licoes.csv,
+    ...exerciciosCsv,
     licoes.json,
+    ...exerciciosJson,
     licoes.datas,
+    ...exerciciosDatas,
     licoes.geradores,
+    ...exerciciosGeradores,
     licoes.funcional,
+    ...exerciciosFuncional,
   ],
 };
