@@ -1,0 +1,39 @@
+// A trilha completa, na ordem das aulas. Na fase 1 só existe o 🐍 Python básico; os
+// próximos módulos aparecem na landing como "em breve" (PROXIMOS_MODULOS).
+import { moduloBasico } from './basico.js';
+
+export const modulos = [moduloBasico];
+
+/** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
+export const PROXIMOS_MODULOS = [
+  { id: 'dados', icone: '📊', titulo: 'Python para dados' },
+  { id: 'paralelismo', icone: '⚡', titulo: 'Paralelismo' },
+  { id: 'pyspark', icone: '✨', titulo: 'PySpark' },
+  { id: 'alem', icone: '🌊', titulo: 'Spark além do batch' },
+  { id: 'projetos', icone: '🏗️', titulo: 'Projetos' },
+];
+
+export const DIFICULDADES = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
+
+/** Playground livre: o código fica salvo no navegador. */
+export const LIVRE = {
+  id: 'livre',
+  tipo: 'livre',
+  titulo: 'Playground livre',
+  resumo: `
+    <p>Escreva o Python que quiser. Use o <b>+</b> para criar arquivos e importá-los com <code>import</code>.</p>
+    <p>Se o código usar <code>input()</code>, escreva as respostas na aba <b>⌨️ Entrada</b>, uma por linha.</p>`,
+  arquivos: { 'main.py': 'nome = input("Qual é o seu nome? ")\nprint(f"Olá, {nome}!")\n' },
+};
+
+export const itens = modulos.flatMap((m) => m.itens.map((item) => ({ ...item, modulo: m.id })));
+export const problemas = itens.filter((i) => i.tipo === 'problema');
+
+const porId = new Map([...itens, LIVRE].map((i) => [i.id, i]));
+export const buscarItem = (id) => porId.get(id);
+
+/** Item anterior e próximo na trilha (para os botões ‹ ›). */
+export function vizinhos(id) {
+  const i = itens.findIndex((item) => item.id === id);
+  return { anterior: itens[i - 1], proximo: itens[i + 1] };
+}

@@ -1,0 +1,61 @@
+// @vitest-environment happy-dom
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { TERCEIROS, CODIGO, CONTEUDO } from '../src/licenca.js';
+import { renderLicenca, renderTermos } from '../src/ui/paginas-legais.js';
+import { lerRota } from '../src/compartilhar.js';
+
+const ler = (arquivo) => readFileSync(resolve(process.cwd(), arquivo), 'utf8');
+const pacote = JSON.parse(ler('package.json'));
+
+describe('licenciamento (copyleft)', () => {
+  it('código AGPL-3.0-or-later, com o texto oficial no LICENSE', () => {
+    expect(pacote.license).toBe('AGPL-3.0-or-later');
+    expect(CODIGO.spdx).toBe(pacote.license);
+    expect(ler('LICENSE')).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
+  });
+
+  it('conteúdo CC BY-SA 4.0, com o arquivo LICENSE-CONTEUDO.md', () => {
+    expect(CONTEUDO.spdx).toBe('CC-BY-SA-4.0');
+    expect(ler('LICENSE-CONTEUDO.md')).toContain('CC BY-SA 4.0');
+  });
+
+  it('toda dependência que vai para o site está na lista de terceiros, com a licença certa', () => {
+    const listados = new Map(TERCEIROS.flatMap((t) => t.pacotes.map((p) => [p, t.licenca])));
+    for (const dep of Object.keys(pacote.dependencies)) {
+      expect(listados.has(dep), `${dep} sem licença listada`).toBe(true);
+      const licenca = JSON.parse(ler(`node_modules/${dep}/package.json`)).license;
+      expect(listados.get(dep), dep).toBe(licenca);
+    }
+  });
+
+  it('o Python no navegador (Pyodide) é MPL-2.0, compatível com a AGPL-3.0', () => {
+    const pyodide = TERCEIROS.find((t) => t.pacotes.includes('pyodide'));
+    expect(pyodide.licenca).toBe('MPL-2.0');
+  });
+});
+
+describe('páginas', () => {
+  it('rotas #/licenca e #/termos', () => {
+    expect(lerRota('#/licenca')).toEqual({ tela: 'licenca' });
+    expect(lerRota('#/termos')).toEqual({ tela: 'termos' });
+  });
+
+  it('licença explica copyleft e o que não está incluído', () => {
+    const el = document.createElement('main');
+    renderLicenca(el);
+    expect(el.textContent).toContain('copyleft');
+    expect(el.textContent).toContain('AGPL-3.0-or-later');
+    expect(el.textContent).toContain('CC-BY-SA-4.0');
+    expect(el.textContent).toMatch(/marca/);
+  });
+
+  it('termos deixam claro que certificado não é diploma', () => {
+    const el = document.createElement('main');
+    renderTermos(el);
+    expect(el.textContent).toMatch(/Não são diploma/);
+    expect(el.querySelector('a[href="#/privacidade"]')).not.toBeNull();
+    expect(el.querySelector('a[href="#/licenca"]')).not.toBeNull();
+  });
+});
