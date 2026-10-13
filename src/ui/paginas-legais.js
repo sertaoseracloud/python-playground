@@ -99,7 +99,7 @@ export function renderTermos(el) {
       <section aria-labelledby="ter-2">
         <h2 id="ter-2">2. O serviço</h2>
         <p>O site oferece lições, exercícios corrigidos automaticamente, projetos e um playground para escrever e executar
-          PHP, HTML e CSS direto no navegador. Ele é oferecido gratuitamente, <b>no estado em que se encontra</b>, e pode
+          Python direto no navegador. Ele é oferecido gratuitamente, <b>no estado em que se encontra</b>, e pode
           mudar, ficar fora do ar ou ser encerrado a qualquer momento.</p>
       </section>
 

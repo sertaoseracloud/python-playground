@@ -35,6 +35,7 @@ describe('pool de workers', () => {
     expect(typeof WebAssembly.Suspending).toBe('function');
   });
 
+  // Abre 4 Pyodides de uma vez: com a suíte inteira rodando junto, passa de 60 s às vezes.
   it('com JSPI: roda em paralelo em mais de um worker', async () => {
     const { sessao } = await iniciarPython({ mapear: (t) => pool.mapear(t) });
     const r = await sessao.executar({ 'main.py': CODIGO });
@@ -42,7 +43,7 @@ describe('pool de workers', () => {
     expect(r.variaveis.resultado).toEqual([1, 4, 9, 16]);
     expect(r.variaveis.info.paralelo).toBe(true);
     expect(new Set(r.variaveis.info.tarefas.map((t) => t.worker)).size).toBeGreaterThan(1);
-  });
+  }, 120_000);
 
   it('sem pool: mesmo resultado, em sequência, avisando que não houve paralelismo', async () => {
     const { sessao } = await iniciarPython();

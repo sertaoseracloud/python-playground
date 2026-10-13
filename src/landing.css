@@ -63,9 +63,7 @@
 .t-num { color: var(--roxo); }
 .t-fn { color: var(--verde); }
 .janela-resultado { position: relative; width: 74%; margin: -10px 0 0 auto; }
-.resultado-demo { padding: 14px 18px; background: #fff; color: #222; font-family: system-ui, sans-serif; }
-.resultado-demo p { margin: 0 0 4px; }
-.resultado-demo .r-h1 { font-size: 1.5rem; font-weight: 700; }
+.terminal-demo { margin: 0; padding: 14px 18px; background: var(--fundo-mais-escuro); color: var(--texto); font-family: var(--fonte-codigo); font-size: 0.85rem; white-space: pre-wrap; }
 .teste-demo { margin: 0; padding: 8px 14px; font-size: 0.85rem; color: var(--verde); background: var(--fundo-escuro); border-top: 1px solid var(--linha); }
 
 /* ---------- faixas ---------- */
@@ -88,11 +86,15 @@
   background: color-mix(in srgb, var(--cor) 12%, var(--fundo));
   border: 2px solid color-mix(in srgb, var(--cor) 60%, transparent);
 }
-.modulo-card[data-modulo="html"] { --cor: var(--laranja); }
-.modulo-card[data-modulo="w3css"] { --cor: var(--ciano); }
-.modulo-card[data-modulo="php"] { --cor: var(--roxo); }
-.modulo-card[data-modulo="pdo"] { --cor: var(--verde); }
+.modulo-card[data-modulo="basico"] { --cor: var(--amarelo); }
+.modulo-card[data-modulo="dados"] { --cor: var(--ciano); }
+.modulo-card[data-modulo="paralelismo"] { --cor: var(--laranja); }
+.modulo-card[data-modulo="pyspark"] { --cor: var(--roxo); }
+.modulo-card[data-modulo="alem"] { --cor: var(--verde); }
 .modulo-card[data-modulo="projetos"] { --cor: var(--rosa); }
+/* próximos módulos: borda tracejada e o selo "em breve" (o texto mantém o contraste) */
+.modulo-card.em-breve { border-style: dashed; }
+.modulo-card.em-breve .chip { align-self: flex-start; }
 .modulo-numero { position: absolute; top: 10px; right: 12px; font-size: 0.75rem; font-weight: 700; color: var(--cor); text-transform: uppercase; }
 .modulo-icone { font-size: 1.8rem; }
 .modulo-card h3 { margin-top: 6px; color: var(--cor); }

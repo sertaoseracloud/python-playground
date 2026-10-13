@@ -1,7 +1,7 @@
 // Tela inicial em formato de caminho (gamificação): painel do jogador com nível,
 // XP, sequência de dias e certificados; e a trilha em zigue-zague, com unidades
 // que desbloqueiam aos 70% e um troféu (certificado) no fim de cada módulo.
-import { modulos, problemas, itens, DIFICULDADES } from '../conteudo/trilha.js';
+import { modulos, problemas, itens, DIFICULDADES, PROXIMOS_MODULOS } from '../conteudo/trilha.js';
 import { linkItem } from '../compartilhar.js';
 import { calcularJornada, sequenciaDeDias, LIMITE_DESBLOQUEIO, NIVEIS } from '../gamificacao.js';
 import { CERTIFICADOS, ORDEM, linkCertificado } from '../certificados.js';
@@ -208,7 +208,7 @@ function painelJogador(j) {
 
       ${j.proximo
         ? `<a class="btn btn-verde btn-continuar" href="${linkItem(j.proximo.id)}">▶ Continuar<small>${esc(j.proximo.titulo)}</small></a>`
-        : '<p class="tudo-feito">🎓 Você concluiu tudo!</p>'}
+        : `<p class="tudo-feito">🎓 Você concluiu tudo${PROXIMOS_MODULOS.length ? ' o que já saiu! Os próximos módulos chegam em breve.' : '!'}</p>`}
 
       <details class="bloco-certificados" ${MOSTRAR_CERTIFICADOS() ? 'open' : ''}>
       <summary class="titulo-certificados">Certificados <small>${emitidos}/${certificados.length}</small></summary>
@@ -241,6 +241,19 @@ function diploma(j) {
     </section>`;
 }
 
+/** Os módulos das próximas versões, no fim da trilha: só o nome, sem link. */
+function emBreve() {
+  if (!PROXIMOS_MODULOS.length) return '';
+  return `
+    <section class="bloco-em-breve" aria-labelledby="titulo-em-breve">
+      <h2 id="titulo-em-breve">Em breve</h2>
+      <p>Os próximos módulos chegam nas próximas versões do DivergePython:</p>
+      <ul class="lista-em-breve">
+        ${PROXIMOS_MODULOS.map((m) => `<li data-modulo="${m.id}"><span aria-hidden="true">${m.icone}</span> ${esc(m.titulo)}</li>`).join('')}
+      </ul>
+    </section>`;
+}
+
 // ---------- render ----------
 
 export function renderInicio(el) {
@@ -252,7 +265,7 @@ export function renderInicio(el) {
     <div class="caminho-pagina">
       ${painelJogador(j)}
       <div class="caminho">
-        <h1 class="caminho-titulo">Trilha: do HTML ao banco de dados</h1>
+        <h1 class="caminho-titulo">Trilha: do Python ao PySpark</h1>
         <p class="legenda-caminho">
           <span><i class="mini ok">✔</i> exercício resolvido</span>
           <span><i class="mini lida">📖</i> lição lida</span>
@@ -260,6 +273,7 @@ export function renderInicio(el) {
           <span>O módulo seguinte abre com ${LIMITE_DESBLOQUEIO}% dos exercícios.</span>
         </p>
         ${j.modulos.map((m, i) => unidade(m, j.modulos[i - 1], m.id === atual, certs[i])).join('')}
+        ${emBreve()}
         ${CERTIFICADOS.final ? diploma(j) : ''}
       </div>
     </div>`;

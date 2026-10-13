@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderLanding, numerosDaTrilha } from '../src/ui/landing.js';
-import { modulos, problemas } from '../src/conteudo/trilha.js';
+import { modulos, problemas, PROXIMOS_MODULOS } from '../src/conteudo/trilha.js';
+import { CERTIFICADOS, ORDEM } from '../src/certificados.js';
+
+// Um certificado por módulo e, quando a trilha tiver o final, mais um.
+const TOTAL_CERTIFICADOS = modulos.length + (CERTIFICADOS.final ? 1 : 0);
 
 describe('landing page', () => {
   beforeEach(() => localStorage.clear());
@@ -10,17 +14,25 @@ describe('landing page', () => {
     const n = numerosDaTrilha();
     expect(n.exercicios).toBe(problemas.length);
     expect(n.modulos).toBe(modulos.length);
-    expect(n.projetos).toBe(6);
-    expect(n.certificados).toBe(modulos.length + 1);
+    expect(n.projetos).toBe(modulos.find((m) => m.grupos)?.grupos.length ?? 0);
+    expect(n.certificados).toBe(TOTAL_CERTIFICADOS);
   });
 
   it('mostra todos os módulos, os badges e leva para a trilha', () => {
     const el = document.createElement('main');
     renderLanding(el);
-    expect(el.querySelectorAll('.modulo-card')).toHaveLength(modulos.length);
-    expect(el.querySelectorAll('.vitrine-badges svg')).toHaveLength(modulos.length + 1);
+    expect(el.querySelectorAll('.modulo-card:not(.em-breve)')).toHaveLength(modulos.length);
+    expect(el.querySelectorAll('.vitrine-badges svg')).toHaveLength(TOTAL_CERTIFICADOS);
     expect(el.querySelector('.hero-acoes a').getAttribute('href')).toBe('#/trilha');
     expect(el.querySelector('a[href="#/privacidade"]')).not.toBeNull();
+  });
+
+  it('os próximos módulos aparecem como "em breve", sem link', () => {
+    const el = document.createElement('main');
+    renderLanding(el);
+    const breve = [...el.querySelectorAll('.modulo-card.em-breve')];
+    expect(breve.map((c) => c.dataset.modulo)).toEqual(PROXIMOS_MODULOS.map((m) => m.id));
+    expect(breve.every((c) => c.textContent.includes('em breve') && !c.querySelector('a'))).toBe(true);
   });
 
   it('quem já começou vê "Continuar"', () => {
@@ -45,31 +57,31 @@ describe('contagem do progresso', () => {
   });
 });
 
-describe('certificados na trilha (regra da cadeia)', () => {
+describe.skipIf(ORDEM.length < 2)('certificados na trilha (regra da cadeia)', () => {
+  const [primeiro, segundo] = ORDEM;
   beforeEach(() => localStorage.clear());
 
   it('módulo concluído sem o certificado anterior fica em espera', async () => {
     const { certificadosDaJornada } = await import('../src/ui/inicio.js');
     const { modulos } = await import('../src/conteudo/trilha.js');
-    // W3.CSS completo, HTML não: o certificado de W3.CSS espera o de HTML.
-    const w3 = modulos.find((m) => m.id === 'w3css');
-    const prog = Object.fromEntries(w3.itens.filter((i) => i.tipo === 'problema').map((i) => [i.id, 'resolvido']));
+    // O segundo módulo completo e o primeiro não: o segundo certificado espera o primeiro.
+    const modulo = modulos.find((m) => m.id === segundo);
+    const prog = Object.fromEntries(modulo.itens.filter((i) => i.tipo === 'problema').map((i) => [i.id, 'resolvido']));
     localStorage.setItem('python-playground:progresso', JSON.stringify(prog));
     const certs = certificadosDaJornada();
-    const cw3 = certs.find((c) => c.id === 'w3css');
-    expect(cw3).toMatchObject({ concluido: true, liberado: false, falta: 'html' });
-    expect(certs.find((c) => c.id === 'html').liberado).toBe(false);
+    expect(certs.find((c) => c.id === segundo)).toMatchObject({ concluido: true, liberado: false, falta: primeiro });
+    expect(certs.find((c) => c.id === primeiro).liberado).toBe(false);
   });
 
-  it('com HTML e W3.CSS concluídos, os dois saem, e o de W3.CSS leva a data do de HTML', async () => {
+  it('com os dois primeiros módulos concluídos, os dois saem, e o segundo leva a data do primeiro', async () => {
     const { certificadosDaJornada } = await import('../src/ui/inicio.js');
     const { modulos } = await import('../src/conteudo/trilha.js');
-    const ids = modulos.filter((m) => ['html', 'w3css'].includes(m.id))
+    const ids = modulos.filter((m) => [primeiro, segundo].includes(m.id))
       .flatMap((m) => m.itens.filter((i) => i.tipo === 'problema').map((i) => i.id));
     localStorage.setItem('python-playground:progresso', JSON.stringify(Object.fromEntries(ids.map((id) => [id, 'resolvido']))));
     const certs = certificadosDaJornada();
-    const [html, w3] = certs;
-    expect(html.liberado && w3.liberado).toBe(true);
-    expect(w3.cadeia).toEqual([html.data]);
+    const [a, b] = certs;
+    expect(a.liberado && b.liberado).toBe(true);
+    expect(b.cadeia).toEqual([a.data]);
   });
 });

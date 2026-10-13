@@ -1,7 +1,7 @@
 {
   "name": "DivergePython",
   "short_name": "DivergePython",
-  "description": "Aprenda PHP com acessibilidade para todas as pessoas: leitor de tela, Libras, teclado e perfis para TDAH e dislexia.",
+  "description": "Aprenda Python e PySpark com acessibilidade para todas as pessoas: leitor de tela, Libras, teclado e perfis para TDAH e dislexia.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

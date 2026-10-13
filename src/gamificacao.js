@@ -9,11 +9,11 @@ export const LIMITE_DESBLOQUEIO = 70;
 export const NIVEIS = [
   { nome: 'Iniciante', xp: 0 },
   { nome: 'Aprendiz', xp: 100 },
-  { nome: 'Codificador', xp: 250 },
-  { nome: 'Desenvolvedor', xp: 450 },
-  { nome: 'Full stack', xp: 700 },
-  { nome: 'Arquiteto', xp: 1000 },
-  { nome: 'Mestre do PHP', xp: 1400 },
+  { nome: 'Pythonista', xp: 250 },
+  { nome: 'Analista de dados', xp: 450 },
+  { nome: 'Engenheiro de dados', xp: 700 },
+  { nome: 'Arquiteto de dados', xp: 1000 },
+  { nome: 'Mestre do Spark', xp: 1400 },
 ];
 
 const xpDoItem = (item) => (item.tipo === 'licao' ? XP.licao : XP[item.dificuldade] ?? 0);

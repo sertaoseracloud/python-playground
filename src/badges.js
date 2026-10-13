@@ -50,7 +50,7 @@ function desenhoBadge(modulo, prefixo) {
   <polygon points="560,370 510,370 510,450 560,450 538,410" fill="${cor}" opacity="0.7"/>
   <rect x="70" y="358" width="460" height="80" rx="6" fill="${cor}"/>
   <text x="300" y="${398 + tamanhoFaixa * 0.35}" text-anchor="middle" font-family="${SANS}" font-size="${tamanhoFaixa}" font-weight="800" letter-spacing="2" fill="#21222c">${escXml(faixa)}</text>
-  <text x="300" y="490" text-anchor="middle" font-family="${SANS}" font-size="22" font-weight="600" letter-spacing="3" fill="#f8f8f2" opacity="0.8">DIVERGEPHP</text>`;
+  <text x="300" y="490" text-anchor="middle" font-family="${SANS}" font-size="22" font-weight="600" letter-spacing="3" fill="#f8f8f2" opacity="0.8">DIVERGEPYTHON</text>`;
 }
 
 // Ids únicos por desenho: o mesmo badge pode aparecer duas vezes na página e
@@ -108,9 +108,9 @@ export function svgCartao(modulo) {
 export function svgIcone() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" rx="112" fill="#282a36"/>
-  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#bd93f9" stroke-width="20"/>
-  <text x="256" y="300" text-anchor="middle" font-family="${MONO}" font-size="190" font-weight="700" fill="#bd93f9">php</text>
-  <text x="256" y="400" text-anchor="middle" font-family="${MONO}" font-size="72" font-weight="700" fill="#50fa7b">&lt;/&gt;</text>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#f1fa8c" stroke-width="20"/>
+  <text x="256" y="300" text-anchor="middle" font-family="${MONO}" font-size="220" font-weight="700" fill="#f1fa8c">py</text>
+  <text x="256" y="400" text-anchor="middle" font-family="${MONO}" font-size="72" font-weight="700" fill="#50fa7b">&gt;&gt;&gt;</text>
 </svg>`;
 }
 

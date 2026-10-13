@@ -51,9 +51,6 @@ export function renderPrivacidade(el, { definirStatus = () => {} } = {}) {
       <section aria-labelledby="priv-cookies">
         <h2 id="priv-cookies">3. Cookies</h2>
         <p>O site <b>não grava cookies</b> no seu navegador. Por isso não há banner pedindo para aceitar cookies.</p>
-        <p>Nos exercícios de PHP com <b>sessão e login</b> (projetos Blog, Rede social, Loja etc.), o PHP do exercício cria
-          cookies como <code>PHPSESSID</code>. Eles são <b>simulados</b>: existem só na memória da aba, dentro do PHP que roda
-          no seu navegador, e somem ao recarregar a página. Nunca saem do seu aparelho.</p>
       </section>
 
       <section aria-labelledby="priv-terceiros">
@@ -65,8 +62,8 @@ export function renderPrivacidade(el, { definirStatus = () => {} } = {}) {
             <li><b>${esc(t.nome)}</b>: ${esc(t.quando)} ${esc(t.dados)}
               ${t.link ? `(${linkExterno(t.link, 'política')})` : ''}</li>`).join('')}
         </ul>
-        <p>Links para outros sites nas lições (como MDN e W3Schools) só levam você até lá se você clicar.
-          Links e imagens que <b>você mesmo</b> colocar no seu código também são carregados no preview.</p>
+        <p>Links para outros sites nas lições (como a documentação do Python) só levam você até lá se você clicar.
+          Se o <b>seu próprio código</b> pedir dados de outro site, o navegador fala com esse site.</p>
       </section>
 
       <section aria-labelledby="priv-certificado">
@@ -91,8 +88,8 @@ export function renderPrivacidade(el, { definirStatus = () => {} } = {}) {
           <li><b>Onde o tratamento acontece:</b> no seu aparelho. A ${esc(CONTROLADOR.nome)} não recebe, não vê e não guarda
             esses dados, e não os compartilha com ninguém.</li>
           <li><b>Transparência</b> (art. 9º): esta página explica o que é guardado, por quê e onde.</li>
-          <li><b>Segurança</b> (art. 46): o site é servido por HTTPS; o código PHP roda isolado no navegador, e o preview não
-            consegue ler os dados salvos do site.</li>
+          <li><b>Segurança</b> (art. 46): o site é servido por HTTPS; o seu código Python roda num Web Worker,
+            separado da página, e não consegue ler o progresso e os rascunhos que o site guarda no navegador.</li>
         </ul>
       </section>
 
