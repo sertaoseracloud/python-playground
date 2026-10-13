@@ -15,11 +15,14 @@ fica no GitHub Pages.
 - **Landing page** (`#/`): apresenta o projeto, a trilha, os certificados e os recursos de
   acessibilidade. Os números (exercícios, lições, módulos) vêm do próprio conteúdo. A trilha fica
   em `#/trilha`, e quem já começou vê "▶ Continuar" no topo.
-- **🐍 Python básico** (versão 0.1.0): **10 lições e 40 exercícios** com dificuldade Fácil/Médio/Difícil:
+- **🐍 Python básico** (0.1.0): **10 lições e 40 exercícios** com dificuldade Fácil/Médio/Difícil:
   variáveis e tipos, strings, `input()`, condições, laços, funções, listas, dicionários e exceções.
+- **📊 Python para dados** (0.2.0): **10 lições e 40 exercícios**: compreensões, tuplas, conjuntos,
+  ordenação com `key`, `Counter` e `defaultdict`, CSV, JSON, datas, geradores, `map`/`filter`/`reduce`
+  e `itertools`. Os exercícios com CSV e JSON leem arquivos de verdade, e alguns gravam arquivos que a
+  correção confere.
 - **Em breve**, nas próximas versões (aparecem na landing e no fim da trilha como "em breve"):
-  📊 Python para dados, ⚡ Paralelismo, ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta)
-  e 🏗️ Projetos.
+  ⚡ Paralelismo, ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal** com a saída e o traceback. As respostas
@@ -29,6 +32,9 @@ fica no GitHub Pages.
   terminal (`$ python main.py`, as entradas `> …` e as chamadas `>>> area(3, 4)`), o placar, cada
   verificação com a **categoria** (Saída, Função, Variável, Execução, Código), o que o programa fez de
   fato (**obtido**) e, quando falha, o **motivo** e uma **💡 dica**.
+- **📦 Aba Dados**: os arquivos de entrada do exercício (CSV vira tabela acessível, com legenda e
+  cabeçalho; JSON e texto, em bloco). O aluno lê, mas não edita; nos casos ocultos, os arquivos têm
+  outros dados.
 - **Editor** CodeMirror com Python, recuo de 4 espaços, abas de arquivos (`import` entre eles) e atalhos
   (Ctrl+Enter executa, Ctrl+Shift+Enter envia, Ctrl+] recua).
 - **Proteção contra laço infinito**: o Python roda num Web Worker, e o motor o reinicia depois de 10 s.
@@ -41,7 +47,8 @@ fica no GitHub Pages.
   tela; Libras pelo VLibras.
 - **Instruções com estrutura previsível**: roteiro curto, 🎯 O que fazer, 📚 Palavras técnicas (com
   analogia e exemplo, de `src/conteudo/glossario.js`), ✅ Como saber que deu certo e 💡 Dica.
-- **Playground livre** (`#/livre`) com o código e as respostas do `input()` salvos no navegador.
+- **Playground livre** (`#/livre`) com o código e as respostas do `input()` salvos no navegador, e um
+  `vendas.csv` de exemplo na aba 📦 Dados.
 - **Compartilhar**: link com o código embutido. Nada é enviado a servidor.
 
 ### Paralelismo
@@ -70,7 +77,7 @@ fica no GitHub Pages.
 - Cada certificado tem um **badge digital no estilo Credly**, página própria, PDF (A4 paisagem),
   **Publicar no LinkedIn** e **Adicionar ao perfil**.
 - **Carga horária**: lição 10 min, fácil 15, médio 30, difícil 45; o certificado do módulo vale a soma,
-  arredondada para cima em horas (Fundamentos de Python: 19 horas). A regra fica em `src/cargaHoraria.js`
+  arredondada para cima em horas (Fundamentos de Python: 19 horas; Python para Dados: 20 horas). A regra fica em `src/cargaHoraria.js`
   e `tests/carga-horaria.test.js` avisa quando o conteúdo mudar.
 - **Selo de verificação** (HMAC-SHA256), **cadeia de certificados** (cada um inclui o hash do anterior,
   como num blockchain), **🔎 Validador** (`#/validar`: link, código, impresso ou XML), **📄 XML do
@@ -126,12 +133,14 @@ endereço canônico, Open Graph, Twitter e os dados estruturados (Organization, 
 
 ## Como adicionar conteúdo
 
-Cada módulo fica em [`src/conteudo/`](src/conteudo/) (hoje `basico.js` e `basico-colecoes.js`), com uma
-lista `itens` de lições (`{ id, tipo: 'licao', titulo, resumo, arquivos, entrada? }`) e problemas
-(`{ id, tipo: 'problema', titulo, dificuldade, enunciado, dica, arquivos, solucao, testes }`). O código
+Cada módulo fica em [`src/conteudo/`](src/conteudo/) (`basico.js` com `basico-colecoes.js`, `dados.js` com
+`dados-arquivos.js`), com uma lista `itens` de lições (`{ id, tipo: 'licao', titulo, resumo, arquivos, entrada?, dados? }`)
+e problemas (`{ id, tipo: 'problema', titulo, dificuldade, enunciado, dica, arquivos, solucao, testes, dados? }`).
+`dados` são os arquivos de entrada (`{ "vendas.csv": "..." }`), mostrados na aba 📦 Dados. O código
 fica no template `py` de `util.js`, que tira a indentação comum.
 
-Cada teste tem `entrada` (as linhas do `input()`), `regras` e pode ser `oculto: true`. As regras ficam em
+Cada teste tem `entrada` (as linhas do `input()`), `regras`, pode ser `oculto: true` e pode trazer `dados`
+que trocam os arquivos do exercício (os casos ocultos usam outros dados). As regras ficam em
 [`src/verificacoes.js`](src/verificacoes.js):
 
 | Regra | Confere |
@@ -142,6 +151,7 @@ Cada teste tem `entrada` (as linhas do `input()`), `regras` e pode ser `oculto: 
 | `{ variavel, igual }` | o valor final de uma variável |
 | `{ erro }` / `{ semErros }` | o programa termina com essa exceção / sem exceção |
 | `{ codigo }` / `{ semCodigo }` | regex no código do aluno (ex.: proibir `sum(`) |
+| `{ arquivo, igual }` / `{ arquivo, json }` | o arquivo que o programa gravou: o texto (sem diferenciar `\r\n`) ou os dados do JSON |
 
 `tests/conteudo.test.js` roda **toda a trilha** no Python de verdade: as lições rodam sem erro, cada
 solução passa em todos os casos e cada código inicial ainda não passa.
