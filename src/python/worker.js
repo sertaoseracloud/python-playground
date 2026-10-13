@@ -1,11 +1,15 @@
 // Roda o Python fora da thread da página: um laço infinito trava só o worker, que o
-// motor encerra e recria (veja motor.js).
+// motor encerra e recria (veja motor.js). O pool de workers paralelos (pool.js) também
+// fica aqui e só abre na primeira vez que o código pede paralelismo.
 import { carregarPython } from './carregar.js';
 import { criarSessao } from './sessao.js';
+import { PoolPython } from './pool.js';
 
 // No dev o Vite serve o Pyodide em /pyodide/; no build ele fica em dist/pyodide/.
 const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL('../pyodide/', import.meta.url).href;
-const sessao = carregarPython({ indexURL }).then((pyodide) => criarSessao(pyodide));
+let pool;
+const mapear = (tarefas) => (pool ??= new PoolPython()).mapear(tarefas);
+const sessao = carregarPython({ indexURL }).then((pyodide) => criarSessao(pyodide, { mapear }));
 
 sessao.then(
   () => postMessage({ tipo: 'pronto' }),
