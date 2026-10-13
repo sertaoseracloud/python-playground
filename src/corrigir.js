@@ -2,54 +2,35 @@ import { detalharRegra, primeiraLinhaDoErro } from './verificacoes.js';
 
 const agora = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
 
+/** Como a chamada aparece no relatório: dobro(3), saudacao("Ana", "Oi"). */
+export const textoDaChamada = (r) => `${r.funcao}(${(r.args ?? []).map((a) => JSON.stringify(a)).join(', ')})`;
+
 /**
  * Roda os casos de teste do problema com os arquivos do aluno.
- *
  * - "Executar" usa só os casos visíveis; "Enviar" inclui os ocultos (`oculto: true`).
- * - Cada caso pode trocar o banco (`banco: 'SQL'`); senão usa o banco do problema.
- *   Bancos diferentes nos casos ocultos impedem respostas fixas no código.
- * - Um caso pode ter `passos`: uma sequência de requisições que compartilham
- *   sessão ($_SESSION) e banco, como um usuário de verdade (login → publicar →
- *   ver o feed). Cada passo pode ter as próprias `regras`.
- *
- * `executar(arquivos, { url, metodo, corpo }, banco, { novaSessao, manterBanco, contexto })`
- * deve devolver { html, erros }.
- *
- * Cada caso do relatório traz, além do resultado das regras (com categoria, valor
- * obtido e dica; veja detalharRegra), o cenário (as requisições feitas), se usou um
- * banco diferente do exemplo, o primeiro erro do PHP e o tempo.
+ * - Cada caso tem `entrada` (as linhas do input()) e `regras`; as regras `funcao`
+ *   viram chamadas feitas depois do programa rodar, no mesmo escopo.
+ * `executar(arquivos, { entrada, chamadas })` devolve o resultado do runtime.
  */
 export async function corrigir(problema, arquivos, executar, { incluirOcultos = true } = {}) {
   const codigo = Object.values(arquivos).join('\n');
-  const casos = problema.testes.filter((t) => incluirOcultos || !t.oculto);
   const relatorio = [];
-  for (const teste of casos) {
+  for (const teste of problema.testes.filter((t) => incluirOcultos || !t.oculto)) {
     const inicio = agora();
-    const seed = teste.banco ?? problema.banco;
-    const banco = seed ? { seed } : undefined;
-    const passos = teste.passos ?? [teste];
-    const resultados = [];
-    const cenario = [];
-    let erroExecucao;
-    for (const [i, passo] of passos.entries()) {
-      const resposta = await executar(
-        arquivos,
-        { url: passo.url, metodo: passo.metodo, corpo: passo.corpo },
-        banco,
-        { novaSessao: i === 0, manterBanco: i > 0, contexto: 'testes' },
-      );
-      const pagina = { html: resposta.html, erros: resposta.erros, codigo };
-      cenario.push({ metodo: passo.metodo ?? 'GET', url: passo.url ?? 'index.php', ...(passo.corpo ? { corpo: passo.corpo } : {}) });
-      erroExecucao ??= primeiraLinhaDoErro(resposta.erros) || undefined;
-      resultados.push(...(passo.regras ?? []).map((regra) => detalharRegra(regra, pagina)));
-    }
+    const regrasDeFuncao = teste.regras.filter((r) => 'funcao' in r);
+    const chamadas = regrasDeFuncao.map((r) => ({ funcao: r.funcao, args: r.args ?? [] }));
+    const r = await executar(arquivos, { entrada: teste.entrada ?? [], chamadas });
+    const resultados = teste.regras.map((regra) => detalharRegra(regra, {
+      saida: r.saida, erro: r.erro, variaveis: r.variaveis, codigo,
+      retorno: r.retornos?.[regrasDeFuncao.indexOf(regra)],
+    }));
+    const erroExecucao = primeiraLinhaDoErro(r.erro) || undefined;
     relatorio.push({
       descricao: teste.descricao,
       oculto: Boolean(teste.oculto),
-      ok: resultados.every((r) => r.ok),
+      ok: resultados.every((x) => x.ok),
       resultados,
-      cenario,
-      bancoProprio: Boolean(teste.banco),
+      cenario: { entrada: teste.entrada ?? [], chamadas: regrasDeFuncao.map(textoDaChamada) },
       ...(erroExecucao ? { erroExecucao } : {}),
       ms: Math.max(1, Math.round(agora() - inicio)),
     });
