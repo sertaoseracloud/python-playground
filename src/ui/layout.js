@@ -1,6 +1,6 @@
-// Controla a posição do código e do preview: modo (auto/lado/empilhado),
+// Controla a posição do código e do terminal: modo (auto/lado/empilhado),
 // divisor arrastável e descrição (com a aba de testes) que pode ser ocultada. A escolha fica salva.
-import { escolherModo, montarGrade, faixaW3 } from './layout-calculo.js';
+import { escolherModo, montarGrade } from './layout-calculo.js';
 import { lerPreferencia, gravarPreferencia } from '../progresso.js';
 import { $ } from './util.js';
 
@@ -13,8 +13,6 @@ export function criarLayout() {
   const divisor = $('divisor');
   const descricao = $('painel-descricao');
   const btnDescricao = $('btn-descricao');
-  const medidor = $('medidor');
-  const iframe = $('resultado');
 
   // testesRecolhidos era da época do painel de testes separado: ignorado.
   const prefs = { ...PADRAO, ...lerPreferencia('layout', {}) };
@@ -40,7 +38,6 @@ export function criarLayout() {
     document.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layout === prefs.modo)));
     btnDescricao.setAttribute('aria-pressed', String(prefs.descricao));
     btnDescricao.setAttribute('aria-label', prefs.descricao ? 'Ocultar descrição' : 'Mostrar descrição');
-    atualizarMedidor();
   }
 
   // ---------- botões ----------
@@ -98,16 +95,6 @@ export function criarLayout() {
     definirDivisao(50);
     salvar();
   });
-
-  // ---------- medidor de largura do preview (breakpoints da W3.CSS) ----------
-  function atualizarMedidor() {
-    const px = Math.round(iframe.getBoundingClientRect().width);
-    if (!px) return; // tela oculta
-    const faixa = faixaW3(px);
-    medidor.textContent = `📐 ${px}px · ${faixa.rotulo}`;
-    medidor.dataset.faixa = faixa.nome;
-  }
-  new ResizeObserver(atualizarMedidor).observe(iframe);
 
   window.addEventListener('resize', aplicar);
 

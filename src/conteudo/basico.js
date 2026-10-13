@@ -10,7 +10,7 @@ export const moduloBasico = {
       id: 'licao-ola',
       tipo: 'licao',
       titulo: 'Olá, Python',
-      texto: `
+      resumo: `
         <p>Em Python, <code>print</code> mostra um texto no terminal. Textos ficam entre aspas.</p>
         <p>Clique em <b>▶ Executar</b> e veja a saída na aba 🖥️ Terminal.</p>`,
       arquivos: { 'main.py': 'print("Olá, Sertão!")\nprint(2 + 3)\n' },

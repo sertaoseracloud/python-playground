@@ -46,4 +46,34 @@ describe('MotorPython', () => {
     await vi.advanceTimersByTimeAsync(10);
     expect((await proxima).saida).toBe('print(1)');
   });
+
+  it('o tempo em que o pool de workers está abrindo não conta no limite', async () => {
+    vi.useFakeTimers();
+    const avisos = [];
+    const w = workerFalso({ travar: true });
+    const motor = new MotorPython({ limiteMs: 1000, criarWorker: () => w, aoAbrirPool: (abrindo) => avisos.push(abrindo) });
+    await vi.advanceTimersByTimeAsync(1);
+    const execucao = motor.executar({ 'main.py': 'pool' });
+    await vi.advanceTimersByTimeAsync(500);
+    w.onmessage({ data: { tipo: 'pool-abrindo' } });
+    await vi.advanceTimersByTimeAsync(5000); // os workers do pool demoram a carregar
+    w.onmessage({ data: { tipo: 'pool-pronto' } });
+    await vi.advanceTimersByTimeAsync(800);
+    w.onmessage({ data: { tipo: 'resposta', id: 1, saida: 'ok' } });
+    expect((await execucao).saida).toBe('ok');
+    expect(avisos).toEqual([true, false]);
+    expect(w.terminado).toBe(false);
+  });
+
+  it('um pool que nunca abre também é interrompido', async () => {
+    vi.useFakeTimers();
+    const w = workerFalso({ travar: true });
+    const motor = new MotorPython({ limiteMs: 1000, criarWorker: () => w });
+    await vi.advanceTimersByTimeAsync(1);
+    const execucao = motor.executar({ 'main.py': 'pool' });
+    const expectativa = expect(execucao).rejects.toThrow(TempoEsgotado);
+    w.onmessage({ data: { tipo: 'pool-abrindo' } });
+    await vi.advanceTimersByTimeAsync(60_001);
+    await expectativa;
+  });
 });

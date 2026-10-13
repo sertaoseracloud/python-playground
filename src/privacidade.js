@@ -19,7 +19,7 @@ export const DADOS_LOCAIS = [
   { chave: 'nome', dado: 'Nome que você digitou para o certificado', finalidade: 'Aparecer no certificado e no painel' },
   { chave: 'rascunho:*', dado: 'O código que você escreveu em cada exercício', finalidade: 'Não perder seu trabalho ao fechar a aba' },
   { chave: 'tarefas:*', dado: 'Tarefas marcadas na lista de cada exercício', finalidade: 'Lembrar o que você já fez' },
-  { chave: 'banco:livre', dado: 'O banco SQLite do playground livre', finalidade: 'Manter as tabelas que você criou' },
+  { chave: 'entrada:*', dado: 'As respostas que você digitou na aba ⌨️ Entrada de cada exercício', finalidade: 'Não precisar digitar de novo ao voltar ao exercício' },
   { chave: 'pref:*', dado: 'Preferências: acessibilidade, layout, tutorial visto, aviso de privacidade', finalidade: 'Abrir o site do jeito que você deixou' },
 ];
 
@@ -30,18 +30,6 @@ export const TERCEIROS = [
     quando: 'Sempre: é quem hospeda o site.',
     dados: 'Endereço IP, navegador e páginas pedidas, como em qualquer site. Registros técnicos mantidos pelo GitHub.',
     link: 'https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement',
-  },
-  {
-    nome: 'W3Schools (W3.CSS)',
-    quando: 'Quando o preview mostra uma página que usa W3.CSS.',
-    dados: 'O navegador baixa o arquivo w3.css de www.w3schools.com, que recebe o IP e o navegador.',
-    link: 'https://www.w3schools.com/about/about_privacy.asp',
-  },
-  {
-    nome: 'Lorem Picsum (picsum.photos)',
-    quando: 'Em exercícios de HTML com imagens de exemplo.',
-    dados: 'O navegador baixa as imagens, e o serviço recebe o IP e o navegador.',
-    link: 'https://picsum.photos',
   },
   {
     nome: 'GitHub (logo da Sertão será cloud)',

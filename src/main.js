@@ -8,7 +8,7 @@ import './estilo.css';
 import './caminho.css';
 import './landing.css';
 
-import { MotorPHP } from './php/motor.js';
+import { MotorPython } from './python/motor.js';
 import { lerRota } from './compartilhar.js';
 import { iniciarAcessibilidade } from './ui/acessibilidade.js';
 import { iniciarRegua, iniciarPausa } from './ui/neuro.js';
@@ -72,7 +72,7 @@ const definirStatus = (texto, { falar = texto } = {}) => {
   $('status').textContent = texto;
   if (falar) anunciar(falar);
 };
-/** Status das telas que não são exercício: a situação do PHP (carregando, pronto ou erro). */
+/** Status das telas que não são exercício: a situação do Python (carregando, pronto ou erro). */
 let statusPadrao = '';
 
 function atualizarProgressoTopo() {
@@ -86,13 +86,16 @@ function atualizarProgressoTopo() {
 // Declarado antes do motor: ele avisa "carregando" já no construtor.
 let telaDoItem;
 
-const motor = new MotorPHP({
+const motor = new MotorPython({
   aoMudarEstado(situacao, erro) {
-    if (situacao === 'carregando') statusPadrao = 'Carregando o PHP… (só demora na primeira vez)';
+    if (situacao === 'carregando') statusPadrao = 'Carregando o Python… (só demora na primeira vez)';
     else if (situacao === 'pronto') statusPadrao = 'Python 3.14 pronto';
-    else statusPadrao = `Não foi possível carregar o PHP: ${erro}`;
+    else statusPadrao = `Não foi possível carregar o Python: ${erro}`;
     definirStatus(statusPadrao);
-    telaDoItem?.aoMudarEstadoPhp(situacao === 'pronto');
+    telaDoItem?.aoMudarEstadoPython(situacao === 'pronto');
+  },
+  aoAbrirPool(abrindo) {
+    if (abrindo) definirStatus('Abrindo os workers para rodar em paralelo… (só demora na primeira vez)');
   },
 });
 
@@ -127,12 +130,12 @@ function navegar() {
     definirPagina({
       titulo: `${$('item-titulo').textContent} · ${NOME}`,
       descricao: rota.id === 'livre'
-        ? 'Playground livre de PHP com banco SQLite: escreva e rode PHP, HTML e W3.CSS direto no navegador.'
-        : `${item?.tipo === 'licao' ? 'Lição' : 'Exercício'} de ${modulo?.titulo ?? 'PHP'}: ${item?.titulo}. Escreva o código, execute e veja os testes na hora.`,
+        ? 'Playground livre de Python: escreva e rode Python 3.14 direto no navegador, com input(), arquivos e dados em paralelo.'
+        : `${item?.tipo === 'licao' ? 'Lição' : 'Exercício'} de ${modulo?.titulo ?? 'Python'}: ${item?.titulo}. Escreva o código, execute e veja os testes na hora.`,
     });
     return;
   }
-  // Fora do exercício, o status volta à situação do PHP.
+  // Fora do exercício, o status volta à situação do Python.
   definirStatus(statusPadrao, { falar: false });
   if (rota.tela === 'landing') {
     renderLanding(telaLanding);
@@ -214,7 +217,7 @@ function navegar() {
   mostrarTela(telaInicio);
   renderInicio(telaInicio);
   marcarMenu('inicio');
-  definirPagina({ titulo: `Trilha · ${NOME}`, descricao: 'A trilha do HTML ao banco de dados: módulos que desbloqueiam aos 70%, XP, níveis e certificados.' });
+  definirPagina({ titulo: `Trilha · ${NOME}`, descricao: 'A trilha do Python ao PySpark: módulos que desbloqueiam aos 70%, XP, níveis e certificados.' });
 }
 
 // Atalhos fora do editor (dentro dele, o próprio editor trata).

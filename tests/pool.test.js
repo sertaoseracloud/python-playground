@@ -58,3 +58,31 @@ describe('pool de workers', () => {
     expect(r.variaveis.x).toEqual([2, 3]);
   });
 });
+
+/** Worker falso do pool: avisa que abriu depois de `abreEm` ms (ou falha) e devolve a tarefa. */
+function workerFalso({ abreEm = 5, falha = null } = {}) {
+  const w = {
+    onmessage: null,
+    postMessage({ id, tarefa }) { setTimeout(() => w.onmessage({ data: { id, resultado: tarefa } })); },
+    terminate() {},
+  };
+  setTimeout(() => w.onmessage({ data: falha ? { falha } : { pronto: true } }), abreEm);
+  return w;
+}
+
+describe('abertura do pool', () => {
+  it('avisa enquanto os workers abrem, só na primeira vez', async () => {
+    const avisos = [];
+    const p = new PoolPython({ criarWorker: () => workerFalso(), maximo: 2 });
+    const aoAbrir = (abrindo) => avisos.push(abrindo);
+    const r = await p.mapear([new Uint8Array([1]), new Uint8Array([2])], { aoAbrir });
+    expect(r.resultados.map((b) => b[0])).toEqual([1, 2]);
+    await p.mapear([new Uint8Array([3])], { aoAbrir });
+    expect(avisos).toEqual([true, false]);
+  });
+
+  it('um worker que não abre faz o mapear falhar com a mensagem dele', async () => {
+    const p = new PoolPython({ criarWorker: () => workerFalso({ falha: 'sem memória' }), maximo: 2 });
+    await expect(p.mapear([new Uint8Array([1])])).rejects.toThrow('sem memória');
+  });
+});

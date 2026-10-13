@@ -9,6 +9,8 @@ const rodar = carregarPython().then((pyodide) => {
   montarPacotes(pyodide, workerData.fontes);
   return criarTarefa(pyodide);
 });
+// Avisa o pool quando o Pyodide terminou de carregar (ou por que não carregou).
+rodar.then(() => parentPort.postMessage({ pronto: true }), (erro) => parentPort.postMessage({ falha: String(erro?.message ?? erro) }));
 
 parentPort.on('message', async ({ id, tarefa }) => {
   const rodarTarefa = await rodar;

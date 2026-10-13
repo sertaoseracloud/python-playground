@@ -549,36 +549,39 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
 .editor .cm-editor.cm-focused { outline: none; }
 .painel-codigo:focus-within { border-color: var(--roxo); }
 
-/* preview */
-.saida-resultado { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.endereco {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--fundo-escuro);
-  border-bottom: 1px solid var(--linha);
-  flex-shrink: 0;
-}
-.endereco .origem { color: var(--suave); font-size: 0.82rem; }
-.endereco input {
-  flex: 1 1 140px;
-  min-width: 0;
-  font-family: var(--fonte-codigo);
-  font-size: 0.85rem;
-  color: var(--amarelo);
-  background: var(--fundo);
-  border: 1px solid var(--linha);
-  border-radius: 14px;
-  padding: 3px 12px;
-}
-.medidor { font-size: 0.78rem; color: var(--suave); white-space: nowrap; }
-.medidor[data-faixa="pequena"] { color: var(--laranja); }
-.medidor[data-faixa="grande"] { color: var(--verde); }
-.resultado { flex: 1; width: 100%; border: 0; background: #fff; }
+/* terminal e entrada do Python */
 .saida { flex: 1; min-height: 0; overflow: auto; margin: 0; }
-.fonte { padding: 12px; font-size: 0.93em; white-space: pre-wrap; word-break: break-word; color: var(--texto); }
+.terminal-python {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--fundo-mais-escuro);
+  color: var(--texto);
+  font-family: var(--fonte-codigo);
+  font-size: calc(0.9rem * var(--escala));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.terminal-python:focus-visible { outline: 2px solid var(--roxo); outline-offset: -2px; }
+.terminal-python.com-erro { border-top: 2px solid var(--vermelho); }
+:root.a11y-sem-pressao .terminal-python.com-erro { border-top-color: var(--laranja); }
+.entrada-python { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
+.entrada-python[hidden] { display: none; }
+.entrada-python label { color: var(--suave); font-size: 0.85rem; }
+.entrada-python textarea {
+  flex: 1;
+  min-height: 6em;
+  resize: none;
+  padding: 8px 10px;
+  color: var(--texto);
+  background: var(--fundo-mais-escuro);
+  border: 1px solid var(--linha);
+  border-radius: 6px;
+  font-family: var(--fonte-codigo);
+  font-size: calc(0.9rem * var(--escala));
+}
 
 /* aba de testes funcionais (no painel de descrição) */
 .aba .resumo-testes { margin-left: 4px; font-size: 0.8rem; }
@@ -634,19 +637,6 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
 .caso.falha { border-color: var(--vermelho); }
 .caso.falha summary { color: var(--vermelho); }
 .proximo-problema { margin-left: 8px; }
-
-.erros {
-  margin: 0;
-  max-height: 30%;
-  overflow: auto;
-  padding: 8px 12px;
-  background: color-mix(in srgb, var(--vermelho) 15%, transparent);
-  color: var(--texto);
-  border-top: 2px solid var(--vermelho);
-  font-size: 0.9em;
-  white-space: pre-wrap;
-  flex-shrink: 0;
-}
 
 /* ---------- diálogos (tutorial e acessibilidade) ---------- */
 .dialogo {

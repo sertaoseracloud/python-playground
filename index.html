@@ -23,7 +23,7 @@
   <noscript><p class="sem-js">O DivergePython roda o PHP no seu navegador e precisa de JavaScript ativado.</p></noscript>
 
   <header class="topo">
-    <a href="#/" class="marca"><span aria-hidden="true">🐘</span> DivergePython</a>
+    <a href="#/" class="marca"><span aria-hidden="true">🐍</span> DivergePython</a>
     <!-- No celular, a navegação fica no painel do botão ☰; no desktop, em linha. Ajuda e preferências ficam nos botões flutuantes. -->
     <button type="button" id="btn-menu" class="btn-menu" aria-expanded="false" aria-controls="menu-topo" aria-label="Abrir menu">
       <span aria-hidden="true">☰</span>
@@ -65,14 +65,13 @@
         <div class="acoes">
           <button id="btn-executar" class="btn btn-roxo" title="Executar (Ctrl+Enter)" aria-keyshortcuts="Control+Enter" disabled>▶ Executar</button>
           <button id="btn-enviar" class="btn btn-verde" title="Rodar todos os casos de teste, inclusive os ocultos (Ctrl+Shift+Enter)" aria-keyshortcuts="Control+Shift+Enter" disabled>⬆ Enviar</button>
-          <button id="btn-resetar-banco" class="btn btn-fantasma" title="Voltar o banco aos dados originais" aria-label="Resetar banco"><span aria-hidden="true">⟲</span><span class="rotulo-btn" aria-hidden="true"> Resetar banco</span></button>
           <button id="btn-restaurar" class="btn btn-fantasma" title="Voltar ao código original" aria-label="Restaurar código original"><span aria-hidden="true">↺</span><span class="rotulo-btn" aria-hidden="true"> Restaurar</span></button>
           <button id="btn-compartilhar" class="btn btn-fantasma" title="Copiar link com o seu código" aria-label="Compartilhar link com o seu código"><span aria-hidden="true">🔗</span><span class="rotulo-btn" aria-hidden="true"> Compartilhar</span></button>
         </div>
-        <div class="grupo-layout" id="grupo-layout" role="group" aria-label="Posição do código e do preview">
-          <button class="btn-layout" data-layout="auto" title="Automático: lado a lado só quando o preview passa de 600px">Auto</button>
-          <button class="btn-layout" data-layout="lado" title="Código e preview lado a lado" aria-label="Lado a lado">⇆</button>
-          <button class="btn-layout" data-layout="empilhado" title="Código em cima, preview embaixo" aria-label="Empilhado">⇅</button>
+        <div class="grupo-layout" id="grupo-layout" role="group" aria-label="Posição do código e do terminal">
+          <button class="btn-layout" data-layout="auto" title="Automático: lado a lado só quando há espaço">Auto</button>
+          <button class="btn-layout" data-layout="lado" title="Código e terminal lado a lado" aria-label="Lado a lado">⇆</button>
+          <button class="btn-layout" data-layout="empilhado" title="Código em cima, terminal embaixo" aria-label="Empilhado">⇅</button>
           <button class="btn-layout" id="btn-descricao" title="Mostrar ou ocultar a descrição" aria-label="Mostrar descrição">📄</button>
         </div>
       </div>
@@ -82,7 +81,6 @@
           <div class="abas">
             <div class="abas-grupo" role="tablist" aria-label="Descrição">
             <button class="aba ativa" data-desc="enunciado" role="tab" aria-selected="true">Descrição</button>
-            <button class="aba" data-desc="banco" id="aba-banco" role="tab" aria-selected="false">🗄️ Banco</button>
             <button class="aba" data-desc="solucao" id="aba-solucao" role="tab" aria-selected="false">Solução</button>
             <button class="aba" data-desc="testes" id="aba-testes" role="tab" aria-selected="false" aria-controls="desc-testes">
               🧪 Testes <span id="resumo-testes" class="resumo-testes"></span></button>
@@ -90,7 +88,6 @@
             <button class="aba aba-direita" id="btn-ouvir" title="Ouvir: ler a descrição em voz alta" aria-label="Ouvir a descrição em voz alta" aria-pressed="false">🔊</button>
           </div>
           <div class="conteudo-desc" id="desc-enunciado" role="tabpanel"></div>
-          <div class="conteudo-desc" id="desc-banco" role="tabpanel" hidden></div>
           <div class="conteudo-desc" id="desc-solucao" role="tabpanel" hidden></div>
           <div class="conteudo-desc" id="desc-testes" role="tabpanel" aria-label="Testes funcionais" hidden>
             <div id="saida-testes" class="saida testes"></div>
@@ -99,29 +96,25 @@
 
         <section class="painel painel-codigo" aria-label="Código">
           <div class="abas" id="abas-arquivos" role="toolbar" aria-label="Arquivos"></div>
-          <p id="ajuda-editor" class="sr">Control Enter roda o código e os testes visíveis. Control Shift Enter envia. Tab sai do editor; para recuar a linha, use Control colchete. Control F procura e Control Alt G vai para uma linha.</p>
+          <p id="ajuda-editor" class="sr">Control Enter executa e roda os testes visíveis. Control Shift Enter envia. Tab sai do editor; para recuar a linha, use Control colchete. Control F procura e Control Alt G vai para uma linha.</p>
           <div id="editor" class="editor"></div>
         </section>
 
-        <div class="divisor" id="divisor" role="separator" tabindex="0" aria-label="Redimensionar código e preview"
+        <div class="divisor" id="divisor" role="separator" tabindex="0" aria-label="Redimensionar código e terminal"
              aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
 
-        <section class="painel painel-preview" aria-label="Preview">
-          <div class="abas" role="tablist" aria-label="Saída">
-            <button class="aba ativa" data-saida="resultado" role="tab" aria-selected="true">👁 Resultado</button>
-            <button class="aba" data-saida="fonte" role="tab" aria-selected="false">HTML gerado</button>
+        <section class="painel painel-preview" aria-label="Saída do Python">
+          <div class="abas">
+            <div class="abas-grupo" role="tablist" aria-label="Saída">
+              <button class="aba ativa" data-saida="terminal" role="tab" aria-selected="true">🖥️ Terminal</button>
+              <button class="aba" data-saida="entrada" role="tab" aria-selected="false" title="Respostas para o input(), uma por linha">⌨️ Entrada</button>
+            </div>
           </div>
-          <div class="saida-resultado" id="saida-resultado">
-            <form id="barra-endereco" class="endereco" title="Edite a URL e tecle Enter para testar $_GET">
-              <span class="origem">localhost</span>
-              <input id="url" spellcheck="false" autocomplete="off" aria-label="Endereço da página">
-              <button class="btn btn-fantasma btn-pequeno" aria-label="Recarregar">⟳</button>
-              <span id="medidor" class="medidor" title="Largura do preview. A W3.CSS muda o layout em 601px e 993px."></span>
-            </form>
-            <iframe id="resultado" class="resultado" title="Resultado da sua página" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
+          <pre id="saida-terminal" class="terminal terminal-python" data-saida-painel="terminal" tabindex="0" aria-label="Saída do terminal" aria-busy="false"></pre>
+          <div class="entrada-python" data-saida-painel="entrada" hidden>
+            <label for="entrada">Respostas para o <code>input()</code>, uma por linha</label>
+            <textarea id="entrada" rows="6" spellcheck="false"></textarea>
           </div>
-          <pre id="saida-fonte" class="saida fonte" hidden tabindex="0" aria-label="HTML gerado pelo PHP"></pre>
-          <pre id="erros" class="erros" hidden role="alert"></pre>
         </section>
 
       </div>
@@ -196,7 +189,7 @@
           <dt><kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Executar</dd>
           <dt><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd></dt><dd>Enviar (todos os testes)</dd>
           <dt><kbd>Tab</kbd></dt><dd>Ir para a próxima área (o editor não prende o Tab)</dd>
-          <dt><kbd>←</kbd> <kbd>→</kbd> no divisor</dt><dd>Redimensionar código e preview</dd>
+          <dt><kbd>←</kbd> <kbd>→</kbd> no divisor</dt><dd>Redimensionar código e terminal</dd>
           <dt><kbd>Esc</kbd></dt><dd>Fechar janelas como esta</dd>
         </dl>
         <p><a href="#/acessibilidade">Todos os atalhos e recursos de acessibilidade</a></p>

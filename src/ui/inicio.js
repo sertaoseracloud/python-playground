@@ -188,7 +188,7 @@ function painelJogador(j) {
   return `
     <aside class="painel-jogador" aria-label="Seu progresso">
       <div class="jogador">
-        <span class="avatar" aria-hidden="true">${nome ? esc(nome.trim()[0].toUpperCase()) : '🐘'}</span>
+        <span class="avatar" aria-hidden="true">${nome ? esc(nome.trim()[0].toUpperCase()) : '🐍'}</span>
         <div>
           <p class="jogador-nome">${nome ? esc(nome) : 'Estudante'}
             <button type="button" class="btn-link" id="btn-nome">${nome ? 'editar' : 'informar nome'}</button></p>

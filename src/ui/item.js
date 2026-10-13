@@ -1,13 +1,11 @@
 // Tela de uma lição, problema ou do playground livre.
 import { minutosDoItem } from '../cargaHoraria.js';
 import { buscarItem, modulos, vizinhos, DIFICULDADES } from '../conteudo/trilha.js';
-import { TempoEsgotado } from '../php/motor.js';
-import { SCRIPT_PONTE, montarRequisicao, normalizarUrl } from '../navegacao.js';
+import { TempoEsgotado } from '../python/motor.js';
 import { linkItem, linkCompartilhado } from '../compartilhar.js';
-import { corrigir } from '../corrigir.js';
+import { corrigir, textoDaChamada } from '../corrigir.js';
 import {
-  statusDe, marcar, lerRascunho, gravarRascunho, apagarRascunho,
-  lerBancoLivre, gravarBancoLivre, apagarBancoLivre,
+  statusDe, marcar, lerRascunho, gravarRascunho, apagarRascunho, lerEntrada, gravarEntrada,
 } from '../progresso.js';
 import { EditorArquivos } from './editor.js';
 import { iniciarLeitura } from './acessibilidade.js';
@@ -32,26 +30,19 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     status: $('item-status'),
     executar: $('btn-executar'),
     enviar: $('btn-enviar'),
-    resetarBanco: $('btn-resetar-banco'),
     restaurar: $('btn-restaurar'),
     compartilhar: $('btn-compartilhar'),
-    abaBanco: $('aba-banco'),
     abaSolucao: $('aba-solucao'),
     abaTestes: $('aba-testes'),
     resumoTestes: $('resumo-testes'),
     enunciado: $('desc-enunciado'),
-    banco: $('desc-banco'),
     solucao: $('desc-solucao'),
-    barra: $('barra-endereco'),
-    url: $('url'),
-    resultado: $('resultado'),
-    fonte: $('saida-fonte'),
     testes: $('saida-testes'),
-    erros: $('erros'),
+    terminal: $('saida-terminal'),
+    entrada: $('entrada'),
   };
 
-  // previewAtivo: o preview já rodou para este item, então o banco do contexto 'preview' vale.
-  const estado = { item: null, url: '/index.php', phpPronto: false, ocupado: false, previewAtivo: false, origem: null };
+  const estado = { item: null, pythonPronto: false, ocupado: false, origem: null };
 
   let salvarTimer;
   const editor = new EditorArquivos({
@@ -75,63 +66,24 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   const ehLivre = () => estado.item?.tipo === 'livre';
 
   // ---------- abas ----------
-  const paineisDesc = { enunciado: el.enunciado, banco: el.banco, solucao: el.solucao, testes: $('desc-testes') };
+  const paineisDesc = { enunciado: el.enunciado, solucao: el.solucao, testes: $('desc-testes') };
   function mostrarDesc(nome) {
     for (const [chave, painel] of Object.entries(paineisDesc)) painel.hidden = chave !== nome;
     document.querySelectorAll('[data-desc]').forEach((b) => {
       b.classList.toggle('ativa', b.dataset.desc === nome);
       b.setAttribute('aria-selected', String(b.dataset.desc === nome));
     });
-    if (nome === 'banco') renderBanco();
   }
   document.querySelectorAll('[data-desc]').forEach((b) => { b.onclick = () => mostrarDesc(b.dataset.desc); });
 
-  const saidas = { resultado: $('saida-resultado'), fonte: el.fonte };
   function mostrarSaida(nome) {
-    for (const [chave, painel] of Object.entries(saidas)) painel.hidden = chave !== nome;
+    document.querySelectorAll('[data-saida-painel]').forEach((p) => { p.hidden = p.dataset.saidaPainel !== nome; });
     document.querySelectorAll('[data-saida]').forEach((b) => {
       b.classList.toggle('ativa', b.dataset.saida === nome);
       b.setAttribute('aria-selected', String(b.dataset.saida === nome));
     });
   }
   document.querySelectorAll('[data-saida]').forEach((b) => { b.onclick = () => mostrarSaida(b.dataset.saida); });
-
-  // ---------- banco ----------
-  function bancoAtual() {
-    const item = estado.item;
-    if (!item?.banco) return undefined;
-    if (ehLivre()) {
-      const bytes = lerBancoLivre();
-      return bytes ? { bytes } : { seed: item.banco };
-    }
-    return { seed: item.banco };
-  }
-
-  async function renderBanco() {
-    if (!estado.item?.banco || el.banco.hidden) return;
-    if (!estado.phpPronto) {
-      el.banco.innerHTML = '<p>Carregando o PHP…</p>';
-      return;
-    }
-    try {
-      const tabelas = await motor.inspecionar(bancoAtual(), { contexto: 'preview', manterBanco: estado.previewAtivo });
-      const valor = (v) => (v === null ? '<i>NULL</i>' : esc(v));
-      el.banco.innerHTML = `
-        <p>Conecte com <code>new PDO('sqlite:/banco/escola.sqlite')</code>.
-        ${ehLivre() ? 'No playground livre, as mudanças ficam salvas no seu navegador.' : 'O banco volta ao original quando você clica em ▶ Executar. Cliques em links e formulários do preview mantêm as mudanças.'}</p>
-        ${tabelas.map((t) => `
-          <div class="tabela-banco">
-            <h3>${esc(t.nome)} <small>(${t.total} ${t.total === 1 ? 'linha' : 'linhas'})</small></h3>
-            <div class="tabela-rolagem"><table>
-              <tr>${t.colunas.map((c) => `<th>${c.pk ? '🔑 ' : ''}${esc(c.nome)}<span class="tipo">${esc(c.tipo)}</span></th>`).join('')}</tr>
-              ${t.linhas.map((l) => `<tr>${l.map((v) => `<td class="${typeof v === 'number' ? 'numero' : ''}">${valor(v)}</td>`).join('')}</tr>`).join('')}
-            </table></div>
-          </div>`).join('')}
-        ${ehLivre() ? '' : `<details><summary>Ver o script SQL que cria o banco</summary><pre class="trecho">${esc(estado.item.banco.trim())}</pre></details>`}`;
-    } catch (erro) {
-      el.banco.innerHTML = `<p>Não foi possível ler o banco: ${esc(erro.message)}</p>`;
-    }
-  }
 
   // ---------- descrição e solução ----------
   function renderDescricao() {
@@ -172,7 +124,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       gravarRascunho(item.id, item.arquivos);
       estado.origem = 'referencia';
       renderDescricao();
-      executar({ url: `/${editor.principal}` });
+      executar();
     });
   }
 
@@ -182,9 +134,9 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       const regras = t.regras.map(descreverRegra).filter(Boolean);
       if (!regras.length) return '';
       const soCodigo = t.regras.every((r) => 'codigo' in r);
-      const onde = t.url || t.metodo
-        ? `Ao abrir <code>${esc(t.descricao ?? `${t.metodo ?? 'GET'} ${t.url}`)}</code>`
-        : soCodigo ? 'No seu código' : 'Ao executar';
+      const onde = soCodigo ? 'No seu código'
+        : t.entrada?.length ? `Respondendo <code>${esc(t.entrada.join(' / '))}</code> ao <code>input()</code>`
+          : 'Ao executar';
       return `<p class="caso-exemplo"><span class="rotulo">${onde}:</span></p>
         <ul>${regras.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>`;
     }).join('');
@@ -259,7 +211,6 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     const item = buscarItem(id);
     if (!item) return false;
     estado.item = item;
-    estado.previewAtivo = false;
     estado.origem = null;
     let arquivos = arquivosCompartilhados ?? lerRascunho(id);
     // Etapa de projeto: quem resolveu a etapa anterior continua do próprio código.
@@ -272,14 +223,10 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       }
     }
     editor.carregar(arquivos ?? item.arquivos);
-    estado.url = `/${editor.principal}`;
-    el.url.value = estado.url;
 
     renderCabecalho();
     renderDescricao();
     el.enviar.hidden = !ehProblema();
-    el.resetarBanco.hidden = !ehLivre();
-    el.abaBanco.hidden = !item.banco;
     el.abaSolucao.hidden = !ehProblema();
     el.abaTestes.hidden = !ehProblema();
     layout.aplicar();
@@ -288,52 +235,55 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       renderSolucao();
       renderTestesPendentes();
     }
-    el.resultado.srcdoc = '';
-    el.fonte.textContent = '';
-    mostrarErros('');
+    el.terminal.textContent = '';
+    el.terminal.classList.remove('com-erro');
+    el.entrada.value = lerEntrada(id);
     mostrarDesc('enunciado');
-    mostrarSaida('resultado');
-    if (estado.phpPronto) executar();
+    mostrarSaida('terminal');
+    if (estado.pythonPronto) executar();
     return true;
   }
 
   // ---------- execução ----------
-  function mostrarErros(texto) {
-    el.erros.hidden = !texto;
-    el.erros.textContent = texto ?? '';
+  /** As linhas da aba ⌨️ Entrada; a última linha vazia (do Enter final) não conta. */
+  const entradaAtual = () => el.entrada.value.split('\n').filter((l, i, todas) => i < todas.length - 1 || l !== '');
+
+  // O input() sem resposta para com EOFError: o terminal explica onde escrever.
+  const DICA_EOF = '\n💡 O programa pediu um input(), mas a aba ⌨️ Entrada não tinha mais respostas. Escreva uma resposta por linha lá.';
+
+  function mostrarTerminal(r) {
+    const dica = r.erro?.tipo === 'EOFError' ? DICA_EOF : '';
+    el.terminal.textContent = `${r.saida ?? ''}${r.erro ? r.erro.traceback + dica : ''}` || '(o programa não imprimiu nada)';
+    el.terminal.classList.toggle('com-erro', Boolean(r.erro));
+    mostrarSaida('terminal');
   }
 
   function tratarErro(erro) {
-    if (erro instanceof TempoEsgotado) {
-      el.resultado.srcdoc = `<p style="font-family:sans-serif;padding:1em;color:#b71c1c">⏱️ ${esc(erro.message)}<br>
-        Verifique se algum laço (for/while) nunca termina.</p>`;
+    const tempo = erro instanceof TempoEsgotado;
+    el.terminal.textContent = tempo
+      ? `⏱️ ${erro.message}\nVerifique se algum laço (for/while) nunca termina.`
+      : `Erro interno do DivergePython: ${erro?.message ?? erro}`;
+    el.terminal.classList.add('com-erro');
+    mostrarSaida('terminal');
+    definirStatus(tempo ? 'Tempo esgotado' : 'Erro ao executar', { falar: frase(el.terminal.textContent) });
+  }
+
+  /** O resultado da execução, falado: a saída (curta) ou o erro com a linha. */
+  function falaDoPython(r) {
+    if (r.erro) {
+      const parou = frase(`O programa parou na linha ${r.erro.linha ?? 'desconhecida'} com ${r.erro.tipo}: ${r.erro.mensagem}`);
+      return r.erro.tipo === 'EOFError' ? `${parou} Escreva as respostas do input na aba Entrada, uma por linha.` : parou;
     }
-    mostrarErros(String(erro?.message ?? erro));
-    definirStatus('Erro ao executar', { falar: frase(`Erro ao executar: ${erro?.message ?? erro}`) });
+    const linhas = (r.saida ?? '').trimEnd().split('\n').filter(Boolean);
+    if (!linhas.length) return 'O programa rodou sem erros e não imprimiu nada.';
+    const lidas = leitorDeTela() ? linhas.slice(0, 10) : linhas.slice(0, 2);
+    return `O programa rodou sem erros. Saída: ${lidas.map(frase).join(' ')}${linhas.length > lidas.length ? ` E mais ${linhas.length - lidas.length} linhas no terminal.` : ''}`;
   }
 
-  /** O resultado da execução, falado: HTTP, título da página gerada e erros do PHP. */
-  function falaDoPhp(r) {
-    const titulo = r.html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim();
-    const erros = r.erros.trim().split('\n').map((l) => l.trim()).filter(Boolean);
-    const lidos = leitorDeTela() ? erros.slice(0, 5) : erros.slice(0, 1);
-    return [
-      `Página gerada: HTTP ${r.status}${titulo ? `, título ${titulo}` : ''}.`,
-      erros.length ? `O PHP mostrou ${erros.length} ${erros.length === 1 ? 'mensagem' : 'mensagens'} de erro.` : 'Sem erros do PHP.',
-      ...lidos.map(frase),
-      'O resultado está na aba Resultado e o HTML em HTML gerado.',
-    ].join(' ');
-  }
+  const executarNoMotor = (arquivos, opcoes) => motor.executar(arquivos, opcoes);
 
-  const executarNoMotor = (arquivos, req, banco, opcoes) => motor.executar(arquivos, req, banco, opcoes);
-
-  /**
-   * ▶ Executar começa do zero (banco recriado, sessão nova). Cliques em links e
-   * formulários do preview (`navegacao`) continuam com o mesmo banco e sessão,
-   * como num site de verdade: o post publicado continua lá no próximo clique.
-   */
   /** Executar pedido pelo aluno (botão ou Ctrl+Enter): mostra a aba de testes com o resultado. */
-  const executarPeloAluno = () => executar(undefined, { abrirTestes: true, falar: true });
+  const executarPeloAluno = () => executar({ abrirTestes: true, falar: true });
 
   /** Abre a aba 🧪 Testes (e a descrição, se estiver oculta). */
   function abrirAbaTestes() {
@@ -342,50 +292,34 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     mostrarDesc('testes');
   }
 
-  // `falar`: só quando a pessoa pediu (botão, atalho ou clique na prévia); as execuções
-  // automáticas (abrir o exercício, restaurar) não interrompem o leitor de tela.
-  async function executar(req = { url: estado.url }, { navegacao = false, abrirTestes = false, falar = navegacao } = {}) {
-    if (!estado.phpPronto || !estado.item) return;
+  // `falar`: só quando a pessoa pediu (botão ou atalho); as execuções automáticas
+  // (abrir o exercício, restaurar) não interrompem o leitor de tela.
+  async function executar({ abrirTestes = false, falar = false } = {}) {
+    if (!estado.pythonPronto || !estado.item) return;
     const item = estado.item;
-    const arquivos = { ...editor.arquivos };
     definirStatus('Executando…', { falar: false });
+    el.terminal.setAttribute('aria-busy', 'true');
     try {
-      const banco = bancoAtual();
-      const continuar = navegacao && estado.previewAtivo;
-      const r = await motor.executar(
-        arquivos,
-        req,
-        ehLivre() && banco ? { ...banco, devolver: true } : banco,
-        { contexto: 'preview', novaSessao: !continuar, manterBanco: continuar },
-      );
+      const r = await motor.executar({ ...editor.arquivos }, { entrada: entradaAtual() });
       if (estado.item !== item) return;
-      estado.previewAtivo = true;
-      estado.url = r.url ?? req.url ?? `/${editor.principal}`;
-      el.url.value = estado.url;
-      el.resultado.srcdoc = r.html + SCRIPT_PONTE;
-      el.fonte.textContent = r.html;
-      mostrarErros(r.erros.trim());
-      const fala = falaDoPhp(r);
-      const comTestes = item.tipo === 'problema' && !navegacao;
-      definirStatus(`Python 3.14 · ${req.metodo === 'POST' ? 'POST ' : ''}HTTP ${r.status} · ${r.ms} ms`, { falar: falar && !comTestes && fala });
-
-      if (ehLivre() && r.bancoBytes) {
-        gravarBancoLivre(r.bancoBytes);
-        renderBanco();
-      }
-      if (item.tipo === 'licao' && !statusDe(item.id)) {
+      mostrarTerminal(r);
+      const fala = falaDoPython(r);
+      const comTestes = item.tipo === 'problema';
+      definirStatus(`Python 3.14 · ${r.erro ? r.erro.tipo : 'ok'} · ${r.ms} ms`, { falar: falar && !comTestes && fala });
+      if (item.tipo === 'licao' && !r.erro && !statusDe(item.id)) {
         marcar(item.id, 'resolvido');
         aoMudarProgresso();
       }
       if (comTestes) {
         const resultado = await rodarTestes({ incluirOcultos: false });
         if (estado.item !== item) return;
-        if (falar) anunciar(`${fala} ${falarTestes(resultado, false)}`);
+        if (falar) anunciar(`${fala} ${falarTestes(resultado, false, { codigoComErro: Boolean(r.erro) })}`);
         if (abrirTestes) abrirAbaTestes();
       }
-      if (!el.banco.hidden) renderBanco();
     } catch (erro) {
       tratarErro(erro);
+    } finally {
+      el.terminal.setAttribute('aria-busy', 'false');
     }
   }
 
@@ -398,33 +332,25 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   }
 
   // ---------- casos de teste ----------
-  // Cada caso vira um card: o cenário (as requisições que o teste faz, como num
-  // navegador), o placar e cada verificação com categoria, o que a página tinha e, se
-  // falhar, motivo e dica. Nos casos ocultos, os valores e o que passou ficam escondidos.
+  // Cada caso vira um card: o cenário (o comando, as respostas do input() e as
+  // chamadas de função), o placar e cada verificação com categoria, o que o programa
+  // fez e, se falhar, motivo e dica. Nos casos ocultos, os valores ficam escondidos.
 
-  /** As requisições de um caso, como linhas de HTTP: GET /index.php?..., POST /login.php. */
-  function linhasDoCenario(cenario, { ocultar = false, bancoProprio = false } = {}) {
-    const linhas = [];
-    if (bancoProprio) linhas.push('# banco com dados diferentes do exemplo');
-    if (cenario.length > 1) linhas.push('# os passos compartilham a mesma sessão e o mesmo banco');
-    // Campos "a=1&b=2": os nomes aparecem; os valores somem nos ocultos e são cortados se longos.
-    const campos = (texto) => String(texto).split('&').map((par) => {
-      const [nome, ...resto] = par.split('=');
-      const valor = resto.join('=');
-      return `${nome}=${ocultar ? '…' : valor.length > 40 ? `${valor.slice(0, 39)}…` : valor}`;
-    }).join('&');
-    for (const { metodo = 'GET', url = 'index.php', corpo } of cenario) {
-      const [caminho, consulta] = String(url).split('?');
-      linhas.push(`${metodo} /${caminho.replace(/^\//, '')}${consulta ? `?${campos(consulta)}` : ''}`);
-      if (corpo) linhas.push(`  corpo: ${campos(typeof corpo === 'string' ? corpo : new URLSearchParams(corpo).toString())}`);
-    }
-    return linhas;
+  /** O cenário de um caso, como numa sessão de terminal. */
+  function linhasDoCenario({ entrada = [], chamadas = [] }, { ocultar = false } = {}) {
+    return [
+      '$ python main.py',
+      ...entrada.map((l) => `> ${ocultar ? '…' : l}`),
+      ...chamadas.map((c) => `>>> ${ocultar ? c.replace(/\(.*\)/s, '(…)') : c}`),
+    ];
   }
 
-  const cenarioDoTeste = (t) => (t.passos ?? [t]).map((p) => ({ metodo: p.metodo ?? 'GET', url: p.url ?? 'index.php', corpo: p.corpo }));
+  const cenarioDoTeste = (t) => ({
+    entrada: t.entrada ?? [],
+    chamadas: t.regras.filter((r) => 'funcao' in r).map(textoDaChamada),
+  });
 
-  const verificacoesPrevistas = (t) => (t.passos ?? [t]).flatMap((p) => p.regras ?? [])
-    .map((regra) => ({ mensagem: descreverRegra(regra) ?? 'Verificação no código', categoria: categoriaDe(regra) }));
+  const verificacoesPrevistas = (t) => t.regras.map((regra) => ({ mensagem: descreverRegra(regra) ?? 'Verificação no código', categoria: categoriaDe(regra) }));
 
   function itemVerificacao(r, situacao) {
     const marca = { ok: '✅', falha: '❌', pendente: '⏳' }[situacao];
@@ -448,7 +374,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     const oculto = Boolean(teste.oculto);
     const situacao = resultado ? (resultado.ok ? 'ok' : 'falha') : 'pendente';
     const icone = { ok: '✅', falha: '❌', pendente: '⏳' }[situacao];
-    const descricao = oculto ? (resultado ? 'caso oculto' : 'rode ⬆ Enviar') : teste.descricao ?? 'código e página';
+    const descricao = oculto ? (resultado ? 'caso oculto' : 'rode ⬆ Enviar') : teste.descricao ?? 'código e saída';
     const cenario = resultado?.cenario ?? cenarioDoTeste(teste);
     const verificacoes = resultado
       ? resultado.resultados.map((r) => ({ ...r, situacao: r.ok ? 'ok' : 'falha' }))
@@ -463,8 +389,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
         <summary>${icone} ${nome}<span class="url">${esc(descricao)}</span>${placar ? `<span class="placar">${placar}</span>` : ''}</summary>
         <div class="corpo-caso">
           <p class="rotulo-caso">Cenário${oculto ? ' (valores ocultos)' : ''}</p>
-          <pre class="cenario">${linhasDoCenario(cenario, { ocultar: oculto, bancoProprio: resultado?.bancoProprio ?? Boolean(teste.banco) }).map(esc).join('\n')}</pre>
-          ${resultado?.erroExecucao && !oculto ? `<p class="erro-execucao">⛔ O PHP mostrou: <code>${esc(resultado.erroExecucao)}</code></p>` : ''}
+          <pre class="cenario">${linhasDoCenario(cenario, { ocultar: oculto }).map(esc).join('\n')}</pre>
+          ${resultado?.erroExecucao && !oculto ? `<p class="erro-execucao">⛔ O Python parou com: <code>${esc(resultado.erroExecucao)}</code></p>` : ''}
           ${visiveis.length ? `<p class="rotulo-caso">${resultado ? 'Verificações' : 'O que este caso confere'}</p>
           <ul class="verificacoes">${visiveis.map((r) => itemVerificacao(r, r.situacao)).join('')}</ul>` : ''}
           ${oculto && resultado?.ok ? '<p class="nota-caso">Todas as verificações deste caso passaram.</p>' : ''}
@@ -540,7 +466,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   }
 
   async function enviar() {
-    if (!estado.phpPronto || !ehProblema() || estado.ocupado) return;
+    if (!estado.pythonPronto || !ehProblema() || estado.ocupado) return;
     estado.ocupado = true;
     el.enviar.disabled = true;
     el.testes.innerHTML = '<p class="veredito-sub">Rodando todos os casos de teste…</p>';
@@ -576,21 +502,11 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       el.testes.innerHTML = `<p class="veredito falha">Erro</p><p class="veredito-sub">${esc(erro.message)}</p>`;
     } finally {
       estado.ocupado = false;
-      el.enviar.disabled = !estado.phpPronto;
+      el.enviar.disabled = !estado.pythonPronto;
     }
   }
 
   // ---------- eventos ----------
-  window.addEventListener('message', (e) => {
-    if (e.source !== el.resultado.contentWindow || !e.data?.__phpPlayground) return;
-    executar(montarRequisicao(estado.url, e.data), { navegacao: true });
-  });
-
-  el.barra.addEventListener('submit', (e) => {
-    e.preventDefault();
-    executar({ url: normalizarUrl(el.url.value, editor.principal) }, { navegacao: true });
-  });
-
   el.executar.onclick = () => executarPeloAluno();
   el.enviar.onclick = () => enviar();
 
@@ -598,14 +514,11 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     if (!confirm('Voltar ao código original? Suas alterações serão perdidas.')) return;
     apagarRascunho(estado.item.id);
     editor.carregar(estado.item.arquivos);
-    executar({ url: `/${editor.principal}` });
-  };
-
-  el.resetarBanco.onclick = () => {
-    if (!confirm('Apagar as mudanças no banco e voltar aos dados originais?')) return;
-    apagarBancoLivre();
     executar();
   };
+
+  // As respostas da aba ⌨️ Entrada ficam salvas por exercício.
+  el.entrada.addEventListener('input', () => estado.item && gravarEntrada(estado.item.id, el.entrada.value));
 
   el.compartilhar.onclick = async () => {
     const link = `${location.origin}${location.pathname}${linkCompartilhado({ item: estado.item.id, arquivos: editor.arquivos })}`;
@@ -620,17 +533,14 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   return {
     abrir,
     redesenharDescricao: () => estado.item && renderDescricao(),
-    aoMudarEstadoPhp(pronto) {
+    aoMudarEstadoPython(pronto) {
       const primeiraVez = pronto && !estado.jaIniciou;
-      estado.phpPronto = pronto;
+      estado.pythonPronto = pronto;
       el.executar.disabled = !pronto;
       el.enviar.disabled = !pronto;
       if (primeiraVez) {
         estado.jaIniciou = true;
-        if (estado.item) {
-          executar();
-          renderBanco();
-        }
+        if (estado.item) executar();
       }
     },
   };

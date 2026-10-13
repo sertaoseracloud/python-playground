@@ -1,21 +1,14 @@
 // Cálculo do layout da tela do problema (funções puras, testadas em tests/layout.test.js).
 //
-// Por que não é sempre lado a lado: a W3.CSS muda o layout conforme a largura
-// (≤600px = celular, 601–992px = médio, ≥993px = grande). Se o preview ficar
-// estreito demais, as colunas w3-third/w3-half empilham e o aluno nunca vê a
-// grade "de computador". O modo automático só põe código e preview lado a lado
-// quando o preview passa de 600px; senão, empilha (código em cima, preview embaixo).
+// Por que não é sempre lado a lado: um terminal estreito quebra as linhas da saída
+// (tabelas e DataFrames ficam ilegíveis). O modo automático só põe código e terminal
+// lado a lado quando o terminal passa de 600px; senão, empilha (código em cima,
+// terminal embaixo).
 
 const PADDING = 16; // padding horizontal da área
 const GAP = 6; // espaço entre painéis
 const DIVISOR = 6; // largura da alça de redimensionar
 const LIMITE_CELULAR = 900;
-
-export function faixaW3(px) {
-  if (px <= 600) return { nome: 'pequena', rotulo: 'W3 pequena (celular)' };
-  if (px <= 992) return { nome: 'media', rotulo: 'W3 média (tablet)' };
-  return { nome: 'grande', rotulo: 'W3 grande (computador)' };
-}
 
 export const larguraDescricao = (largura) => Math.round(Math.min(420, Math.max(280, largura * 0.26)));
 

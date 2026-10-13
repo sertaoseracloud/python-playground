@@ -1,17 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escolherModo, larguraDescricao, larguraPreview, montarGrade, faixaW3 } from '../src/ui/layout-calculo.js';
-
-describe('faixaW3 (breakpoints da W3.CSS)', () => {
-  it.each([
-    [375, 'pequena'],
-    [600, 'pequena'],
-    [601, 'media'],
-    [992, 'media'],
-    [993, 'grande'],
-  ])('%ipx é tela %s', (px, nome) => {
-    expect(faixaW3(px).nome).toBe(nome);
-  });
-});
+import { escolherModo, larguraDescricao, larguraPreview, montarGrade } from '../src/ui/layout-calculo.js';
 
 describe('escolherModo', () => {
   it('telas estreitas usam o layout de celular', () => {

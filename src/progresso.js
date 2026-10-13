@@ -74,26 +74,9 @@ export const lerRascunho = (id) => ler(`rascunho:${id}`);
 export const gravarRascunho = (id, arquivos) => gravar(`rascunho:${id}`, arquivos);
 export const apagarRascunho = (id) => remover(`rascunho:${id}`);
 
-// ---------- banco do playground livre (bytes do SQLite em base64) ----------
-export function lerBancoLivre() {
-  const base64 = ler('banco:livre');
-  if (!base64) return null;
-  try {
-    return Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
-  } catch {
-    return null;
-  }
-}
-
-export function gravarBancoLivre(bytes) {
-  let binario = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  }
-  gravar('banco:livre', btoa(binario));
-}
-
-export const apagarBancoLivre = () => remover('banco:livre');
+// ---------- respostas da aba ⌨️ Entrada (as linhas do input()) ----------
+export const lerEntrada = (id) => ler(`entrada:${id}`, '');
+export const gravarEntrada = (id, texto) => (texto ? gravar(`entrada:${id}`, texto) : remover(`entrada:${id}`));
 
 // ---------- preferências (layout, acessibilidade, tutorial) ----------
 export const lerPreferencia = (chave, padrao = null) => ler(`pref:${chave}`, padrao);

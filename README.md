@@ -1,4 +1,4 @@
-# 🐘 DivergePython
+# 🐍 DivergePython
 
 Trilha de exercícios no estilo LeetCode para ensinar **HTML → W3.CSS → PHP → PHP + PDO** em aula.
 O Python 3.14 roda **dentro do navegador** (WebAssembly), inclusive com banco de dados **SQLite via PDO**.

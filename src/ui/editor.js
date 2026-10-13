@@ -1,11 +1,12 @@
-// Editor de código com abas de arquivos (index.php, cabecalho.php...).
+// Editor de código com abas de arquivos (main.py, funcoes.py, dados.csv...).
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, Prec } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
-import { php as linguagemPhp } from '@codemirror/lang-php';
+import { indentUnit } from '@codemirror/language';
+import { python as linguagemPython } from '@codemirror/lang-python';
 import { temaEditor } from './tema-editor.js';
 
-const NOME_VALIDO = /^[\w-]+\.(php|html|css|js|txt|json)$/;
+const NOME_VALIDO = /^[\w-]+\.(py|txt|csv|json)$/;
 
 export class EditorArquivos {
   constructor({ abas, editor, aoMudar = () => {}, aoExecutar = () => {}, aoEnviar = () => {} }) {
@@ -16,14 +17,17 @@ export class EditorArquivos {
     this.estados = new Map();
     this.extensoes = [
       basicSetup,
-      linguagemPhp(),
+      linguagemPython(),
+      // O Python usa 4 espaços por nível.
+      EditorState.tabSize.of(4),
+      indentUnit.of('    '),
       temaEditor,
       EditorView.lineWrapping,
       Prec.highest(keymap.of([
         { key: 'Mod-Enter', run: () => { aoExecutar(); return true; } },
         { key: 'Mod-Shift-Enter', run: () => { aoEnviar(); return true; } },
       ])),
-      EditorView.contentAttributes.of({ 'aria-label': 'Editor de código PHP e HTML', tabindex: '0', 'aria-describedby': 'ajuda-editor' }),
+      EditorView.contentAttributes.of({ 'aria-label': 'Editor de código Python', tabindex: '0', 'aria-describedby': 'ajuda-editor' }),
       EditorView.updateListener.of((u) => {
         if (u.docChanged) {
           this.arquivos[this.atual] = u.state.doc.toString();
@@ -34,7 +38,7 @@ export class EditorArquivos {
     this.view = new EditorView({ parent: editor });
   }
 
-  /** Arquivo que o navegador abre primeiro (index.php ou index.html). */
+  /** Arquivo que o Python roda (o main.py). */
   get principal() {
     return Object.keys(this.arquivos)[0];
   }
@@ -107,17 +111,17 @@ export class EditorArquivos {
   }
 
   #novo() {
-    const nome = prompt('Nome do novo arquivo (ex.: funcoes.php, estilo.css):', 'novo.php')?.trim();
+    const nome = prompt('Nome do novo arquivo (ex.: funcoes.py, dados.csv):', 'funcoes.py')?.trim();
     if (!nome) return;
     if (!NOME_VALIDO.test(nome)) {
-      alert('Use só letras, números, - e _, com extensão .php, .html, .css, .js, .txt ou .json.');
+      alert('Use só letras, números, - e _, com extensão .py, .txt, .csv ou .json.');
       return;
     }
     if (nome in this.arquivos) {
       alert('Já existe um arquivo com esse nome.');
       return;
     }
-    this.arquivos[nome] = nome.endsWith('.php') ? '<?php\n\n' : '';
+    this.arquivos[nome] = '';
     this.aoMudar(this.arquivos);
     this.abrir(nome);
   }

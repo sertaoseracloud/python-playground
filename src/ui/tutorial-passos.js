@@ -6,7 +6,7 @@ export const PROBLEMA_DO_TUTORIAL = 'html-primeira-pagina';
 
 export const PASSOS = [
   {
-    titulo: 'Bem-vindo ao DivergePython 🐘',
+    titulo: 'Bem-vindo ao DivergePython 🐍',
     texto: `<p>Aqui você aprende <b>HTML</b>, <b>W3.CSS</b>, <b>PHP</b> e <b>banco de dados com PDO</b>
       resolvendo problemas, no estilo do LeetCode.</p>
       <p>Tudo roda no seu navegador: não precisa instalar nada. Este tutorial leva 1 minuto.</p>`,
