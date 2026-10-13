@@ -21,8 +21,12 @@ fica no GitHub Pages.
   ordenação com `key`, `Counter` e `defaultdict`, CSV, JSON, datas, geradores, `map`/`filter`/`reduce`
   e `itertools`. Os exercícios com CSV e JSON leem arquivos de verdade, e alguns gravam arquivos que a
   correção confere.
+- **⚡ Paralelismo** (0.3.0): **10 lições e 35 exercícios**: dividir o trabalho, partições por hash e por
+  intervalo, map-reduce, `Pool`, `ProcessPoolExecutor`, `Process` e `Queue`, `asyncio`, condições de
+  corrida, `Lock` e `Semaphore`, GIL, speedup e Lei de Amdahl. Os processos rodam de verdade, ao mesmo
+  tempo, nos núcleos do computador.
 - **Em breve**, nas próximas versões (aparecem na landing e no fim da trilha como "em breve"):
-  ⚡ Paralelismo, ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
+  ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal** com a saída e o traceback. As respostas
@@ -53,16 +57,29 @@ fica no GitHub Pages.
 
 ### Paralelismo
 
-`diverge_runtime.pool.mapear(funcao, itens)` serializa a função e cada item com o
-[cloudpickle](https://github.com/cloudpipe/cloudpickle) e manda as tarefas para o pool
-(`src/python/pool.js`, até 4 workers, ou núcleos − 1). O Python do aluno espera o resultado com
-`pyodide.ffi.run_sync`, que depende do **JSPI** (JavaScript Promise Integration) do navegador.
+O aluno escreve `from multiprocessing import Pool` ou `from concurrent.futures import ProcessPoolExecutor`
+como no Python de verdade. Durante a execução, o pacote `python/diverge_paralelo` troca esses módulos
+pelos dele (`Pool` com `map`, `starmap`, `imap`, `apply_async`; `Process`, `Queue`, `cpu_count`;
+`ProcessPoolExecutor`, `Future` e `as_completed`), e os devolve no fim.
 
+- **Como roda**: cada tarefa (função e argumentos) é serializada com o
+  [cloudpickle](https://github.com/cloudpipe/cloudpickle) e vai para um worker do pool
+  (`src/python/pool.js`, até 4 workers, ou núcleos − 1, abertos sob demanda e fechados depois de 60 s
+  ociosos). O Python do aluno espera com `pyodide.ffi.run_sync`, que depende do **JSPI** (JavaScript
+  Promise Integration) do navegador. O `print` da função chega ao terminal, e o erro dela sobe no
+  processo principal com o mesmo tipo. Funções de outros arquivos do aluno também viajam (vão por valor).
+- **Regra do Python real**: sem `if __name__ == "__main__":`, criar o `Pool`, iniciar um `Process` ou
+  enviar ao executor dá o mesmo `RuntimeError` do Python (início spawn).
+- **Sem JSPI** (ou com 1 worker só), as tarefas rodam em sequência, com o mesmo resultado; o terminal e
+  o leitor de tela avisam. A barra de status mostra "⚡ N tarefas em W workers".
+- **asyncio** roda de verdade (`gather`, `create_task`, `Lock`, `Semaphore`, `Queue`, `wait_for`): a
+  condição de corrida perde atualizações de fato. **Threads** dão o erro do próprio Pyodide (`can't start
+  new thread`) e entram como conceito. `Value`/`Array` (memória compartilhada) precisam de
+  SharedArrayBuffer, que o GitHub Pages não libera: levantam `NotImplementedError` com a explicação.
 - Conferido no Chromium do app Claude (8 núcleos): 4 workers, 6 tarefas de 0,5 s em 1,03 s (3 s em
-  sequência). No Node 24, os testes ligam o JSPI com `--experimental-wasm-jspi` (`vitest.config.js`).
-- **Sem JSPI**, `mapear` roda em sequência, com o mesmo resultado, e `pool.ULTIMA["paralelo"]` fica
-  `False` (o módulo ⚡ Paralelismo vai mostrar isso ao aluno).
-- A primeira chamada abre os workers (cada um carrega o seu Pyodide, alguns segundos); a barra de
+  sequência). No Node 24, os testes ligam o JSPI com `--experimental-wasm-jspi` (`vitest.config.js`)
+  e usam workers de verdade (`worker_threads`, `tests/pool-node.js`).
+- A primeira tarefa abre os workers (cada um carrega o seu Pyodide, alguns segundos); a barra de
   status avisa, e esse tempo não conta no limite de 10 s.
 
 ### Trilha gamificada e certificados
@@ -77,7 +94,8 @@ fica no GitHub Pages.
 - Cada certificado tem um **badge digital no estilo Credly**, página própria, PDF (A4 paisagem),
   **Publicar no LinkedIn** e **Adicionar ao perfil**.
 - **Carga horária**: lição 10 min, fácil 15, médio 30, difícil 45; o certificado do módulo vale a soma,
-  arredondada para cima em horas (Fundamentos de Python: 19 horas; Python para Dados: 20 horas). A regra fica em `src/cargaHoraria.js`
+  arredondada para cima em horas (Fundamentos de Python: 19 horas; Python para Dados: 20 horas;
+  Paralelismo em Python: 19 horas). A regra fica em `src/cargaHoraria.js`
   e `tests/carga-horaria.test.js` avisa quando o conteúdo mudar.
 - **Selo de verificação** (HMAC-SHA256), **cadeia de certificados** (cada um inclui o hash do anterior,
   como num blockchain), **🔎 Validador** (`#/validar`: link, código, impresso ou XML), **📄 XML do
@@ -151,6 +169,7 @@ que trocam os arquivos do exercício (os casos ocultos usam outros dados). As re
 | `{ variavel, igual }` | o valor final de uma variável |
 | `{ erro }` / `{ semErros }` | o programa termina com essa exceção / sem exceção |
 | `{ codigo }` / `{ semCodigo }` | regex no código do aluno (ex.: proibir `sum(`) |
+| `{ paralelo: { workers, tarefas } }` | quantos workers trabalharam e em quantas tarefas o trabalho foi dividido (nunca o tempo); não cobra paralelismo onde o navegador não consegue |
 | `{ arquivo, igual }` / `{ arquivo, json }` | o arquivo que o programa gravou: o texto (sem diferenciar `\r\n`) ou os dados do JSON |
 
 `tests/conteudo.test.js` roda **toda a trilha** no Python de verdade: as lições rodam sem erro, cada
@@ -163,7 +182,7 @@ npm install
 npm run dev      # servidor local com recarga
 npm run lint     # ESLint
 npm test         # testes do site e de toda a trilha (Pyodide no Node 24, com JSPI)
-python -m pytest # testes do runtime Python (python/diverge_runtime) no CPython
+python -m pytest # testes do runtime e do paralelismo (python/diverge_runtime e diverge_paralelo) no CPython
 npm run build    # gera dist/ (precisa de CERTIFICADO_SEGREDO)
 npm run badges   # regenera badges, capa e ícones em public/
 ```

@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.3.0',
+    data: '2026-10-13',
+    titulo: 'Paralelismo de verdade',
+    resumo: 'O terceiro módulo: processos que rodam ao mesmo tempo nos núcleos do seu computador, asyncio e condições de corrida.',
+    grupos: [
+      { titulo: '⚡ Paralelismo', itens: ['10 lições e 35 exercícios: dividir o trabalho, partições, map-reduce, Pool, ProcessPoolExecutor, Process e Queue, asyncio, Lock, speedup e Lei de Amdahl.', 'Certificado Paralelismo em Python.'] },
+      { titulo: '🧵 Processos no navegador', itens: ['multiprocessing e concurrent.futures funcionam como no Python, com workers de verdade.', 'Sem o if __name__ == "__main__": o erro é o mesmo do Python real.', 'A barra de status mostra quantas tarefas rodaram em quantos workers.'] },
+      { titulo: '♿ Acessibilidade', itens: ['Onde o navegador não roda Python em paralelo, o terminal e o leitor de tela avisam que as tarefas rodaram em sequência.'] },
+    ],
+  },
+  {
     versao: '0.2.0',
     data: '2026-10-13',
     titulo: 'Python para dados',
