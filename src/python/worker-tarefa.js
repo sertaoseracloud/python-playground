@@ -4,7 +4,7 @@ import { montarPacotes } from './pacotes.js';
 import { FONTES } from './sessao.js';
 import { criarTarefa } from './tarefa.js';
 
-const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL('../pyodide/', import.meta.url).href;
+const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL(/* @vite-ignore */ '../pyodide/', import.meta.url).href;
 const rodar = carregarPython({ indexURL }).then((pyodide) => {
   montarPacotes(pyodide, FONTES);
   return criarTarefa(pyodide);

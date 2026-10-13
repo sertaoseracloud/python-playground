@@ -5,8 +5,9 @@ import { carregarPython } from './carregar.js';
 import { criarSessao } from './sessao.js';
 import { PoolPython } from './pool.js';
 
-// No dev o Vite serve o Pyodide em /pyodide/; no build ele fica em dist/pyodide/.
-const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL('../pyodide/', import.meta.url).href;
+// No dev o Vite serve o Pyodide em /pyodide/; no build ele fica em dist/pyodide/ (copiado pelo
+// plugin do vite.config.js, por isso o Vite não acha a pasta: @vite-ignore).
+const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL(/* @vite-ignore */ '../pyodide/', import.meta.url).href;
 let pool;
 // Enquanto os workers do pool carregam, o motor para o relógio (veja motor.js).
 const aoAbrir = (abrindo) => postMessage({ tipo: abrindo ? 'pool-abrindo' : 'pool-pronto' });

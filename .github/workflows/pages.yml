@@ -24,10 +24,15 @@ jobs:
           fetch-depth: 0 # histórico completo para a página de novidades
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # Testes do runtime Python (python/diverge_runtime) no CPython.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - run: python -m pip install pytest==8.4.2 && python -m pytest python/tests -q
       - run: npm test
       - run: npm run build
         env:

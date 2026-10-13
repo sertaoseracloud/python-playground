@@ -85,8 +85,8 @@
   align-items: center;
   padding: 16px 18px;
   border-radius: 14px;
-  /* 14%: com mais cor, o rótulo e o texto secundário ficam abaixo de 4,5:1 de contraste */
-  background: color-mix(in srgb, var(--cor) 14%, var(--fundo));
+  /* 10%: com as cores claras (amarelo, verde, ciano), 14% deixava o texto suave abaixo de 4,5:1 */
+  background: color-mix(in srgb, var(--cor) 10%, var(--fundo));
   border: 2px solid var(--cor);
 }
 .unidade[data-modulo="basico"] { --cor: var(--amarelo); }
