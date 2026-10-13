@@ -1,12 +1,12 @@
-// A trilha completa, na ordem das aulas. Na fase 1 só existe o 🐍 Python básico; os
+// A trilha completa, na ordem das aulas. Os módulos já publicados ficam em `modulos`; os
 // próximos módulos aparecem na landing como "em breve" (PROXIMOS_MODULOS).
 import { moduloBasico } from './basico.js';
+import { moduloDados } from './dados.js';
 
-export const modulos = [moduloBasico];
+export const modulos = [moduloBasico, moduloDados];
 
 /** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
 export const PROXIMOS_MODULOS = [
-  { id: 'dados', icone: '📊', titulo: 'Python para dados' },
   { id: 'paralelismo', icone: '⚡', titulo: 'Paralelismo' },
   { id: 'pyspark', icone: '✨', titulo: 'PySpark' },
   { id: 'alem', icone: '🌊', titulo: 'Spark além do batch' },

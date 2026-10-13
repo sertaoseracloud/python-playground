@@ -5,6 +5,7 @@ import { CERTIFICADOS, EMISSOR } from './certificados.js';
 
 export const BADGES = {
   basico: { cor: '#f1fa8c', simbolo: 'py', faixa: 'PYTHON' },
+  dados: { cor: '#8be9fd', simbolo: '{ }', faixa: 'DADOS' },
   final: { cor: '#f1c40f', simbolo: '★', faixa: 'TRILHA COMPLETA' },
 };
 

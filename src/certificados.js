@@ -40,6 +40,13 @@ export const CERTIFICADOS = {
     hashtags: ['Python', 'Programação'],
     conteudos: ['Variáveis, tipos e strings', 'Condições e laços', 'Funções e listas', 'Dicionários e exceções'],
   },
+  dados: {
+    titulo: 'Python para Dados',
+    cargaHoraria: 20,
+    resumo: 'concluiu o módulo Python para dados, resolvendo os 40 problemas práticos',
+    hashtags: ['Python', 'Dados'],
+    conteudos: ['Comprehensions, tuplas e conjuntos', 'Ordenação, Counter e defaultdict', 'CSV, JSON e datas', 'Geradores, map, filter e itertools'],
+  },
 };
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;

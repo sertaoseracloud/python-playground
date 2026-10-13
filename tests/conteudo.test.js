@@ -10,10 +10,13 @@ let executar;
 beforeAll(async () => { const { sessao } = await iniciarPython(); executar = (a, o) => sessao.executar(a, o); });
 
 describe('estrutura', () => {
-  it('o 🐍 Python básico tem 40 exercícios e 10 lições, com ids únicos', () => {
-    const basico = modulos.find((m) => m.id === 'basico');
-    expect(basico.itens.filter((i) => i.tipo === 'problema')).toHaveLength(40);
-    expect(basico.itens.filter((i) => i.tipo === 'licao')).toHaveLength(10);
+  it.each([['basico', 40, 10], ['dados', 40, 10]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {
+    const m = modulos.find((x) => x.id === id);
+    expect(m.itens.filter((i) => i.tipo === 'problema')).toHaveLength(exercicios);
+    expect(m.itens.filter((i) => i.tipo === 'licao')).toHaveLength(licoes);
+  });
+
+  it('ids únicos na trilha toda', () => {
     expect(new Set(itens.map((i) => i.id)).size).toBe(itens.length);
   });
 
@@ -29,7 +32,7 @@ describe('estrutura', () => {
 
 describe('lições e playground livre rodam sem erro', () => {
   it.each([...itens.filter((i) => i.tipo === 'licao'), LIVRE].map((l) => [l.id, l]))('%s', async (_id, l) => {
-    const r = await executar(l.arquivos, { entrada: l.id === 'livre' ? ['Ana'] : l.entrada ?? [] });
+    const r = await executar({ ...l.arquivos, ...(l.dados ?? {}) }, { entrada: l.id === 'livre' ? ['Ana'] : l.entrada ?? [] });
     expect(r.erro).toBeNull();
   });
 });

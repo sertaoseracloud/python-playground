@@ -2,15 +2,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   codificarCertificado, decodificarCertificado, extrairCodigo, validarImpresso, montarCadeia, linkPublico, SITE,
-  certificadoXml, lerCertificadoXml, cadeiaCoerente, mensagemAssinada, conferirAssinaturas, ORDEM,
+  certificadoXml, lerCertificadoXml, cadeiaCoerente, mensagemAssinada, conferirAssinaturas,
 } from '../src/certificados.js';
 import { CHAVE_PUBLICA } from '../src/ed25519.js';
 import { createPublicKey, verify } from 'node:crypto';
 import { resultadoDoLink, resultadoDoImpresso, resultadoDoXml, renderValidador } from '../src/ui/validador.js';
 import { lerRota } from '../src/compartilhar.js';
 
-// Fase 1: o Python básico é o único módulo (primeiro e último da cadeia).
-const PHP = { nome: 'Maria da Conceição', modulo: 'basico', data: '2026-10-12' };
+// PHP: um certificado do meio da trilha (com cadeia); HTML: o primeiro da cadeia.
+// Os nomes vêm do DivergePHP; os módulos são os do Python.
+const PHP = { nome: 'Maria da Conceição', modulo: 'dados', data: '2026-10-12', cadeia: ['2026-10-01'] };
 const HTML = { nome: 'Maria da Conceição', modulo: 'basico', data: '2026-10-01' };
 
 describe('extrairCodigo', () => {
@@ -35,7 +36,7 @@ describe('validar pelo link', () => {
     const html = resultadoDoLink(`${SITE}#/certificado/${codificarCertificado(PHP)}`);
     expect(html).toContain('Certificado válido');
     expect(html).toContain('Maria da Conceição');
-    expect(html.match(/<li[ >]/g)).toBeNull(); // o primeiro da cadeia não lista anteriores
+    expect(html.match(/<li[ >]/g)).toHaveLength(2); // Python básico → Python para dados
   });
 
   it('link alterado é inválido', () => {
@@ -54,7 +55,7 @@ describe('validar pelo link', () => {
 
 describe('validar certificado impresso', () => {
   const elos = montarCadeia(PHP);
-  const impressoPhp = { nome: PHP.nome, modulo: 'basico', data: PHP.data, selo: elos[0].hash, anterior: '' };
+  const impressoPhp = { nome: PHP.nome, modulo: 'dados', data: PHP.data, selo: elos[1].hash, anterior: elos[0].hash };
 
   it('o primeiro da cadeia não precisa de "Anterior"', () => {
     const selo = montarCadeia(HTML)[0].hash;
@@ -69,10 +70,11 @@ describe('validar certificado impresso', () => {
   it('nome, data ou anterior diferentes não conferem', () => {
     expect(validarImpresso({ ...impressoPhp, nome: 'Maria da Conceicao' }).valido).toBe(false);
     expect(validarImpresso({ ...impressoPhp, data: '2026-10-13' }).valido).toBe(false);
-    expect(validarImpresso({ ...impressoPhp, selo: elos[0].hash.replace(/^./, (c) => (c === 'a' ? 'b' : 'a')) }).valido).toBe(false);
+    expect(validarImpresso({ ...impressoPhp, anterior: elos[1].hash }).valido).toBe(false);
   });
 
   it('avisa o que falta', () => {
+    expect(validarImpresso({ ...impressoPhp, anterior: '' }).motivo).toMatch(/Anterior/);
     expect(validarImpresso({ ...impressoPhp, selo: 'abc' }).motivo).toMatch(/64 caracteres/);
     expect(resultadoDoImpresso(impressoPhp)).toContain('Selo confere');
     expect(resultadoDoImpresso({ ...impressoPhp, selo: 'abc' })).toContain('resultado-validacao ilegivel');
@@ -202,21 +204,22 @@ describe('XML do certificado', () => {
     const lido = lerCertificadoXml(xml);
     expect(lido.erro).toBeUndefined();
     const elos = montarCadeia(PHP);
-    expect(lido.xml).toMatchObject({ aluno: PHP.nome, modulo: 'basico', data: PHP.data, selo: elos[0].hash, anterior: '' });
-    expect(lido.xml.blocos.map((b) => b.modulo)).toEqual(['basico']);
+    expect(lido.xml).toMatchObject({ aluno: PHP.nome, modulo: 'dados', data: PHP.data, selo: elos[1].hash, anterior: elos[0].hash });
+    expect(lido.xml.blocos.map((b) => b.modulo)).toEqual(['basico', 'dados']);
     expect(cadeiaCoerente(lido.xml.blocos)).toBe(true);
     expect(xml).toContain(`<url>${SITE}#/validar/${codigo}</url>`);
   });
 
   it('a mensagem assinada é exatamente o que o selo cobre', () => {
-    expect(mensagemAssinada(PHP)).toBe(
-      JSON.stringify([PHP.data, 'Cláudio Raposo', 'Sertão será cloud', PHP.nome, 'basico']),
+    expect(mensagemAssinada(PHP, montarCadeia(PHP)[0].hash)).toBe(
+      JSON.stringify([PHP.data, 'Cláudio Raposo', 'Sertão será cloud', PHP.nome, 'dados', montarCadeia(PHP)[0].hash]),
     );
   });
 
-  it.skipIf(ORDEM.length < 2)('outras páginas conferem a cadeia sem a chave', () => {
+  it('outras páginas conferem a cadeia sem a chave', () => {
     const { xml: dados } = lerCertificadoXml(xml);
-    const quebrada = dados.blocos.map((b, i) => (i === 1 ? { ...b, selo: '0'.repeat(64) } : b));
+    // Selo do primeiro trocado: o "anterior" do segundo deixa de bater.
+    const quebrada = dados.blocos.map((b, i) => (i === 0 ? { ...b, selo: '0'.repeat(64) } : b));
     expect(cadeiaCoerente(quebrada)).toBe(false);
   });
 
