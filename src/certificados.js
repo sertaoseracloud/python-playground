@@ -47,6 +47,13 @@ export const CERTIFICADOS = {
     hashtags: ['Python', 'Dados'],
     conteudos: ['Comprehensions, tuplas e conjuntos', 'Ordenação, Counter e defaultdict', 'CSV, JSON e datas', 'Geradores, map, filter e itertools'],
   },
+  paralelismo: {
+    titulo: 'Paralelismo em Python',
+    cargaHoraria: 19,
+    resumo: 'concluiu o módulo Paralelismo, resolvendo os 35 problemas práticos',
+    hashtags: ['Python', 'Paralelismo'],
+    conteudos: ['Dividir o trabalho, partições e map-reduce', 'Processos com Pool e ProcessPoolExecutor', 'asyncio, condições de corrida e Lock', 'Speedup, Lei de Amdahl e custo de serializar'],
+  },
 };
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;

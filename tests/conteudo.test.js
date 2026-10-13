@@ -15,7 +15,7 @@ afterAll(() => pool.fechar());
 beforeAll(async () => { const { sessao } = await iniciarPython({ pool }); executar = (a, o) => sessao.executar(a, o); }, 120_000);
 
 describe('estrutura', () => {
-  it.each([['basico', 40, 10], ['dados', 40, 10]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {
+  it.each([['basico', 40, 10], ['dados', 40, 10], ['paralelismo', 35, 10]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {
     const m = modulos.find((x) => x.id === id);
     expect(m.itens.filter((i) => i.tipo === 'problema')).toHaveLength(exercicios);
     expect(m.itens.filter((i) => i.tipo === 'licao')).toHaveLength(licoes);

@@ -2,12 +2,12 @@
 // próximos módulos aparecem na landing como "em breve" (PROXIMOS_MODULOS).
 import { moduloBasico } from './basico.js';
 import { moduloDados } from './dados.js';
+import { moduloParalelismo } from './paralelismo.js';
 
-export const modulos = [moduloBasico, moduloDados];
+export const modulos = [moduloBasico, moduloDados, moduloParalelismo];
 
 /** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
 export const PROXIMOS_MODULOS = [
-  { id: 'paralelismo', icone: '⚡', titulo: 'Paralelismo' },
   { id: 'pyspark', icone: '✨', titulo: 'PySpark' },
   { id: 'alem', icone: '🌊', titulo: 'Spark além do batch' },
   { id: 'projetos', icone: '🏗️', titulo: 'Projetos' },
