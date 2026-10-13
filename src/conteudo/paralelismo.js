@@ -4,6 +4,9 @@
 // processos são conferidos pela regra `paralelo` (quantos workers trabalharam, nunca o tempo).
 // Os exercícios 18 a 35 ficam em paralelismo-processos.js.
 import { py, main, assinatura } from './util.js';
+import {
+  exerciciosMedir, exercicioChunksize, exerciciosFuturos, exerciciosFilas, exerciciosAsyncio, exerciciosCorrida, exercicioFerramenta,
+} from './paralelismo-processos.js';
 
 const licoes = {
   dividir: {
@@ -521,7 +524,7 @@ const exerciciosDividir = [
   },
 ];
 
-// ---------- exercícios 12 a 17 e 24: processos com Pool ----------
+// ---------- exercícios 12 a 17: processos com Pool ----------
 
 const MAIN = 'if __name__ == "__main__":';
 
@@ -793,12 +796,19 @@ export const moduloParalelismo = {
     exerciciosDividir[4], exerciciosDividir[5], exerciciosDividir[6],
     licoes.speedup,
     exerciciosDividir[8], exerciciosDividir[9], exerciciosDividir[10],
+    ...exerciciosMedir,
     licoes.processos,
     ...exerciciosPool,
+    exercicioChunksize,
     licoes.futures,
+    ...exerciciosFuturos,
     licoes.processoFila,
+    ...exerciciosFilas,
     licoes.asyncio,
+    ...exerciciosAsyncio,
     licoes.corrida,
+    ...exerciciosCorrida,
     licoes.gilThreads,
+    exercicioFerramenta,
   ],
 };

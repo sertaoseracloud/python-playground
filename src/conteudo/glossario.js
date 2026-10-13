@@ -209,6 +209,92 @@ export const GLOSSARIO = [
     analogia: 'Uma caixa de ferramentas de marceneiro: cada peça faz um corte específico, sem precisar inventar.',
     exemplo: 'from itertools import combinations\nprint(list(combinations("abc", 2)))',
   },
+
+  // ---------- Paralelismo ----------
+  {
+    id: 'paralelismo', termo: 'Paralelismo', padroes: ['paralel(o|os|a|as|ismo|izar)', 'em paralelo'],
+    definicao: 'Fazer várias partes do trabalho ao mesmo tempo, em núcleos diferentes do processador.',
+    analogia: 'Três pessoas colhendo um roçado ao mesmo tempo, cada uma num pedaço, em vez de uma só fazendo tudo.',
+    exemplo: 'with Pool(4) as pool:\n    resultados = pool.map(quadrado, range(8))',
+  },
+  {
+    id: 'particao', termo: 'Partição', padroes: ['partiç(ão|ões)', 'particionar'],
+    definicao: 'A parte dos dados que vai para um trabalhador. Pode ser decidida por hash (uma conta com a chave) ou por intervalo de valores.',
+    analogia: 'As cartas separadas por letra do nome: cada carteiro leva um maço.',
+    exemplo: 'particao = sum(ord(c) for c in "ana") % 3',
+  },
+  {
+    id: 'map-reduce', termo: 'Map-reduce', padroes: ['map-reduce', 'mapreduce'],
+    definicao: 'Uma receita em duas etapas: o map processa cada parte sozinha; o reduce junta os resultados parciais.',
+    analogia: 'Cada pessoa conta os votos da sua urna (map); depois alguém soma as contagens de todas (reduce).',
+    exemplo: 'parciais = [Counter(t.split()) for t in textos]  # map\ntotal = sum(parciais, Counter())  # reduce',
+  },
+  {
+    id: 'processo', termo: 'Processo e Pool', padroes: ['processos?', 'Pool', 'ProcessPoolExecutor', 'workers?'],
+    definicao: 'Um processo é um programa Python separado, com memória própria. O Pool abre alguns e divide o trabalho entre eles.',
+    analogia: 'Uma cozinha com vários cozinheiros, cada um na sua bancada: não esbarram, mas precisam passar os pratos de mão em mão.',
+    exemplo: 'from multiprocessing import Pool\nif __name__ == "__main__":\n    with Pool(2) as p:\n        print(p.map(abs, [-1, -2]))',
+  },
+  {
+    id: 'main-guarda', termo: 'if __name__ == "__main__"', padroes: ['__main__', '__name__'],
+    definicao: 'Um bloco que só roda quando o arquivo é o programa principal. Cada processo novo relê o arquivo, então quem cria processos fica dentro dele.',
+    analogia: 'A placa "só para o gerente" na porta: os funcionários (processos filhos) passam pelo corredor, mas não entram.',
+    exemplo: 'if __name__ == "__main__":\n    with Pool() as p:\n        print(p.map(abs, [-3]))',
+  },
+  {
+    id: 'serializar', termo: 'Serializar (pickle)', padroes: ['serializ(ar|ação|ado)', 'pickle'],
+    definicao: 'Transformar dados e funções em bytes para mandar a outro processo, que os monta de novo. Tem custo de tempo.',
+    analogia: 'Desmontar um móvel para caber na caixa da mudança e montar de novo na casa nova.',
+    exemplo: 'import pickle\ndados = pickle.dumps([1, 2, 3])\nprint(pickle.loads(dados))',
+  },
+  {
+    id: 'asyncio', termo: 'asyncio e await', padroes: ['asyncio', 'await', 'async def', 'gather'],
+    definicao: 'Uma forma de rodar várias tarefas que esperam (rede, disco): no await, a tarefa pausa e deixa outra andar.',
+    analogia: 'O cozinheiro que põe o feijão no fogo e corta a cebola enquanto ele cozinha.',
+    exemplo: 'async def main():\n    await asyncio.sleep(1)\nasyncio.run(main())',
+  },
+  {
+    id: 'condicao-corrida', termo: 'Condição de corrida', padroes: ['condiç(ão|ões) de corrida', 'corrida'],
+    definicao: 'Quando duas tarefas mexem no mesmo dado ao mesmo tempo e uma apaga o trabalho da outra, dependendo de quem chega primeiro.',
+    analogia: 'Duas pessoas leem o saldo 100 no caderno, somam 10 cada uma e escrevem 110: um depósito sumiu.',
+    exemplo: 'x = saldo\nawait asyncio.sleep(0)\nsaldo = x + 1  # outra tarefa pode ter mudado o saldo no meio',
+  },
+  {
+    id: 'lock', termo: 'Lock (trava)', padroes: ['Lock', 'trava'],
+    definicao: 'Uma trava que deixa só uma tarefa por vez num trecho do código.',
+    analogia: 'A chave do único banheiro do posto: quem está com ela entra; os outros esperam.',
+    exemplo: 'trava = asyncio.Lock()\nasync with trava:\n    saldo += 1',
+  },
+  {
+    id: 'semaforo', termo: 'Semáforo', padroes: ['Semaphore', 'semáforos?'],
+    definicao: 'Deixa no máximo k tarefas ao mesmo tempo num trecho do código.',
+    analogia: 'O provador da loja com 3 cabines: a quarta pessoa espera alguém sair.',
+    exemplo: 'sem = asyncio.Semaphore(3)\nasync with sem:\n    await baixar()',
+  },
+  {
+    id: 'gil', termo: 'GIL', padroes: ['GIL', 'threads?'],
+    definicao: 'A trava global do interpretador Python: só uma thread por vez roda código Python. Threads servem para esperar; para calcular em paralelo, use processos.',
+    analogia: 'Uma cozinha com um único fogão: vários cozinheiros podem esperar ingredientes, mas só um cozinha por vez.',
+    exemplo: '# esperar (rede, disco): asyncio ou threads\n# calcular: processos (Pool)',
+  },
+  {
+    id: 'speedup', termo: 'Speedup', padroes: ['speedup', 'eficiência'],
+    definicao: 'Quantas vezes o paralelo ficou mais rápido: tempo em sequência dividido pelo tempo em paralelo.',
+    analogia: 'Se uma pessoa limpa a casa em 4 horas e quatro pessoas em 1 hora, o speedup é 4.',
+    exemplo: 'speedup = 12 / 4  # 3 vezes mais rápido',
+  },
+  {
+    id: 'amdahl', termo: 'Lei de Amdahl', padroes: ['Amdahl'],
+    definicao: 'A parte do trabalho que não dá para paralelizar limita o ganho: com 10% em sequência, o speedup nunca passa de 10.',
+    analogia: 'O ônibus só sai quando o último passageiro passa pela catraca: mais motoristas não adiantam.',
+    exemplo: 'def amdahl(p, n):\n    return 1 / ((1 - p) + p / n)',
+  },
+  {
+    id: 'skew', termo: 'Desequilíbrio (skew)', padroes: ['skew', 'desequilibr(io|ad[oa])'],
+    definicao: 'Quando uma partição fica com muito mais dados que as outras e todo mundo espera por ela.',
+    analogia: 'Na mudança, um carregador pega o piano e os outros, as almofadas: o caminhão só sai quando ele termina.',
+    exemplo: 'tamanhos = [100, 2, 3]  # a primeira partição atrasa todas',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
@@ -220,7 +306,7 @@ const REGEX = new Map(GLOSSARIO.map((t) => [
 
 // Nível de cada termo: o módulo em que ele aparece primeiro (a ordem do glossário).
 const ORDEM_MODULOS = ['basico', 'dados', 'paralelismo', 'pyspark', 'alem', 'projetos'];
-const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension' };
+const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo' };
 const NIVEL = new Map();
 {
   let nivel = 0;
