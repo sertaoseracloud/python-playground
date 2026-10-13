@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # sem '..': no Windows o import falha com ele
 from diverge_runtime import execucao  # noqa: E402
 from diverge_runtime.valores import descrever  # noqa: E402
 
