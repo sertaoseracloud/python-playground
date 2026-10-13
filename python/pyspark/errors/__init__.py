@@ -64,11 +64,47 @@ class PySparkNotImplementedError(PySparkException, NotImplementedError):
     pass
 
 
+class ArithmeticException(PySparkException, ArithmeticError):
+    """Erro de conta com o ANSI ligado (o padrão do Spark 4), como a divisão por zero."""
+
+
+class NumberFormatException(PySparkException, ValueError):
+    """Texto que não vira número num CAST (com o ANSI ligado)."""
+
+
+class DateTimeException(PySparkException, ValueError):
+    """Texto que não vira data (com o ANSI ligado)."""
+
+
+class SparkRuntimeException(PySparkException, RuntimeError):
+    pass
+
+
+def divisao_por_zero():
+    return ArithmeticException(
+        'Division by zero. Use `try_divide` to tolerate divisor being 0 and return NULL instead. '
+        'If necessary set "spark.sql.ansi.enabled" to "false" to bypass this error.', 'DIVIDE_BY_ZERO', {}, '22012')
+
+
+def cast_invalido(valor, de, para):
+    return NumberFormatException(
+        f"The value '{valor}' of the type \"{de}\" cannot be cast to \"{para}\" because it is malformed. "
+        'Correct the value as per the syntax, or change its target type. Use `try_cast` to tolerate malformed input and '
+        'return NULL instead.', 'CAST_INVALID_INPUT', {'expression': f"'{valor}'"}, '22018')
+
+
+def data_invalida(texto):
+    return DateTimeException(
+        f"Text '{texto}' could not be parsed at index 0. Use `try_to_timestamp` to tolerate invalid input string and "
+        'return NULL instead.', 'CANNOT_PARSE_TIMESTAMP', {'message': texto}, '22007')
+
+
 def caminho_nao_existe(caminho):
     return AnalysisException(f'Path does not exist: file:{caminho}.', 'PATH_NOT_FOUND', {'path': f'file:{caminho}'}, '42K03')
 
 
 __all__ = [
     'PySparkException', 'AnalysisException', 'ParseException', 'PySparkValueError', 'PySparkTypeError',
-    'PySparkRuntimeError', 'PySparkNotImplementedError',
+    'PySparkRuntimeError', 'PySparkNotImplementedError', 'ArithmeticException', 'NumberFormatException',
+    'DateTimeException', 'SparkRuntimeException',
 ]

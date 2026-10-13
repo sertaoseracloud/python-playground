@@ -2,7 +2,11 @@
 from diverge_runtime import estagios
 
 from ..context import PADROES, SparkConf, SparkContext
-from ..errors import PySparkException
+from ..errors import PySparkException, PySparkTypeError
+from ..rdd import RDD, _Estreito
+from . import plano as P
+from . import types as T
+from .column import Atributo, reiniciar_ids
 
 
 class RuntimeConfig:
@@ -106,6 +110,42 @@ class SparkSession:
     def stop(self):
         pass
 
+    def createDataFrame(self, data, schema=None, samplingRatio=None, verifySchema=True):
+        from .dataframe import DataFrame
+        nomes = None
+        if isinstance(schema, (list, tuple)) and all(isinstance(s, str) for s in schema):
+            nomes, schema = list(schema), None
+        elif isinstance(schema, str):
+            schema = T.tipo_do_texto(schema)
+        if isinstance(schema, T.DataType) and not isinstance(schema, T.StructType):
+            schema = T.StructType([T.StructField('value', schema, True)])
+        if isinstance(data, RDD):
+            if schema is None:
+                amostra = data.take(100)
+                _conferir_linhas(amostra)
+                schema = T.schema_dos_dados(amostra, nomes)
+            rdd = _Estreito(data, P.Converter(schema), 'createDataFrame')
+        else:
+            if hasattr(data, 'to_dict') and hasattr(data, 'columns'):
+                raise NotImplementedError('O pandas não é carregado no DivergePython: passe uma lista de tuplas ou de dicionários.')
+            linhas = list(data)
+            if schema is None:
+                _conferir_linhas(linhas)
+                schema = T.schema_dos_dados(linhas, nomes)
+            elif nomes:
+                schema = T.StructType([T.StructField(n, f.dataType, f.nullable) for n, f in zip(nomes, schema.fields)])
+            linhas = [P.converter_linha(linha, schema) for linha in linhas]
+            rdd = self._sc.parallelize(linhas)
+        atributos = [Atributo(f.name, f.dataType, anulavel=f.nullable) for f in schema.fields]
+        return DataFrame(P.ScanRDD(self, rdd, atributos), self)
+
+    def range(self, start, end=None, step=1, numPartitions=None):
+        from .dataframe import DataFrame
+        if end is None:
+            start, end = 0, start
+        n = int(numPartitions) if numPartitions is not None else self._sc.defaultParallelism
+        return DataFrame(P.Range(self, start, end, step, n), self)
+
     def __enter__(self):
         return self
 
@@ -113,10 +153,18 @@ class SparkSession:
         self.stop()
 
 
+def _conferir_linhas(linhas):
+    for linha in linhas[:1]:
+        if not isinstance(linha, (tuple, list, dict, T.Row)):
+            raise PySparkTypeError(f'Can not infer schema for type: `{type(linha).__name__}`.', 'CANNOT_INFER_SCHEMA_FOR_TYPE',
+                                   {'data_type': f'`{type(linha).__name__}`'})
+
+
 def _reiniciar():
     """Cada execução do aluno começa com uma sessão nova (sem views, conf ou cache da anterior)."""
     SparkSession._ativa = None
     SparkContext._ativo = None
+    reiniciar_ids()
 
 
 if not any(getattr(f, '__qualname__', '') == '_reiniciar' and getattr(f, '__module__', '') == __name__ for f in estagios.AO_ZERAR):

@@ -1,0 +1,574 @@
+"""pyspark.sql.functions do DivergePython: as funções de coluna, com os nomes do Spark."""
+import datetime
+import math
+import re
+
+from . import types as T
+from .column import (
+    Caso, Cast, Col, Column, EhNulo, Func, Lit, arredondar, como_ordem, converter, literal_ou_coluna, para_expr,
+    texto_para_data, texto_para_data_hora,
+)
+from .column import Ordem  # noqa: F401  (usada por quem importa daqui)
+from ..errors import data_invalida
+
+
+def _c(x):
+    return Column(para_expr(x))
+
+
+def col(nome):
+    return Column(para_expr(nome))
+
+
+column = col
+
+
+def lit(valor):
+    if isinstance(valor, Column):
+        return valor
+    return Column(Lit(valor))
+
+
+def _f(nome, args, impl, tipo, **kw):
+    """Uma Column de função comum (veja column.Func)."""
+    return Column(Func(nome, [a if not isinstance(a, Column) else a._expr for a in args], impl, tipo, **kw))
+
+
+def _mesmo(i=0):
+    return lambda tipos: tipos[i]
+
+
+def _fixo(tipo):
+    return lambda tipos: tipo
+
+
+_TEXTO = T.StringType()
+
+# ---------- condicionais e nulos ----------
+
+
+def when(condicao, valor):
+    return Column(Caso([(para_expr(condicao), literal_ou_coluna(valor))]))
+
+
+def coalesce(*cols):
+    exprs = [para_expr(c) for c in cols]
+
+    def tipo(tipos):
+        t = T.NullType()
+        for x in tipos:
+            t = T.tipo_mais_largo(t, x)
+        return t
+
+    def primeiro(*valores):
+        return next((v for v in valores if v is not None), None)
+    expr = Func('coalesce', exprs, primeiro, tipo, propaga_nulo=False)
+    return Column(_CoalesceConvertido(expr))
+
+
+class _CoalesceConvertido(Func):
+    """coalesce com os argumentos convertidos para o tipo comum."""
+
+    def __init__(self, base):
+        super().__init__(base.nome_func, base.args, base.impl, base.tipo_de, False)
+
+    def com_filhos(self, filhos):
+        return _CoalesceConvertido(Func(self.nome_func, filhos, self.impl, self.tipo_de, False))
+
+    def anulavel(self, e):
+        return all(a.anulavel(e) for a in self.args)
+
+    def compilar(self, e):
+        from .column import como
+        tipo = self.tipo(e)
+        fs = [como(a.compilar(e), a.tipo(e), tipo, e.ansi) for a in self.args]
+
+        def coalescer(linha):
+            for f in fs:
+                v = f(linha)
+                if v is not None:
+                    return v
+            return None
+        return coalescer
+
+
+def isnull(c):
+    return Column(EhNulo(para_expr(c)))
+
+
+def isnotnull(c):
+    return Column(EhNulo(para_expr(c), negado=True))
+
+
+def isnan(c):
+    return _f('isnan', [_c(c)], lambda v: isinstance(v, float) and math.isnan(v), _fixo(T.BooleanType()), propaga_nulo=False, anulavel=False)
+
+
+def nanvl(a, b):
+    return _f('nanvl', [_c(a), _c(b)], lambda x, y: y if isinstance(x, float) and math.isnan(x) else x, _mesmo(0), propaga_nulo=False)
+
+
+def ifnull(a, b):
+    return coalesce(a, b)
+
+
+nvl = ifnull
+
+# ---------- texto ----------
+
+
+def _texto(nome, impl):
+    def funcao(c):
+        return _f(nome, [_c(c)], impl, _fixo(_TEXTO), entradas=[_TEXTO])
+    funcao.__name__ = nome
+    return funcao
+
+
+upper = _texto('upper', str.upper)
+lower = _texto('lower', str.lower)
+trim = _texto('trim', lambda s: s.strip(' '))
+ltrim = _texto('ltrim', lambda s: s.lstrip(' '))
+rtrim = _texto('rtrim', lambda s: s.rstrip(' '))
+reverse = _texto('reverse', lambda s: s[::-1])
+initcap = _texto('initcap', lambda s: ' '.join(p[:1].upper() + p[1:].lower() for p in s.split(' ')))
+
+
+def length(c):
+    return _f('length', [_c(c)], len, _fixo(T.IntegerType()), entradas=[_TEXTO])
+
+
+char_length = length
+
+
+def _substring(s, pos, tamanho):
+    if pos > 0:
+        inicio = pos - 1
+    elif pos < 0:
+        inicio = max(len(s) + pos, 0)
+    else:
+        inicio = 0
+    return s[inicio:inicio + tamanho] if tamanho > 0 else ''
+
+
+def substring(c, pos, tamanho):
+    return _f('substring', [_c(c), Column(Lit(pos)), Column(Lit(tamanho))], _substring, _fixo(_TEXTO), entradas=[_TEXTO, None, None])
+
+
+def concat(*cols):
+    def juntar(*valores):
+        if valores and all(isinstance(v, list) for v in valores):
+            return [x for v in valores for x in v]
+        return ''.join(valores)
+
+    def tipo(tipos):
+        return tipos[0] if tipos and all(isinstance(t, T.ArrayType) for t in tipos) else _TEXTO
+    exprs = [_c(c) for c in cols]
+    return _f('concat', exprs, juntar, tipo)
+
+
+def concat_ws(sep, *cols):
+    from .mostrar import texto_do_valor
+
+    def juntar(separador, *valores):
+        partes = []
+        for v in valores:
+            if v is None:
+                continue
+            if isinstance(v, list):
+                partes.extend(texto_do_valor(x) for x in v if x is not None)
+            else:
+                partes.append(v if isinstance(v, str) else texto_do_valor(v))
+        return separador.join(partes)
+    return _f('concat_ws', [Column(Lit(sep))] + [_c(c) for c in cols], juntar, _fixo(_TEXTO), propaga_nulo=False)
+
+
+def _regex_java(padrao):
+    return padrao
+
+
+def split(c, padrao, limit=-1):
+    def dividir(s, p, n):
+        partes = re.split(_regex_java(p), s) if n <= 0 else re.split(_regex_java(p), s, maxsplit=n - 1)
+        return partes
+    return _f('split', [_c(c), Column(Lit(padrao)), Column(Lit(limit))], dividir, _fixo(T.ArrayType(_TEXTO, False)), entradas=[_TEXTO, None, None])
+
+
+def regexp_replace(c, padrao, troca):
+    def trocar(s, p, r):
+        return re.sub(_regex_java(p), re.sub(r'\$(\d+)', r'\\\1', r), s)
+    return _f('regexp_replace', [_c(c), Column(Lit(padrao)), Column(Lit(troca)), Column(Lit(1))],
+              lambda s, p, r, _pos: trocar(s, p, r), _fixo(_TEXTO), entradas=[_TEXTO, None, None, None])
+
+
+def regexp_extract(c, padrao, idx):
+    def extrair(s, p, i):
+        m = re.search(_regex_java(p), s)
+        return (m.group(i) or '') if m else ''
+    return _f('regexp_extract', [_c(c), Column(Lit(padrao)), Column(Lit(idx))], extrair, _fixo(_TEXTO), entradas=[_TEXTO, None, None])
+
+
+def _pad(nome, esquerda):
+    def funcao(c, tamanho, pad=' '):
+        def preencher(s, n, p):
+            if len(s) >= n:
+                return s[:n]
+            falta = n - len(s)
+            enchimento = (p * falta)[:falta] if p else ''
+            return enchimento + s if esquerda else s + enchimento
+        return _f(nome, [_c(c), Column(Lit(tamanho)), Column(Lit(pad))], preencher, _fixo(_TEXTO), entradas=[_TEXTO, None, None])
+    funcao.__name__ = nome
+    return funcao
+
+
+lpad = _pad('lpad', True)
+rpad = _pad('rpad', False)
+
+
+def _texto_bool(nome, c, outro, impl):
+    return _f(nome, [_c(c), Column(literal_ou_coluna(outro))], impl, _fixo(T.BooleanType()), entradas=[_TEXTO, _TEXTO])
+
+
+def instr(c, sub):
+    return _f('instr', [_c(c), Column(Lit(sub))], lambda s, p: s.find(p) + 1, _fixo(T.IntegerType()), entradas=[_TEXTO, None])
+
+
+def repeat(c, n):
+    return _f('repeat', [_c(c), Column(Lit(n))], lambda s, k: s * k, _fixo(_TEXTO), entradas=[_TEXTO, None])
+
+# ---------- números ----------
+
+
+def _numero(tipos):
+    return tipos[0] if isinstance(tipos[0], T.NUMERICOS) else T.DoubleType()
+
+
+def round(c, scale=0):  # noqa: A001
+    return _f('round', [_c(c), Column(Lit(scale))], lambda v, s: arredondar(v, s), _numero)
+
+
+def bround(c, scale=0):
+    import decimal
+    return _f('bround', [_c(c), Column(Lit(scale))], lambda v, s: arredondar(v, s, decimal.ROUND_HALF_EVEN), _numero)
+
+
+def abs(c):  # noqa: A001
+    import builtins
+    return _f('abs', [_c(c)], builtins.abs, _numero)
+
+
+def _matematica(nome, impl, tipo=T.DoubleType()):
+    def funcao(c):
+        return _f(nome, [_c(c)], impl, _fixo(tipo), entradas=[T.DoubleType()])
+    funcao.__name__ = nome.lower()
+    return funcao
+
+
+def _raiz(v):
+    return math.sqrt(v) if v >= 0 else float('nan')
+
+
+sqrt = _matematica('SQRT', _raiz)
+exp = _matematica('EXP', math.exp)
+log10 = _matematica('LOG10', lambda v: math.log10(v) if v > 0 else None)
+floor = _matematica('FLOOR', lambda v: math.floor(v), T.LongType())
+ceil = _matematica('CEIL', lambda v: math.ceil(v), T.LongType())
+ceiling = ceil
+
+
+def log(arg1, arg2=None):
+    if arg2 is None:
+        return _f('ln', [_c(arg1)], lambda v: math.log(v) if v > 0 else None, _fixo(T.DoubleType()), entradas=[T.DoubleType()])
+    return _f('LOG', [Column(Lit(float(arg1))), _c(arg2)], lambda b, v: math.log(v, b) if v > 0 else None, _fixo(T.DoubleType()), entradas=[T.DoubleType()])
+
+
+def pow(a, b):  # noqa: A001
+    return _f('POWER', [_c(a), Column(literal_ou_coluna(b)) if not isinstance(b, str) else _c(b)], lambda x, y: float(x) ** float(y),
+              _fixo(T.DoubleType()), entradas=[T.DoubleType()])
+
+
+power = pow
+
+
+def _extremo(nome, escolher):
+    def funcao(*cols):
+        def tipo(tipos):
+            t = T.NullType()
+            for x in tipos:
+                t = T.tipo_mais_largo(t, x)
+            return t
+
+        def calcular(*valores):
+            validos = [v for v in valores if v is not None]
+            return escolher(validos) if validos else None
+        return _f(nome, [_c(c) for c in cols], calcular, tipo, propaga_nulo=False)
+    funcao.__name__ = nome
+    return funcao
+
+
+greatest = _extremo('greatest', max)
+least = _extremo('least', min)
+
+
+def signum(c):
+    return _f('SIGNUM', [_c(c)], lambda v: float((v > 0) - (v < 0)), _fixo(T.DoubleType()), entradas=[T.DoubleType()])
+
+# ---------- datas ----------
+
+
+_JAVA_PARA_PY = [('yyyy', '%Y'), ('yy', '%y'), ('MMMM', '%B'), ('MMM', '%b'), ('MM', '%m'), ('dd', '%d'), ('HH', '%H'),
+                 ('mm', '%M'), ('ss', '%S'), ('EEEE', '%A'), ('EEE', '%a'), ('M', '%m'), ('d', '%d')]
+
+
+def formato_python(formato):
+    saida, i = '', 0
+    while i < len(formato):
+        if formato[i] == "'":
+            fim = formato.find("'", i + 1)
+            fim = len(formato) if fim < 0 else fim
+            saida += formato[i + 1:fim].replace('%', '%%')
+            i = fim + 1
+            continue
+        for java, py in _JAVA_PARA_PY:
+            if formato.startswith(java, i):
+                saida += py
+                i += len(java)
+                break
+        else:
+            saida += formato[i].replace('%', '%%')
+            i += 1
+    return saida
+
+
+def _para_data(ansi, valor, formato=None):
+    if isinstance(valor, datetime.datetime):
+        return valor.date()
+    if isinstance(valor, datetime.date):
+        return valor
+    texto = str(valor)
+    if formato is None:
+        data = texto_para_data(texto)
+    else:
+        try:
+            data = datetime.datetime.strptime(texto.strip(), formato_python(formato)).date()
+        except ValueError:
+            data = None
+    if data is None and ansi:
+        raise data_invalida(texto)
+    return data
+
+
+def to_date(c, format=None):  # noqa: A002
+    args = [_c(c)] + ([Column(Lit(format))] if format else [])
+    return _f('to_date', args, lambda ansi, v, *f: _para_data(ansi, v, *f), _fixo(T.DateType()), usa_ansi=True)
+
+
+def _para_data_hora(ansi, valor, formato=None):
+    if isinstance(valor, datetime.datetime):
+        return valor
+    if isinstance(valor, datetime.date):
+        return datetime.datetime(valor.year, valor.month, valor.day)
+    texto = str(valor)
+    if formato is None:
+        data = texto_para_data_hora(texto)
+    else:
+        try:
+            data = datetime.datetime.strptime(texto.strip(), formato_python(formato))
+        except ValueError:
+            data = None
+    if data is None and ansi:
+        raise data_invalida(texto)
+    return data
+
+
+def to_timestamp(c, format=None):  # noqa: A002
+    args = [_c(c)] + ([Column(Lit(format))] if format else [])
+    return _f('to_timestamp', args, lambda ansi, v, *f: _para_data_hora(ansi, v, *f), _fixo(T.TimestampType()), usa_ansi=True)
+
+
+def _parte_da_data(nome, impl):
+    def funcao(c):
+        return _f(nome, [_c(c)], lambda ansi, v: impl(_para_data_hora(ansi, v) if isinstance(v, str) else v), _fixo(T.IntegerType()), usa_ansi=True)
+    funcao.__name__ = nome
+    return funcao
+
+
+year = _parte_da_data('year', lambda d: d.year)
+month = _parte_da_data('month', lambda d: d.month)
+dayofmonth = _parte_da_data('dayofmonth', lambda d: d.day)
+day = dayofmonth
+dayofweek = _parte_da_data('dayofweek', lambda d: d.isoweekday() % 7 + 1)
+dayofyear = _parte_da_data('dayofyear', lambda d: d.timetuple().tm_yday)
+quarter = _parte_da_data('quarter', lambda d: (d.month - 1) // 3 + 1)
+hour = _parte_da_data('hour', lambda d: getattr(d, 'hour', 0))
+minute = _parte_da_data('minute', lambda d: getattr(d, 'minute', 0))
+second = _parte_da_data('second', lambda d: getattr(d, 'second', 0))
+weekofyear = _parte_da_data('weekofyear', lambda d: d.isocalendar()[1])
+
+
+def date_format(c, formato):
+    def formatar(ansi, v, f):
+        d = _para_data_hora(ansi, v) if isinstance(v, str) else v
+        return None if d is None else d.strftime(formato_python(f))
+    return _f('date_format', [_c(c), Column(Lit(formato))], formatar, _fixo(_TEXTO), usa_ansi=True)
+
+
+def datediff(fim, inicio):
+    def dias(ansi, a, b):
+        a, b = _para_data(ansi, a), _para_data(ansi, b)
+        return None if a is None or b is None else (a - b).days
+    return _f('datediff', [_c(fim), _c(inicio)], dias, _fixo(T.IntegerType()), usa_ansi=True)
+
+
+def date_add(c, dias):
+    def somar(ansi, d, n):
+        d = _para_data(ansi, d)
+        return None if d is None else d + datetime.timedelta(days=n)
+    return _f('date_add', [_c(c), Column(literal_ou_coluna(dias))], somar, _fixo(T.DateType()), usa_ansi=True)
+
+
+def date_sub(c, dias):
+    def subtrair(ansi, d, n):
+        d = _para_data(ansi, d)
+        return None if d is None else d - datetime.timedelta(days=n)
+    return _f('date_sub', [_c(c), Column(literal_ou_coluna(dias))], subtrair, _fixo(T.DateType()), usa_ansi=True)
+
+
+def months_between(fim, inicio):
+    def meses(ansi, a, b):
+        a, b = _para_data(ansi, a), _para_data(ansi, b)
+        if a is None or b is None:
+            return None
+        return arredondar((a.year - b.year) * 12 + (a.month - b.month) + (a.day - b.day) / 31, 8)
+    return _f('months_between', [_c(fim), _c(inicio), Column(Lit(True))], lambda ansi, a, b, _r: meses(ansi, a, b), _fixo(T.DoubleType()), usa_ansi=True)
+
+
+def current_date():
+    return _f('current_date', [], lambda: datetime.date.today(), _fixo(T.DateType()), anulavel=False)
+
+
+def current_timestamp():
+    return _f('current_timestamp', [], lambda: datetime.datetime.now().replace(microsecond=0), _fixo(T.TimestampType()), anulavel=False)
+
+# ---------- arrays ----------
+
+
+def size(c):
+    return _f('size', [_c(c)], len, _fixo(T.IntegerType()))
+
+
+def array(*cols):
+    if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+        cols = cols[0]
+
+    def tipo(tipos):
+        t = T.NullType()
+        for x in tipos:
+            t = T.tipo_mais_largo(t, x)
+        return T.ArrayType(t, True)
+    return _f('array', [_c(c) for c in cols], lambda *v: list(v), tipo, propaga_nulo=False, anulavel=False)
+
+
+def array_contains(c, valor):
+    def contem(arr, v):
+        if v in arr:
+            return True
+        return None if None in arr else False
+    return _f('array_contains', [_c(c), Column(literal_ou_coluna(valor))], contem, _fixo(T.BooleanType()))
+
+
+def _ordenar_lista(arr, crescente):
+    validos = sorted((v for v in arr if v is not None), reverse=not crescente)
+    nulos = [None] * (len(arr) - len(validos))
+    return nulos + validos if crescente else validos + nulos
+
+
+def sort_array(c, asc=True):
+    return _f('sort_array', [_c(c), Column(Lit(asc))], _ordenar_lista, _mesmo(0))
+
+
+def array_distinct(c):
+    return _f('array_distinct', [_c(c)], lambda arr: list(dict.fromkeys(arr)), _mesmo(0))
+
+
+def array_join(c, sep):
+    return _f('array_join', [_c(c), Column(Lit(sep))], lambda arr, s: s.join(str(x) for x in arr if x is not None), _fixo(_TEXTO))
+
+
+def element_at(c, i):
+    def pegar(arr, k):
+        if isinstance(arr, dict):
+            return arr.get(k)
+        return arr[k - 1] if 0 < k <= len(arr) else (arr[k] if -len(arr) <= k < 0 else None)
+    return _f('element_at', [_c(c), Column(Lit(i))], pegar, lambda tipos: getattr(tipos[0], 'elementType', getattr(tipos[0], 'valueType', _TEXTO)))
+
+
+def _item(c, chave):
+    def pegar(arr, k):
+        if isinstance(arr, dict):
+            return arr.get(k)
+        return arr[k] if 0 <= k < len(arr) else None
+    return _f('getitem', [c, Column(Lit(chave))], pegar,
+              lambda tipos: getattr(tipos[0], 'elementType', getattr(tipos[0], 'valueType', _TEXTO)),
+              formato=lambda p: f'{p[0]}[{p[1]}]')
+
+
+def _campo(c, nome):
+    def pegar(linha):
+        return linha[nome] if hasattr(linha, '__fields__') else None
+
+    def tipo(tipos):
+        return tipos[0][nome].dataType if isinstance(tipos[0], T.StructType) else _TEXTO
+    return _f('getfield', [c], pegar, tipo, formato=lambda p: f'{p[0]}.{nome}')
+
+
+def struct(*cols):
+    if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+        cols = cols[0]
+    exprs = [_c(c) for c in cols]
+    nomes = [e._expr.nome() for e in exprs]
+
+    def montar(*valores):
+        return T._criar_row(nomes, valores)
+    return _f('struct', exprs, montar, lambda tipos: T.StructType([T.StructField(n, t) for n, t in zip(nomes, tipos)]),
+              propaga_nulo=False, anulavel=False)
+
+# ---------- ordenação ----------
+
+
+def asc(c):
+    return _c(c).asc()
+
+
+def desc(c):
+    return _c(c).desc()
+
+
+def asc_nulls_first(c):
+    return _c(c).asc_nulls_first()
+
+
+def asc_nulls_last(c):
+    return _c(c).asc_nulls_last()
+
+
+def desc_nulls_first(c):
+    return _c(c).desc_nulls_first()
+
+
+def desc_nulls_last(c):
+    return _c(c).desc_nulls_last()
+
+
+def expr(texto):
+    from .sql import ler_expressao
+    return Column(ler_expressao(texto))
+
+
+def hash(*cols):  # noqa: A001
+    from .._motor import hash_estavel
+    return _f('hash', [_c(c) for c in cols], lambda *v: (hash_estavel(list(v)) & 0x7FFFFFFF), _fixo(T.IntegerType()), propaga_nulo=False, anulavel=False)
+
+
+__all__ = [n for n in dir() if not n.startswith('_') and n not in ('T', 'datetime', 'math', 're', 'Caso', 'Cast', 'Col', 'Column', 'EhNulo', 'Func', 'Lit',
+                                                               'arredondar', 'como_ordem', 'converter', 'literal_ou_coluna', 'para_expr',
+                                                               'texto_para_data', 'texto_para_data_hora', 'data_invalida', 'formato_python')]

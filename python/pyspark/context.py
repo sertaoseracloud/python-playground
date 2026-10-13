@@ -12,6 +12,7 @@ PADROES = {
     'spark.sql.shuffle.partitions': '4',
     'spark.sql.autoBroadcastJoinThreshold': '10485760',
     'spark.sql.adaptive.enabled': 'true',
+    'spark.sql.ansi.enabled': 'true',
     'spark.sql.session.timeZone': 'UTC',
 }
 
