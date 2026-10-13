@@ -15,8 +15,10 @@ rodar.then(() => parentPort.postMessage({ pronto: true }), (erro) => parentPort.
 parentPort.on('message', async ({ id, tarefa }) => {
   const rodarTarefa = await rodar;
   try {
+    const inicio = performance.timeOrigin + performance.now();
     const resultado = rodarTarefa(tarefa);
-    parentPort.postMessage({ id, resultado }, [resultado.buffer]);
+    const fim = performance.timeOrigin + performance.now();
+    parentPort.postMessage({ id, resultado, inicio, fim }, [resultado.buffer]);
   } catch (erro) {
     parentPort.postMessage({ id, erro: String(erro?.message ?? erro) });
   }

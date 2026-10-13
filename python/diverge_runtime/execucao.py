@@ -10,7 +10,7 @@ import traceback
 
 from diverge_paralelo.instalar import instalar as instalar_paralelo
 
-from . import pool
+from . import estagios, pool
 from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
@@ -113,16 +113,32 @@ def _chamar(escopo, chamada):
     return {'ok': True, 'valor': d['valor'], 'repr': d['repr'], 'erro': None}
 
 
+def _tabelas(escopo):
+    """DataFrames nas variáveis do aluno, calculados aqui mesmo (sem pool e sem aparecer na aba ⚡ Execução)."""
+    tabelas = {}
+    for nome, valor in list(escopo.items()):
+        if nome.startswith('_') or not callable(getattr(type(valor), '_diverge_tabela', None)):
+            continue
+        try:
+            with estagios.local():
+                tabelas[nome] = valor._diverge_tabela(1000)
+        except Exception as e:  # o DataFrame que falha ao calcular vira motivo na correção
+            tabelas[nome] = {'erro': {'tipo': type(e).__name__, 'mensagem': str(e)}}
+    return tabelas
+
+
 def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
     _gravar(arquivos)
     _esquecer_modulos_do_aluno(arquivos)
     pool.zerar(PASTA)
+    estagios.zerar()
     saida = _Saida()
     antigo_stdout, antigo_stderr, antigo_input = sys.stdout, sys.stderr, builtins.input
     antigo_path, antigo_cwd = list(sys.path), os.getcwd()
     escopo = {'__name__': '__main__', '__file__': principal, '__builtins__': builtins}
     erro = None
     retornos = []
+    tabelas = {}
     # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
     desfazer_paralelo = instalar_paralelo(principal, arquivos.get(principal, ''))
     try:
@@ -137,6 +153,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
             erro = _erro(e, arquivos)
         for chamada in chamadas:
             retornos.append(_chamar(escopo, chamada))
+        tabelas = _tabelas(escopo)
     finally:
         try:
             desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
@@ -155,6 +172,8 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
         'saida': saida.getvalue(), 'erro': erro, 'variaveis': variaveis, 'retornos': retornos,
         'arquivos_gerados': _gerados(arquivos),
         'paralelismo': pool.resumo(),
+        'spark': estagios.resumo(),
+        'tabelas': tabelas,
     }
 
 

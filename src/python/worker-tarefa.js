@@ -15,8 +15,10 @@ rodar.then(() => postMessage({ pronto: true }), (erro) => postMessage({ falha: S
 onmessage = async ({ data }) => {
   const rodarTarefa = await rodar;
   try {
+    const inicio = performance.timeOrigin + performance.now();
     const resultado = rodarTarefa(data.tarefa);
-    postMessage({ id: data.id, resultado }, [resultado.buffer]);
+    const fim = performance.timeOrigin + performance.now();
+    postMessage({ id: data.id, resultado, inicio, fim }, [resultado.buffer]);
   } catch (erro) {
     postMessage({ id: data.id, erro: String(erro?.message ?? erro) });
   }

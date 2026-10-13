@@ -82,3 +82,52 @@ def test_paralelismo_sem_pool_roda_em_sequencia():
     r = execucao.executar({'main.py': 'from diverge_runtime import pool\nprint(pool.mapear(abs, [-1, -2]))\n'})
     assert r['saida'] == '[1, 2]\n'
     assert r['paralelismo'] == {'disponivel': False, 'maximo': 1, 'tarefas': 2, 'workers': 1}
+
+
+def test_estagios_registra_jobs_tarefas_e_resumo():
+    from diverge_runtime import estagios
+    estagios.zerar()
+    assert estagios.resumo() is None
+    job = estagios.novo_job('collect')
+    mapa = estagios.novo_estagio(job, 'parallelize → map', 'shuffle')
+    fim = estagios.novo_estagio(job, 'reduceByKey', 'resultado')
+    t0 = estagios.T0
+    for i in range(2):
+        estagios.registrar_tarefa(mapa, i, 3, {'worker': i, 'inicio': t0 + 1, 'fim': t0 + 5})
+    estagios.registrar_tarefa(fim, 0, 2, {'worker': 0, 'inicio': t0 + 6, 'fim': t0 + 9})
+    r = estagios.resumo()
+    assert (r['estagios'], r['shuffles'], r['tarefas'], r['workers'], r['ms']) == (2, 1, 3, 2, 8)
+    assert r['jobs'][0]['estagios'][0]['tarefas'][0] == {'particao': 0, 'worker': 0, 'linhas': 3, 'inicio': 1.0, 'fim': 5.0}
+    with estagios.local():
+        assert estagios.em_local()
+        estagios.novo_job('tabela')
+    assert not estagios.em_local() and len(estagios.resumo()['jobs']) == 1
+    chamou = []
+    estagios.AO_ZERAR.append(lambda: chamou.append(1))
+    try:
+        estagios.zerar()
+    finally:
+        estagios.AO_ZERAR.pop()
+    assert chamou == [1] and estagios.resumo() is None
+
+
+def test_tarefa_sem_pool_tem_tempos_medidos():
+    from diverge_runtime import pool
+    pool.zerar()
+    situacao, valor, info = pool.esperar_tarefa(pool.submeter(sum, ([1, 2],)))
+    assert (situacao, valor, info['worker']) == ('ok', 3, 0)
+    assert info['fim'] >= info['inicio'] > 0
+
+
+def test_resultado_traz_spark_e_tabelas_de_objetos_com_tabela():
+    r = execucao.executar({'main.py': (
+        'class T:\n'
+        '    def _diverge_tabela(self, limite):\n'
+        '        return {"colunas": [{"nome": "a", "tipo": "bigint"}], "linhas": [[open("d.txt").read()]]}\n'
+        'class Ruim:\n'
+        '    def _diverge_tabela(self, limite):\n'
+        '        raise ValueError("não deu")\n'
+        't = T()\nr = Ruim()\n'), 'd.txt': 'oi'})
+    assert r['spark'] is None
+    assert r['tabelas']['t'] == {'colunas': [{'nome': 'a', 'tipo': 'bigint'}], 'linhas': [['oi']]}
+    assert r['tabelas']['r'] == {'erro': {'tipo': 'ValueError', 'mensagem': 'não deu'}}

@@ -66,13 +66,13 @@ export class PoolPython {
     this.relogioOcioso = setTimeout(() => this.fechar(), this.ociosoMs);
   }
 
-  /** Roda uma tarefa (Uint8Array) no worker mais livre: { resultado, worker }. */
+  /** Roda uma tarefa (Uint8Array) no worker mais livre: { resultado, worker, inicio, fim } (tempos medidos no worker). */
   async submeter(tarefa) {
     clearTimeout(this.relogioOcioso);
     const registro = this.#escolher();
     const id = this.proximoId++;
     const resposta = new Promise((resolve, reject) => {
-      registro.pendentes.set(id, (data) => (data.erro ? reject(new Error(data.erro)) : resolve(data.resultado)));
+      registro.pendentes.set(id, (data) => (data.erro ? reject(new Error(data.erro)) : resolve(data)));
     });
     resposta.catch(() => {}); // se o worker não abrir, quem avisa é o erro do `pronto`, abaixo
     try {
@@ -82,7 +82,8 @@ export class PoolPython {
       throw erro;
     }
     registro.w.postMessage({ id, tarefa: tarefa instanceof Uint8Array ? tarefa : new Uint8Array(tarefa) });
-    return { resultado: await resposta, worker: registro.indice };
+    const { resultado, inicio, fim } = await resposta;
+    return { resultado, worker: registro.indice, inicio, fim };
   }
 
   async mapear(tarefas) {

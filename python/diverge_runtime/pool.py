@@ -5,6 +5,7 @@ espera a resposta. Sem JSPI (ou fora do navegador), a tarefa roda aqui mesmo, em
 o resultado é o mesmo. METRICAS conta o que aconteceu na execução atual (zerar() a cada execução)."""
 import os
 import sys
+import time
 
 import cloudpickle
 
@@ -52,10 +53,10 @@ def resumo():
 
 
 class _Pronta:
-    """Tarefa que já rodou aqui mesmo (sem pool)."""
+    """Tarefa que já rodou aqui mesmo (sem pool), com os tempos medidos."""
 
-    def __init__(self, resposta):
-        self.resposta = resposta
+    def __init__(self, resposta, inicio, fim):
+        self.resposta, self.inicio, self.fim = resposta, inicio, fim
 
 
 def _registrar_modulos_do_aluno():
@@ -74,25 +75,35 @@ def submeter(funcao, args=(), kwargs=None):
     METRICAS['tarefas'] += 1
     js = _js()
     if js is None:
-        return _Pronta(tarefa.rodar(pacote))
+        inicio = time.time() * 1000
+        resposta = tarefa.rodar(pacote)
+        return _Pronta(resposta, inicio, time.time() * 1000)
     from pyodide.ffi import to_js
     return js.submeter(to_js(pacote))
 
 
-def esperar(promessa):
-    """Espera a tarefa: imprime o que ela imprimiu, entrega as filas e devolve (situacao, valor)."""
+def esperar_tarefa(promessa):
+    """Espera a tarefa: imprime o que ela imprimiu, entrega as filas e devolve
+    (situacao, valor, {'worker', 'inicio', 'fim'})."""
     if isinstance(promessa, _Pronta):
-        resposta, worker = promessa.resposta, 0
+        resposta, info = promessa.resposta, {'worker': 0, 'inicio': promessa.inicio, 'fim': promessa.fim}
     else:
         from pyodide.ffi import run_sync
         r = run_sync(promessa)
-        resposta, worker = bytes(r.resultado.to_py()), int(r.worker)
-    METRICAS['workers'].add(worker)
+        resposta = bytes(r.resultado.to_py())
+        info = {'worker': int(r.worker), 'inicio': float(r.inicio), 'fim': float(r.fim)}
+    METRICAS['workers'].add(info['worker'])
     situacao, valor, saida, filas = cloudpickle.loads(resposta)
     if saida:
         sys.stdout.write(saida)
     if filas and AO_RECEBER_FILAS:
         AO_RECEBER_FILAS(filas)
+    return situacao, valor, info
+
+
+def esperar(promessa):
+    """Espera a tarefa e devolve (situacao, valor); veja esperar_tarefa."""
+    situacao, valor, _ = esperar_tarefa(promessa)
     return situacao, valor
 
 

@@ -93,6 +93,16 @@ describe('tarefas avulsas e workers ociosos', () => {
     expect(p.abertos).toBe(2);
   });
 
+  it('submeter devolve os tempos medidos no worker', async () => {
+    const w = () => {
+      const x = workerFalso();
+      x.postMessage = ({ id, tarefa }) => setTimeout(() => x.onmessage({ data: { id, resultado: tarefa, inicio: 10, fim: 15 } }));
+      return x;
+    };
+    const p = new PoolPython({ criarWorker: w, maximo: 1 });
+    expect(await p.submeter(new Uint8Array([1]))).toMatchObject({ inicio: 10, fim: 15, worker: 0 });
+  });
+
   it('fecha os workers ociosos depois do tempo e reabre na próxima tarefa', async () => {
     vi.useFakeTimers();
     try {
