@@ -81,7 +81,6 @@ O `pool` fica **dentro do worker principal** (workers podem abrir workers), e n�
 ```bash
 cd python-playground
 git -C ../php-playground archive HEAD | tar -x -C .
-git rm -q --cached -r . 2>/dev/null; git add docs
 rm -rf src/php src/navegacao.js src/php-stub.js src/conteudo public/badges
 rm -f tests/php-node.js tests/sessao.test.js tests/navegacao-compartilhar.test.js tests/corrigir.test.js \
       tests/verificacoes.test.js tests/conteudo.test.js tests/testes-detalhados.test.js tests/glossario.test.js
@@ -100,8 +99,8 @@ Substituições exatas (em todos os arquivos de `src/`, `scripts/`, `tests/`, `i
 
 Em seguida, ajustes manuais:
 - `package.json`: `"name": "python-playground"`, `"version": "0.1.0"`, `"description": "DivergePython: Python até PySpark no navegador, com dados em paralelo e acessibilidade para pessoas cegas, surdas e neurodivergentes"`; remover `@codemirror/lang-php`, `@php-wasm/*`; adicionar `"@codemirror/lang-python": "6.2.1"`, `"pyodide": "314.0.7"`.
-- `src/seo.js`: `PRINCIPAL.titulo = \`${NOME}: Python e PySpark acessíveis para todas as pessoas\``; `PRINCIPAL.descricao = \`Aprenda Python e PySpark grátis com acessibilidade: leitor de tela, Libras, teclado e perfis para TDAH e dislexia. ${problemas.length} exercícios com certificado.\``; `og:image:alt` → `${NOME}: Python acessível, com leitor de tela, Libras e perfis para neurodivergentes`; descrição do `Course` → `Trilha gamificada e acessível com ${totalLicoes} lições e ${problemas.length} exercícios corrigidos por testes automáticos: do Python básico ao PySpark, com dados em paralelo.`
-- `src/certificados.js`: `EMISSOR.curso = 'DivergePython: do Python ao PySpark com dados em paralelo'`; `CERTIFICADOS = { basico: { titulo: 'Fundamentos de Python', ... } }` (veja a Task 9; por enquanto `titulo`, `resumo`, `conteudos` e `cargaHoraria` calculada). Remova o certificado `final` nesta fase (ver Step 4).
+- `src/seo.js`: `PRINCIPAL.titulo = \`${NOME}: Python acessível para todas as pessoas\`` (53 caracteres; o limite do teste é 60); `PRINCIPAL.descricao = \`Aprenda Python e PySpark grátis com acessibilidade: leitor de tela, Libras, teclado e perfis para TDAH e dislexia. ${problemas.length} exercícios com certificado.\``; `og:image:alt` → `${NOME}: Python acessível, com leitor de tela, Libras e perfis para neurodivergentes`; descrição do `Course` → `Trilha gamificada e acessível com ${totalLicoes} lições e ${problemas.length} exercícios corrigidos por testes automáticos: do Python básico ao PySpark, com dados em paralelo.`
+- `src/certificados.js`: `EMISSOR.curso = 'DivergePython: do Python ao PySpark com dados em paralelo'`; `CERTIFICADOS` e `ORDEM` já com o objeto completo do certificado `basico` descrito na Task 9, Step 2 (copie de lá). Remova o certificado `final` nesta fase (ver Step 4).
 - `src/novidades.js`: `RELEASES` com uma única entrada `0.1.0` (texto na Task 10).
 - `src/licenca.js`: trocar o pacote `@php-wasm/web` (GPL) por `pyodide` (MPL-2.0) e acrescentar `cloudpickle` (BSD-3-Clause) e `@codemirror/lang-python` (MIT) em `TERCEIROS`; o comentário "Por que AGPL" passa a citar os dois sites irmãos.
 
@@ -792,7 +791,8 @@ export class MotorPython {
 import { carregarPython } from './carregar.js';
 import { criarSessao } from './sessao.js';
 
-const indexURL = new URL('../pyodide/', import.meta.url).href;
+// No dev o Vite serve o Pyodide em /pyodide/; no build ele fica em dist/pyodide/.
+const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL('../pyodide/', import.meta.url).href;
 const sessao = carregarPython({ indexURL }).then((pyodide) => criarSessao(pyodide));
 
 sessao.then(
@@ -843,7 +843,7 @@ const pyodide = {
 
 e use `plugins: [pyodide, publicarChave(chavePublica), pluginHistorico()]`, `optimizeDeps: { exclude: ['pyodide'] }`, `worker: { format: 'es' }`. O `derivar` passa a usar o rótulo `python-playground:`.
 
-O worker fica em `dist/assets/worker-*.js`; `new URL('../pyodide/', import.meta.url)` aponta para `dist/pyodide/`. No dev, o worker é servido de `/src/python/worker.js`; ajuste o `indexURL` do worker para `import.meta.env.DEV ? '/pyodide/' : new URL('../pyodide/', import.meta.url).href`.
+O worker fica em `dist/assets/worker-*.js`; `new URL('../pyodide/', import.meta.url)` aponta para `dist/pyodide/`, e no dev o `indexURL` é `/pyodide/` (já previsto no `worker.js` do Step 3).
 
 - [ ] **Step 5: Rodar testes e build**
 
@@ -1083,7 +1083,7 @@ export function detalharRegra(regra, ctx) {
 import { detalharRegra, primeiraLinhaDoErro } from './verificacoes.js';
 
 const agora = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
-const textoDaChamada = (r) => `${r.funcao}(${JSON.stringify(r.args ?? []).slice(1, -1).replace(/,/g, ', ')})`;
+export const textoDaChamada = (r) => `${r.funcao}(${JSON.stringify(r.args ?? []).slice(1, -1).replace(/,/g, ', ')})`;
 
 /**
  * Roda os casos de teste do problema com os arquivos do aluno.
@@ -1873,7 +1873,7 @@ Exemplos do que mudar (só dados, nunca a regra):
 - `tests/landing.test.js`: `numerosDaTrilha().modulos === 1`, `exercicios === 40`; a seção "em breve" lista os 5 `PROXIMOS_MODULOS`.
 - `tests/badges.test.js`: `svgBadge('basico')`.
 - `tests/carga-horaria.test.js`: carga do `basico` = soma das atividades (10 lições × 10 min + 40 exercícios pelos minutos da dificuldade), arredondada para cima, em horas.
-- `tests/seo.test.js`: `NOME === 'DivergePython'`; título `DivergePython: Python e PySpark acessíveis para todas as pessoas` (≤ 60 caracteres: confira; se passar, use `DivergePython: Python acessível para todas as pessoas`).
+- `tests/seo.test.js`: `NOME === 'DivergePython'`; título `DivergePython: Python acessível para todas as pessoas`.
 
 Run: `npx vitest run`
 Expected: FAIL nos pontos ajustados.
@@ -1918,7 +1918,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```js
   {
     versao: '0.1.0',
-    data: '<data da publicação, AAAA-MM-DD>',
+    data: '2026-10-13', // a data do dia da publicação, no formato AAAA-MM-DD
     titulo: 'Chegou o DivergePython',
     resumo: 'Python de verdade no navegador, com o primeiro módulo da trilha que vai até o PySpark.',
     grupos: [
@@ -1930,7 +1930,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   },
 ```
 
-A data é a do dia da publicação (Step 5). `README.md`: título `# 🐍 DivergePython`, parágrafo de acessibilidade igual ao dos irmãos, "Em breve" com os 5 próximos módulos, seção "Paralelismo" com os navegadores conferidos na Task 5, seção "Certificados" (secret `CERTIFICADO_SEGREDO`).
+Se a publicação (Step 5) for em outro dia, atualize `data`. `README.md`: título `# 🐍 DivergePython`, parágrafo de acessibilidade igual ao dos irmãos, "Em breve" com os 5 próximos módulos, seção "Paralelismo" com os navegadores conferidos na Task 5, seção "Certificados" (secret `CERTIFICADO_SEGREDO`).
 
 `declaracao-acessibilidade.js`, em "Limites conhecidos": `O paralelismo real usa um recurso novo dos navegadores (JSPI). Onde ele não existe, o código roda em sequência, com o mesmo resultado, e o site avisa.`
 
@@ -1965,10 +1965,12 @@ gh api -X POST repos/sertaoseracloud/python-playground/pages -f build_type=workf
 
 O secret `CERTIFICADO_SEGREDO` precisa existir antes do primeiro deploy. Pergunte ao usuário se ele quer definir o valor (`gh secret set CERTIFICADO_SEGREDO -R sertaoseracloud/python-playground`, digitado por ele) ou se você gera um valor aleatório que ninguém vê (`openssl rand -hex 32 | gh secret set CERTIFICADO_SEGREDO -R sertaoseracloud/python-playground`). Avise que, se o secret mudar depois, os certificados emitidos até ali deixam de ser validados.
 
+Crie `../notas-0.1.0.md` (fora do repositório) com o título "Chegou o DivergePython" e os quatro grupos da entrada `0.1.0` de `src/novidades.js` em Markdown (`### 🐍 Python básico` seguido da lista de itens, e assim por diante).
+
 ```bash
 git tag -a v0.1.0 -m "Versão 0.1.0"
 git push --follow-tags
-gh release create v0.1.0 --verify-tag --title "v0.1.0 · DivergePython" --notes-file <notas>
+gh release create v0.1.0 --verify-tag --title "v0.1.0 · DivergePython" --notes-file ../notas-0.1.0.md
 gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId') --exit-status
 ```
 
