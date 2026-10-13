@@ -1,32 +1,30 @@
 import { defineConfig } from 'vite';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, createReadStream } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { chavePublicaDe } from './src/ed25519.js';
 import { pluginHistorico, versaoDoPacote } from './scripts/plugin-historico.mjs';
 
-const stub = fileURLToPath(new URL('./src/php-stub.js', import.meta.url));
-
-// A extensão intl (intl.so + dados ICU, ~43 MB) só é baixada com withIntl,
-// que o site não usa. Os imports dela viram um módulo vazio para não irem ao deploy.
-const SEM_INTL = /(\/intl\.so\?url|\/icu\.dat)$/;
-const VAZIO = 'virtual:sem-intl';
-const semIntl = {
-  name: 'sem-intl',
-  enforce: 'pre',
-  resolveId: (id) => (SEM_INTL.test(id) ? VAZIO : null),
-  load: (id) => (id === VAZIO ? 'export default "";' : null),
-};
-
-// Os pacotes @php-wasm importam .wasm/.dat/.so esperando receber a URL do arquivo.
-// O Vite 8 (Rolldown) trata .wasm como módulo WebAssembly; aqui eles voltam a ser URL.
-const ARQUIVOS_PHP = /\.(wasm|dat|so|la)$/;
-const ativosPhp = {
-  name: 'ativos-php-como-url',
-  enforce: 'pre',
-  async resolveId(id, importer) {
-    if (!ARQUIVOS_PHP.test(id) || !importer?.includes('@php-wasm')) return null;
-    const resolvido = await this.resolve(id, importer, { skipSelf: true });
-    return resolvido ? `${resolvido.id}?url` : null;
+// O Pyodide é servido pelo próprio site (pasta pyodide/), sem CDN de terceiros: no dev,
+// direto do node_modules; no build, copiado para dist/pyodide/.
+const PASTA_PYODIDE = dirname(createRequire(import.meta.url).resolve('pyodide/package.json'));
+const ARQUIVOS_PYODIDE = ['pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
+const pyodide = {
+  name: 'pyodide-no-site',
+  configureServer(servidor) {
+    servidor.middlewares.use('/pyodide/', (req, res, proximo) => {
+      const nome = req.url.split('?')[0].replace(/^\//, '');
+      if (!ARQUIVOS_PYODIDE.includes(nome)) return proximo();
+      if (nome.endsWith('.wasm')) res.setHeader('Content-Type', 'application/wasm');
+      if (nome.endsWith('.mjs')) res.setHeader('Content-Type', 'text/javascript');
+      createReadStream(join(PASTA_PYODIDE, nome)).pipe(res);
+    });
+  },
+  generateBundle() {
+    for (const nome of ARQUIVOS_PYODIDE) {
+      this.emitFile({ type: 'asset', fileName: `pyodide/${nome}`, source: readFileSync(join(PASTA_PYODIDE, nome)) });
+    }
   },
 };
 
@@ -71,20 +69,15 @@ export default defineConfig(({ command }) => {
   const chavePublica = chavePublicaDe(semente);
   return {
     base: './',
-    plugins: [semIntl, ativosPhp, publicarChave(chavePublica), pluginHistorico()],
+    plugins: [pyodide, publicarChave(chavePublica), pluginHistorico()],
     define: {
       __CHAVE_CERTIFICADO__: JSON.stringify(derivar('certificado', valor)),
       __SEMENTE_ED25519__: JSON.stringify(semente),
       __CHAVE_PUBLICA_ED25519__: JSON.stringify(chavePublica),
       __VERSAO__: JSON.stringify(versaoDoPacote()),
     },
-    assetsInclude: [/\.dat$/, /\.wasm$/, /\.so$/, /\.la$/],
-    optimizeDeps: { exclude: ['@php-wasm/web'] },
-    resolve: {
-      // Só o Python 3.14 entra no site; as outras versões ocupariam ~300 MB.
-      alias: [{ find: /^@php-wasm\/web-(5-2|7-4|8-0|8-1|8-2|8-3|8-5)$/, replacement: stub }],
-    },
-    worker: { format: 'es', plugins: () => [semIntl, ativosPhp] },
+    optimizeDeps: { exclude: ['pyodide'] },
+    worker: { format: 'es' },
     build: { target: 'es2022', chunkSizeWarningLimit: 1500 },
   };
 });
