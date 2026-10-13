@@ -13,5 +13,12 @@ export default defineConfig({
     __CHAVE_PUBLICA_ED25519__: JSON.stringify(chavePublicaDe(SEMENTE_TESTES)),
     __VERSAO__: JSON.stringify(versaoDoPacote()),
   },
-  test: { testTimeout: 60000, hookTimeout: 120000 },
+  test: {
+    testTimeout: 60000,
+    hookTimeout: 120000,
+    // O pool de workers do Pyodide precisa do JSPI (WebAssembly.Suspending), que no
+    // Node 24 ainda fica atrás desta opção.
+    pool: 'forks',
+    execArgv: ['--experimental-wasm-jspi'],
+  },
 });
