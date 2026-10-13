@@ -8,6 +8,7 @@
 //   { erro: 'Tipo' }                       o programa termina com essa exceção
 //   { semErros: true }                     o programa roda sem exceção
 //   { codigo: 'regex' } / { semCodigo }    o código-fonte (todos os arquivos)
+//   { arquivo: 'nome', igual | json }      o arquivo que o programa gravou (texto ou JSON)
 const json = (v) => JSON.stringify(v);
 const iguais = (a, b) => json(a) === json(b);
 const chamada = (r) => `${r.funcao}(${(r.args ?? []).map(json).join(', ')})`;
@@ -17,20 +18,44 @@ export const primeiraLinhaDoErro = (erro) => (erro ? `${erro.linha ? `linha ${er
 
 const res = (regra, padrao, ok, detalhe, obtido) => ({ ok, mensagem: regra.msg ?? padrao, detalhe: ok ? undefined : detalhe, obtido });
 
+/** Compara linha a linha (sem espaços no fim) e diz a primeira diferença. */
+function compararLinhas(texto, esperado) {
+  const [obtidas, esperadas] = [linhas(texto), linhas(esperado)];
+  const i = esperadas.findIndex((l, n) => obtidas[n] !== l);
+  const sobra = i < 0 && obtidas.length > esperadas.length;
+  const detalhe = sobra ? `sobrou a linha ${esperadas.length + 1}: "${obtidas[esperadas.length]}"`
+    : `linha ${i + 1}: esperado "${esperadas[i]}", veio ${obtidas[i] === undefined ? 'nada' : `"${obtidas[i]}"`}`;
+  return { ok: i < 0 && !sobra, detalhe };
+}
+
 function aproximado(valor, esperado, tolerancia) {
   if (typeof esperado === 'number') return typeof valor === 'number' && Math.abs(valor - esperado) <= tolerancia;
   if (Array.isArray(esperado)) return Array.isArray(valor) && valor.length === esperado.length && esperado.every((e, i) => aproximado(valor[i], e, tolerancia));
   return iguais(valor, esperado);
 }
 
-export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '' }) {
+export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {} }) {
   if ('saidaIgual' in regra) {
-    const [obtidas, esperadas] = [linhas(saida), linhas(regra.saidaIgual)];
-    const i = esperadas.findIndex((l, n) => obtidas[n] !== l);
-    const sobra = i < 0 && obtidas.length > esperadas.length;
-    const detalhe = sobra ? `sobrou a linha ${esperadas.length + 1}: "${obtidas[esperadas.length]}"`
-      : `linha ${i + 1}: esperado "${esperadas[i]}", veio ${obtidas[i] === undefined ? 'nada' : `"${obtidas[i]}"`}`;
-    return res(regra, 'A saída é exatamente a pedida', i < 0 && !sobra, detalhe, saida.trimEnd());
+    const { ok, detalhe } = compararLinhas(saida, regra.saidaIgual);
+    return res(regra, 'A saída é exatamente a pedida', ok, detalhe, saida.trimEnd());
+  }
+  if ('arquivo' in regra) {
+    const nome = regra.arquivo;
+    const texto = arquivos[nome];
+    if (texto === undefined) return res(regra, `O programa grava ${nome}`, false, `o arquivo ${nome} não foi criado`);
+    if ('json' in regra) {
+      const mensagem = `${nome} tem os dados pedidos`;
+      let valor;
+      try {
+        valor = JSON.parse(texto);
+      } catch {
+        return res(regra, mensagem, false, `${nome} não é um JSON válido`, texto.slice(0, 200));
+      }
+      return res(regra, mensagem, iguais(valor, regra.json), `esperado ${json(regra.json)}, veio ${json(valor)}`, json(valor));
+    }
+    // csv.writer termina as linhas com \r\n: conta só o conteúdo de cada linha.
+    const { ok, detalhe } = compararLinhas(texto.replace(/\r\n/g, '\n'), regra.igual);
+    return res(regra, `${nome} tem exatamente o conteúdo pedido`, ok, detalhe, texto.trimEnd());
   }
   if ('saida' in regra) {
     return res(regra, `A saída mostra "${regra.saida}"`, saida.includes(regra.saida), 'o texto não apareceu na saída', saida.trimEnd());
@@ -65,7 +90,7 @@ export function verificarRegra(regra, { saida = '', erro = null, variaveis = {},
 }
 
 const CATEGORIAS = [
-  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['funcao', 'Função'], ['variavel', 'Variável'],
+  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['funcao', 'Função'], ['variavel', 'Variável'],
   ['erro', 'Execução'], ['semErros', 'Execução'], ['codigo', 'Código'], ['semCodigo', 'Código'],
 ];
 export const categoriaDe = (regra) => CATEGORIAS.find(([chave]) => chave in regra)?.[1] ?? 'Verificação';
@@ -85,6 +110,7 @@ const DICAS = {
   Variável: 'A variável precisa existir no fim do programa, fora de funções.',
   Execução: 'Leia o traceback no 🖥️ Terminal: ele mostra a linha e o tipo do erro.',
   Código: 'O enunciado pede (ou proíbe) um recurso específico do Python.',
+  Arquivo: 'Confira o nome do arquivo, o cabeçalho e cada linha. Para ver o que foi gravado, use print(open(nome).read()).',
 };
 
 /** verificarRegra + categoria e dica, para a aba Testes. */

@@ -45,7 +45,7 @@ export const PASSOS = [
     tela: 'item',
     alvo: '#painel-descricao',
     titulo: 'O enunciado',
-    texto: `<p>Leia o que o problema pede. Na aba <b>Solução</b> há a resposta, para quando você travar.</p>
+    texto: `<p>Leia o que o problema pede. Na aba <b>📦 Dados</b> (quando houver) ficam os arquivos que o programa lê, e na aba <b>Solução</b>, a resposta, para quando você travar.</p>
       <p>O botão <b>🔊 Ouvir</b> lê o enunciado em voz alta.</p>`,
   },
   {

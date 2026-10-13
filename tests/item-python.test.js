@@ -12,7 +12,7 @@ const corpo = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>'));
 function montar(resposta) {
   document.body.innerHTML = corpo;
   const pedidos = [];
-  const motor = { executar: async (arquivos, opcoes) => { pedidos.push(opcoes); return { ms: 5, retornos: [], variaveis: {}, ...resposta }; } };
+  const motor = { executar: async (arquivos, opcoes) => { pedidos.push({ ...opcoes, arquivos }); return { ms: 5, retornos: [], variaveis: {}, ...resposta }; } };
   const layout = { aplicar() {}, mostrarDescricao() {} };
   const tela = criarTelaItem({ motor, layout, definirStatus: () => {}, aoMudarProgresso: () => {} });
   tela.aoMudarEstadoPython(true);
@@ -44,5 +44,13 @@ describe('tela do exercício (Python)', () => {
     document.getElementById('btn-executar').click();
     await new Promise((r) => setTimeout(r, 20));
     expect(pedidos.at(-1).entrada).toEqual(['Ana', 'Bia']);
+  });
+
+  it('o livre mostra a aba 📦 Dados e envia os dados junto com o código', async () => {
+    const { tela, pedidos } = montar({ saida: '', erro: null });
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('aba-dados').hidden).toBe(false);
+    expect(Object.keys(pedidos.at(-1).arquivos)).toContain('vendas.csv');
   });
 });

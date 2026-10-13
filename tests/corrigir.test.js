@@ -32,4 +32,18 @@ describe('corrigir', () => {
     expect(aprovado).toBe(false);
     expect(relatorio[0].erroExecucao).toBe('linha 1: ZeroDivisionError: division by zero');
   });
+
+  it('usa os dados do exercício e os do caso, que valem mais que um arquivo do aluno', async () => {
+    const comDados = {
+      dados: { 'n.txt': '1' },
+      testes: [
+        { descricao: 'padrão', regras: [{ saidaIgual: '1' }] },
+        { descricao: 'outros', oculto: true, dados: { 'n.txt': '2' }, regras: [{ saidaIgual: '2' }] },
+      ],
+    };
+    const aluno = { 'main.py': 'print(open("n.txt").read())', 'n.txt': '99' };
+    const { aprovado, relatorio } = await corrigir(comDados, aluno, executar);
+    expect(aprovado).toBe(true);
+    expect(relatorio[1].cenario.dados).toEqual(['n.txt']);
+  });
 });

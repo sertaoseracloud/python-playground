@@ -849,3 +849,11 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
    linhas quando a coluna é estreita, em vez de esconder abas numa rolagem lateral. */
 #painel-descricao .abas { flex-wrap: wrap; overflow-x: visible; }
 #painel-descricao .aba { padding: 7px 10px; }
+
+/* aba 📦 Dados: os arquivos de entrada do exercício */
+#desc-dados { padding: 10px 14px; }
+.tabela-dados { border-collapse: collapse; font-family: var(--fonte-codigo); font-size: 0.85rem; }
+.tabela-dados caption { text-align: left; font-weight: 700; padding: 6px 0; }
+.tabela-dados th, .tabela-dados td { border: 1px solid var(--linha); padding: 3px 8px; text-align: left; }
+.nota-dados { color: var(--suave); font-size: 0.85rem; }
+.titulo-dado { font-size: 1rem; }

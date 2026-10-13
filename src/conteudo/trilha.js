@@ -22,8 +22,12 @@ export const LIVRE = {
   titulo: 'Playground livre',
   resumo: `
     <p>Escreva o Python que quiser. Use o <b>+</b> para criar arquivos e importá-los com <code>import</code>.</p>
-    <p>Se o código usar <code>input()</code>, escreva as respostas na aba <b>⌨️ Entrada</b>, uma por linha.</p>`,
+    <p>Se o código usar <code>input()</code>, escreva as respostas na aba <b>⌨️ Entrada</b>, uma por linha.</p>
+    <p>Na aba <b>📦 Dados</b> há um <code>vendas.csv</code> de exemplo: abra com <code>open("vendas.csv")</code>.</p>`,
   arquivos: { 'main.py': 'nome = input("Qual é o seu nome? ")\nprint(f"Olá, {nome}!")\n' },
+  dados: {
+    'vendas.csv': 'produto,regiao,quantidade,preco\nArroz 5kg,Nordeste,2,24.90\nFeijão 1kg,Sudeste,3,8.50\nCafé 500g,Nordeste,1,19.90\nRapadura,Norte,10,2.50\n',
+  },
 };
 
 export const itens = modulos.flatMap((m) => m.itens.map((item) => ({ ...item, modulo: m.id })));

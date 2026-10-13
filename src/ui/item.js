@@ -3,6 +3,7 @@ import { minutosDoItem } from '../cargaHoraria.js';
 import { buscarItem, modulos, vizinhos, DIFICULDADES } from '../conteudo/trilha.js';
 import { TempoEsgotado } from '../python/motor.js';
 import { linkItem, linkCompartilhado } from '../compartilhar.js';
+import { htmlDosDados } from './dados.js';
 import { corrigir, textoDaChamada } from '../corrigir.js';
 import {
   statusDe, marcar, lerRascunho, gravarRascunho, apagarRascunho, lerEntrada, gravarEntrada,
@@ -66,7 +67,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   const ehLivre = () => estado.item?.tipo === 'livre';
 
   // ---------- abas ----------
-  const paineisDesc = { enunciado: el.enunciado, solucao: el.solucao, testes: $('desc-testes') };
+  const paineisDesc = { enunciado: el.enunciado, solucao: el.solucao, dados: $('desc-dados'), testes: $('desc-testes') };
   function mostrarDesc(nome) {
     for (const [chave, painel] of Object.entries(paineisDesc)) painel.hidden = chave !== nome;
     document.querySelectorAll('[data-desc]').forEach((b) => {
@@ -229,6 +230,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     el.enviar.hidden = !ehProblema();
     el.abaSolucao.hidden = !ehProblema();
     el.abaTestes.hidden = !ehProblema();
+    $('aba-dados').hidden = !item.dados;
+    paineisDesc.dados.innerHTML = item.dados ? htmlDosDados(item.dados) : '';
     layout.aplicar();
     leitura.parar();
     if (ehProblema()) {
@@ -302,7 +305,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     definirStatus('Executando…', { falar: false });
     el.terminal.setAttribute('aria-busy', 'true');
     try {
-      const r = await motor.executar({ ...editor.arquivos }, { entrada: entradaAtual() });
+      const r = await motor.executar({ ...editor.arquivos, ...(item.dados ?? {}) }, { entrada: entradaAtual() });
       if (estado.item !== item) return;
       mostrarTerminal(r);
       const fala = falaDoPython(r);
@@ -339,8 +342,9 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   // fez e, se falhar, motivo e dica. Nos casos ocultos, os valores ficam escondidos.
 
   /** O cenário de um caso, como numa sessão de terminal. */
-  function linhasDoCenario({ entrada = [], chamadas = [] }, { ocultar = false } = {}) {
+  function linhasDoCenario({ entrada = [], chamadas = [], dados = [] }, { ocultar = false } = {}) {
     return [
+      ...(dados.length ? [`# dados deste caso: ${ocultar ? 'outros arquivos' : dados.join(', ')}`] : []),
       '$ python main.py',
       ...entrada.map((l) => `> ${ocultar ? '…' : l}`),
       ...chamadas.map((c) => `>>> ${ocultar ? c.replace(/\(.*\)/s, '(…)') : c}`),
@@ -350,6 +354,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   const cenarioDoTeste = (t) => ({
     entrada: t.entrada ?? [],
     chamadas: t.regras.filter((r) => 'funcao' in r).map(textoDaChamada),
+    dados: Object.keys(t.dados ?? {}),
   });
 
   const verificacoesPrevistas = (t) => t.regras.map((regra) => ({ mensagem: descreverRegra(regra) ?? 'Verificação no código', categoria: categoriaDe(regra) }));

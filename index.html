@@ -82,6 +82,7 @@
             <div class="abas-grupo" role="tablist" aria-label="Descrição">
             <button class="aba ativa" data-desc="enunciado" role="tab" aria-selected="true">Descrição</button>
             <button class="aba" data-desc="solucao" id="aba-solucao" role="tab" aria-selected="false">Solução</button>
+            <button class="aba" data-desc="dados" id="aba-dados" role="tab" aria-selected="false" hidden>📦 Dados</button>
             <button class="aba" data-desc="testes" id="aba-testes" role="tab" aria-selected="false" aria-controls="desc-testes">
               🧪 Testes <span id="resumo-testes" class="resumo-testes"></span></button>
             </div>
@@ -89,6 +90,7 @@
           </div>
           <div class="conteudo-desc" id="desc-enunciado" role="tabpanel"></div>
           <div class="conteudo-desc" id="desc-solucao" role="tabpanel" hidden></div>
+          <div class="conteudo-desc" id="desc-dados" role="tabpanel" aria-label="Arquivos de dados do exercício" hidden></div>
           <div class="conteudo-desc" id="desc-testes" role="tabpanel" aria-label="Testes funcionais" hidden>
             <div id="saida-testes" class="saida testes"></div>
           </div>

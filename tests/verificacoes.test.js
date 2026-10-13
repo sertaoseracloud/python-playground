@@ -46,6 +46,15 @@ describe('verificarRegra', () => {
     expect(categoriaDe({ inventada: 1 })).toBe('Verificação');
   });
 
+  it('arquivo: compara o texto sem diferenciar \\r\\n e o JSON pelo valor', () => {
+    const arquivos = { 'aprovados.csv': 'nome,nota\r\nAna,8\r\n', 'resumo.json': '{\n  "total": 2\n}' };
+    expect(verificarRegra({ arquivo: 'aprovados.csv', igual: 'nome,nota\nAna,8' }, { arquivos }).ok).toBe(true);
+    expect(verificarRegra({ arquivo: 'resumo.json', json: { total: 2 } }, { arquivos }).ok).toBe(true);
+    const falta = verificarRegra({ arquivo: 'outro.csv', igual: 'x' }, { arquivos });
+    expect(falta).toMatchObject({ ok: false, detalhe: 'o arquivo outro.csv não foi criado' });
+    expect(categoriaDe({ arquivo: 'x', igual: '' })).toBe('Arquivo');
+  });
+
   it('regra desconhecida é erro de quem escreveu o exercício', () => {
     expect(() => verificarRegra({ inventada: 1 }, ctx())).toThrow('Regra desconhecida');
   });
