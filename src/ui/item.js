@@ -237,7 +237,9 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     }
     el.terminal.textContent = '';
     el.terminal.classList.remove('com-erro');
-    el.entrada.value = lerEntrada(id);
+    // Sem respostas salvas, a aba ⌨️ Entrada começa com as da lição ou do primeiro caso visível.
+    const entradaInicial = item.entrada ?? item.testes?.find((t) => !t.oculto && t.entrada)?.entrada ?? [];
+    el.entrada.value = lerEntrada(id) || entradaInicial.join('\n');
     mostrarDesc('enunciado');
     mostrarSaida('terminal');
     if (estado.pythonPronto) executar();
