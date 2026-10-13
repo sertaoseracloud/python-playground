@@ -8,6 +8,8 @@ import shutil
 import sys
 import traceback
 
+from diverge_paralelo.instalar import instalar as instalar_paralelo
+
 from . import pool
 from .valores import descrever
 
@@ -121,6 +123,8 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
     escopo = {'__name__': '__main__', '__file__': principal, '__builtins__': builtins}
     erro = None
     retornos = []
+    # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
+    desfazer_paralelo = instalar_paralelo(principal, arquivos.get(principal, ''))
     try:
         sys.stdout = sys.stderr = saida
         builtins.input = _input(entrada, saida)
@@ -134,7 +138,10 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
         for chamada in chamadas:
             retornos.append(_chamar(escopo, chamada))
     finally:
-        sys.stdout, sys.stderr, builtins.input = antigo_stdout, antigo_stderr, antigo_input
+        try:
+            desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
+        finally:
+            sys.stdout, sys.stderr, builtins.input = antigo_stdout, antigo_stderr, antigo_input
         sys.path[:] = antigo_path
         os.chdir(antigo_cwd)
     variaveis = {}
