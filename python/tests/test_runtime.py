@@ -35,3 +35,30 @@ def test_descrever_valores():
 def test_executar_json():
     saida = json.loads(execucao.executar_json({'arquivos': {'main.py': 'x = 1'}}))
     assert saida['variaveis'] == {'x': 1}
+
+
+def test_subpasta_nao_sobra_entre_execucoes():
+    execucao.executar({'main.py': 'import os\nos.makedirs("saida", exist_ok=True)\nopen("saida/x.txt", "w").write("1")\n'})
+    r = execucao.executar({'main.py': 'import os\nprint(os.path.exists("saida/x.txt"))\n'})
+    assert r['saida'] == 'False\n'
+
+
+def test_arquivos_gerados():
+    r = execucao.executar({
+        'main.py': 'open("novo.csv", "w").write("a,b\\n")\nopen("dados.txt", "a").write("2")\n',
+        'dados.txt': '1',
+        'igual.txt': 'x',
+    })
+    assert r['arquivos_gerados'] == {'novo.csv': 'a,b\n', 'dados.txt': '12'}
+
+
+def test_gerador_infinito_vira_lista_limitada():
+    r = rodar('def contar():\n    n = 0\n    while True:\n        yield n\n        n += 1\n',
+              chamadas=[{'funcao': 'contar', 'args': []}])
+    assert r['retornos'][0]['valor'][:3] == [0, 1, 2]
+    assert len(r['retornos'][0]['valor']) == 1000
+
+
+def test_map_e_filter_viram_lista():
+    assert descrever(map(str, [1, 2]))['valor'] == ['1', '2']
+    assert descrever(filter(None, [0, 3]))['valor'] == [3]

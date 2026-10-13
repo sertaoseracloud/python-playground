@@ -4,6 +4,7 @@ import builtins
 import io
 import json
 import os
+import shutil
 import sys
 import traceback
 
@@ -11,6 +12,7 @@ from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
 LIMITE_SAIDA = 100_000
+LIMITE_ARQUIVOS = 20
 _json_dumps = json.dumps  # referência própria: um json.py do aluno não pode trocar isto
 
 
@@ -34,16 +36,29 @@ class _Saida(io.StringIO):
 
 
 def _gravar(arquivos):
+    shutil.rmtree(PASTA, ignore_errors=True)  # subpastas também: nada sobra da execução anterior
     os.makedirs(PASTA, exist_ok=True)
-    for nome in os.listdir(PASTA):
-        caminho = os.path.join(PASTA, nome)
-        if os.path.isfile(caminho):
-            os.remove(caminho)
     for nome, fonte in arquivos.items():
         caminho = os.path.join(PASTA, nome)
         os.makedirs(os.path.dirname(caminho), exist_ok=True)
         with open(caminho, 'w', encoding='utf-8') as f:
             f.write(fonte)
+
+
+def _gerados(arquivos):
+    """Arquivos que o programa criou ou mudou (fora os .py), para as regras `arquivo`."""
+    gerados = {}
+    for raiz, _, nomes in os.walk(PASTA):
+        for nome in sorted(nomes):
+            caminho = os.path.join(raiz, nome)
+            relativo = os.path.relpath(caminho, PASTA).replace(os.sep, '/')
+            if relativo.endswith('.py') or len(gerados) >= LIMITE_ARQUIVOS:
+                continue
+            with open(caminho, encoding='utf-8', errors='replace') as f:
+                texto = f.read(LIMITE_SAIDA)
+            if arquivos.get(relativo) != texto:
+                gerados[relativo] = texto
+    return gerados
 
 
 def _esquecer_modulos_do_aluno(arquivos):
@@ -127,7 +142,10 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
         d = descrever(valor)
         if d['json']:
             variaveis[nome] = d['valor']
-    return {'saida': saida.getvalue(), 'erro': erro, 'variaveis': variaveis, 'retornos': retornos}
+    return {
+        'saida': saida.getvalue(), 'erro': erro, 'variaveis': variaveis, 'retornos': retornos,
+        'arquivos_gerados': _gerados(arquivos),
+    }
 
 
 def executar_json(args):

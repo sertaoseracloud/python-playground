@@ -63,4 +63,13 @@ describe('diverge_runtime', () => {
     const r = await rodar('import util\nprint(util.X)', { arquivos: { 'util.py': 'X = 2\n' } });
     expect(r.saida).toBe('2\n');
   });
+
+  it('lê arquivo de dados com acento e devolve o arquivo que o programa gravou', async () => {
+    const r = await sessao.executar({
+      'main.py': 'linhas = open("vendas.csv").read().splitlines()\nprint(linhas[1])\nopen("saida.txt", "w").write("ok")\n',
+      'vendas.csv': 'produto\nFeijão\n',
+    });
+    expect(r.saida).toBe('Feijão\n');
+    expect(r.arquivos_gerados).toEqual({ 'saida.txt': 'ok' });
+  });
 });

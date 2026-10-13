@@ -1,11 +1,21 @@
 """Converte valores do Python para JSON (o site compara retornos e variáveis assim).
 
 Tuplas viram listas; conjuntos viram listas ordenadas; chaves de dicionário viram texto.
+Geradores e iteradores (map, filter, zip, itertools) viram lista, só com os primeiros 1000 itens.
 O que não tem equivalente em JSON volta como None, e o `repr` vai junto para mostrar ao aluno.
 """
+import itertools
 import math
+import types
 
 SEM_JSON = object()
+LIMITE_ITENS = 1000
+_PREGUICOSOS = (types.GeneratorType, map, filter, zip, enumerate, reversed)
+
+
+def _preguicoso(valor):
+    """Geradores e iteradores de map/filter/zip/itertools: a correção lê os primeiros itens."""
+    return isinstance(valor, _PREGUICOSOS) or type(valor).__module__ == 'itertools'
 
 
 def para_json(valor, profundidade=0):
@@ -34,6 +44,8 @@ def para_json(valor, profundidade=0):
                 return SEM_JSON
             saida[str(chave)] = convertido
         return saida
+    if _preguicoso(valor):
+        return para_json(list(itertools.islice(valor, LIMITE_ITENS)), profundidade + 1)
     return SEM_JSON
 
 
