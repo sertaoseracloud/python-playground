@@ -1,13 +1,18 @@
 // Todo o conteúdo da trilha: a solução de cada exercício passa em todos os casos
 // (inclusive os ocultos), o código inicial falha em algum caso visível, e as lições
 // rodam sem erro. Usa o Python de verdade (Pyodide no Node).
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { modulos, itens, problemas, LIVRE } from '../src/conteudo/trilha.js';
 import { corrigir } from '../src/corrigir.js';
 import { iniciarPython } from './python-node.js';
+import { PoolPython } from '../src/python/pool.js';
+import { workerNode } from './pool-node.js';
 
 let executar;
-beforeAll(async () => { const { sessao } = await iniciarPython(); executar = (a, o) => sessao.executar(a, o); });
+// O pool de verdade: os exercícios de processos conferem quantos workers trabalharam.
+const pool = new PoolPython({ criarWorker: workerNode, maximo: 4 });
+afterAll(() => pool.fechar());
+beforeAll(async () => { const { sessao } = await iniciarPython({ pool }); executar = (a, o) => sessao.executar(a, o); }, 120_000);
 
 describe('estrutura', () => {
   it.each([['basico', 40, 10], ['dados', 40, 10]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {

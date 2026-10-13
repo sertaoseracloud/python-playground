@@ -55,6 +55,19 @@ describe('verificarRegra', () => {
     expect(categoriaDe({ arquivo: 'x', igual: '' })).toBe('Arquivo');
   });
 
+  it('paralelo: confere workers e tarefas, e não cobra paralelismo onde ele não existe', () => {
+    const regra = { paralelo: { workers: 2 } };
+    const p = (x) => ({ paralelismo: { disponivel: true, maximo: 4, tarefas: 4, workers: 1, ...x } });
+    expect(verificarRegra(regra, p({ workers: 3 })).ok).toBe(true);
+    expect(verificarRegra(regra, p({})).ok).toBe(false);
+    expect(verificarRegra(regra, p({ maximo: 1 })).ok).toBe(true); // computador com 1 worker
+    expect(verificarRegra(regra, p({ disponivel: false })).ok).toBe(true); // navegador sem JSPI
+    expect(verificarRegra(regra, p({ tarefas: 0, workers: 0 }))).toMatchObject({ ok: false, detalhe: 'o código não mandou nenhuma tarefa para outro processo' });
+    expect(verificarRegra({ paralelo: { tarefas: 10 } }, p({ tarefas: 10 })).ok).toBe(true);
+    expect(verificarRegra({ paralelo: { tarefas: 10 } }, p({ tarefas: 8 })).ok).toBe(false);
+    expect(categoriaDe(regra)).toBe('Paralelismo');
+  });
+
   it('regra desconhecida é erro de quem escreveu o exercício', () => {
     expect(() => verificarRegra({ inventada: 1 }, ctx())).toThrow('Regra desconhecida');
   });

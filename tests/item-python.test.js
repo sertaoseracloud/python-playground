@@ -53,4 +53,11 @@ describe('tela do exercício (Python)', () => {
     expect(document.getElementById('aba-dados').hidden).toBe(false);
     expect(Object.keys(pedidos.at(-1).arquivos)).toContain('vendas.csv');
   });
+
+  it('sem paralelismo no navegador, o terminal avisa que rodou em sequência', async () => {
+    const { tela } = montar({ saida: '[1, 4]\n', erro: null, paralelismo: { disponivel: false, maximo: 1, tarefas: 2, workers: 1 } });
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('saida-terminal').textContent).toContain('rodaram uma depois da outra');
+  });
 });

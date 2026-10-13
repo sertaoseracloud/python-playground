@@ -23,7 +23,7 @@ export async function corrigir(problema, arquivos, executar, { incluirOcultos = 
     const dadosDoCaso = teste.dados ?? {};
     const r = await executar({ ...arquivos, ...(problema.dados ?? {}), ...dadosDoCaso }, { entrada: teste.entrada ?? [], chamadas });
     const resultados = teste.regras.map((regra) => detalharRegra(regra, {
-      saida: r.saida, erro: r.erro, variaveis: r.variaveis, codigo, arquivos: r.arquivos_gerados ?? {},
+      saida: r.saida, erro: r.erro, variaveis: r.variaveis, codigo, arquivos: r.arquivos_gerados ?? {}, paralelismo: r.paralelismo,
       retorno: r.retornos?.[regrasDeFuncao.indexOf(regra)],
     }));
     const erroExecucao = primeiraLinhaDoErro(r.erro) || undefined;

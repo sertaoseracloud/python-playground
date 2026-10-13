@@ -260,8 +260,21 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     const dica = r.erro?.tipo === 'EOFError' ? DICA_EOF : '';
     el.terminal.textContent = `${r.saida ?? ''}${r.erro ? r.erro.traceback + dica : ''}` || '(o programa não imprimiu nada)';
     el.terminal.classList.toggle('com-erro', Boolean(r.erro));
+    const aviso = avisoSemParalelismo(r.paralelismo);
+    if (aviso) el.terminal.textContent += `\nℹ️ ${aviso}`;
     mostrarSaida('terminal');
   }
+
+  /** Onde não deu para rodar em paralelo, o resultado é o mesmo: o terminal (e a fala) explicam. */
+  function avisoSemParalelismo(p) {
+    if (!p?.tarefas || (p.disponivel && p.maximo >= 2)) return '';
+    const motivo = p.disponivel ? 'Este computador abre só 1 worker' : 'Este navegador não roda Python em paralelo (falta o recurso JSPI)';
+    return `${motivo}: as ${p.tarefas} tarefas rodaram uma depois da outra. O resultado é o mesmo, só mais devagar.`;
+  }
+
+  const textoDoParalelismo = (p) => (p?.tarefas
+    ? `${p.tarefas} ${p.tarefas === 1 ? 'tarefa' : 'tarefas'} em ${p.workers} ${p.workers === 1 ? 'worker' : 'workers'}`
+    : '');
 
   function tratarErro(erro) {
     const tempo = erro instanceof TempoEsgotado;
@@ -275,6 +288,13 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
 
   /** O resultado da execução, falado: a saída (curta) ou o erro com a linha. */
   function falaDoPython(r) {
+    const paralelo = textoDoParalelismo(r.paralelismo);
+    const extra = [paralelo && `Rodou ${paralelo}.`, avisoSemParalelismo(r.paralelismo)].filter(Boolean).join(' ');
+    const texto = falaDoResultado(r);
+    return extra ? `${texto} ${extra}` : texto;
+  }
+
+  function falaDoResultado(r) {
     if (r.erro) {
       const parou = frase(`O programa parou na linha ${r.erro.linha ?? 'desconhecida'} com ${r.erro.tipo}: ${r.erro.mensagem}`);
       return r.erro.tipo === 'EOFError' ? `${parou} Escreva as respostas do input na aba Entrada, uma por linha.` : parou;
@@ -310,7 +330,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       mostrarTerminal(r);
       const fala = falaDoPython(r);
       const comTestes = item.tipo === 'problema';
-      definirStatus(`Python 3.14 · ${r.erro ? r.erro.tipo : 'ok'} · ${r.ms} ms`, { falar: falar && !comTestes && fala });
+      const paralelo = textoDoParalelismo(r.paralelismo);
+      definirStatus(`Python 3.14 · ${r.erro ? r.erro.tipo : 'ok'} · ${r.ms} ms${paralelo ? ` · ⚡ ${paralelo}` : ''}`, { falar: falar && !comTestes && fala });
       if (item.tipo === 'licao' && !r.erro && !statusDe(item.id)) {
         marcar(item.id, 'resolvido');
         aoMudarProgresso();

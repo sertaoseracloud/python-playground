@@ -9,6 +9,7 @@
 //   { semErros: true }                     o programa roda sem exceção
 //   { codigo: 'regex' } / { semCodigo }    o código-fonte (todos os arquivos)
 //   { arquivo: 'nome', igual | json }      o arquivo que o programa gravou (texto ou JSON)
+//   { paralelo: { workers, tarefas } }    quantos workers e tarefas o código usou (nunca o tempo)
 const json = (v) => JSON.stringify(v);
 const iguais = (a, b) => json(a) === json(b);
 const chamada = (r) => `${r.funcao}(${(r.args ?? []).map(json).join(', ')})`;
@@ -34,10 +35,27 @@ function aproximado(valor, esperado, tolerancia) {
   return iguais(valor, esperado);
 }
 
-export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {} }) {
+export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {}, paralelismo = null }) {
   if ('saidaIgual' in regra) {
     const { ok, detalhe } = compararLinhas(saida, regra.saidaIgual);
     return res(regra, 'A saída é exatamente a pedida', ok, detalhe, saida.trimEnd());
+  }
+  if ('paralelo' in regra) {
+    const { workers: minimo, tarefas } = regra.paralelo;
+    const p = paralelismo ?? { disponivel: false, maximo: 1, tarefas: 0, workers: 0 };
+    const obtido = `${p.tarefas} ${p.tarefas === 1 ? 'tarefa' : 'tarefas'} em ${p.workers} ${p.workers === 1 ? 'worker' : 'workers'}`;
+    if (!p.tarefas) return res(regra, 'O trabalho roda em outros processos', false, 'o código não mandou nenhuma tarefa para outro processo', obtido);
+    if (tarefas !== undefined && p.tarefas !== tarefas) {
+      return res(regra, `O trabalho foi dividido em ${tarefas} tarefas`, false, `foram ${p.tarefas} tarefas`, obtido);
+    }
+    if (minimo !== undefined) {
+      // Sem JSPI (ou com um núcleo só) não há como usar mais workers: não é culpa do código.
+      const possivel = p.disponivel ? Math.min(minimo, p.maximo) : 1;
+      return res(regra, `As tarefas rodam em ${minimo} ou mais workers ao mesmo tempo`, p.workers >= possivel,
+        `só ${p.workers} ${p.workers === 1 ? 'worker trabalhou' : 'workers trabalharam'}`,
+        p.disponivel ? obtido : `${obtido} (neste navegador não há paralelismo)`);
+    }
+    return res(regra, `O trabalho foi dividido em ${tarefas} tarefas`, true, '', obtido);
   }
   if ('arquivo' in regra) {
     const nome = regra.arquivo;
@@ -90,7 +108,7 @@ export function verificarRegra(regra, { saida = '', erro = null, variaveis = {},
 }
 
 const CATEGORIAS = [
-  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['funcao', 'Função'], ['variavel', 'Variável'],
+  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['paralelo', 'Paralelismo'], ['funcao', 'Função'], ['variavel', 'Variável'],
   ['erro', 'Execução'], ['semErros', 'Execução'], ['codigo', 'Código'], ['semCodigo', 'Código'],
 ];
 export const categoriaDe = (regra) => CATEGORIAS.find(([chave]) => chave in regra)?.[1] ?? 'Verificação';
@@ -110,6 +128,7 @@ const DICAS = {
   Variável: 'A variável precisa existir no fim do programa, fora de funções.',
   Execução: 'Leia o traceback no 🖥️ Terminal: ele mostra a linha e o tipo do erro.',
   Código: 'O enunciado pede (ou proíbe) um recurso específico do Python.',
+  Paralelismo: 'Use Pool, Process ou ProcessPoolExecutor dentro do if __name__ == "__main__": e mande várias tarefas de uma vez (map, submit).',
   Arquivo: 'Confira o nome do arquivo, o cabeçalho e cada linha. Para ver o que foi gravado, use print(open(nome).read()).',
 };
 
