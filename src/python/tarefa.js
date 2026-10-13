@@ -1,12 +1,7 @@
-// Roda uma tarefa do pool: (funcao, item) serializados com cloudpickle → retorno serializado.
+// Roda uma tarefa do pool com diverge_runtime.tarefa.rodar: (funcao, args, kwargs)
+// serializados com cloudpickle → resposta serializada (valor ou erro, saída e filas).
 export function criarTarefa(pyodide) {
-  pyodide.runPython(`
-import cloudpickle
-def _diverge_tarefa(pacote):
-    funcao, item = cloudpickle.loads(bytes(pacote))
-    return cloudpickle.dumps(funcao(item))
-`);
-  const rodar = pyodide.globals.get('_diverge_tarefa');
+  const rodar = pyodide.pyimport('diverge_runtime.tarefa').rodar;
   return (bytes) => {
     const proxy = rodar(bytes);
     try {

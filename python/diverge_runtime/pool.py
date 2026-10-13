@@ -1,42 +1,117 @@
-"""mapear(funcao, itens): roda funcao(item) para cada item no pool de workers, de verdade em
-paralelo, quando o navegador permite que o Python espere o JavaScript (run_sync, com JSPI).
-Sem isso, roda em sequência aqui mesmo: o resultado é o mesmo e ULTIMA avisa."""
-import time
+"""Ponte com o pool de workers (src/python/pool.js).
+
+Com JSPI (run_sync), cada tarefa roda num worker, de verdade em paralelo, e o Python do aluno
+espera a resposta. Sem JSPI (ou fora do navegador), a tarefa roda aqui mesmo, em sequência:
+o resultado é o mesmo. METRICAS conta o que aconteceu na execução atual (zerar() a cada execução)."""
+import os
+import sys
 
 import cloudpickle
 
-ULTIMA = {'paralelo': False, 'workers': 1, 'tarefas': []}
+from . import tarefa
+
+METRICAS = {'disponivel': False, 'maximo': 1, 'tarefas': 0, 'workers': set()}
+AO_RECEBER_FILAS = None  # diverge_paralelo entrega aqui os itens que as tarefas puseram em filas
+_PASTA = None
 
 
-def _pool_js():
+def _modulo_js():
     try:
         import diverge_pool_js
-        from pyodide.ffi import can_run_sync
     except ImportError:
         return None
-    return diverge_pool_js if can_run_sync() else None
+    return diverge_pool_js
+
+
+def _js():
+    js = _modulo_js()
+    if js is None:
+        return None
+    from pyodide.ffi import can_run_sync
+    return js if can_run_sync() else None
+
+
+def maximo():
+    js = _js()
+    return int(js.maximo()) if js else 1
+
+
+def nucleos():
+    js = _modulo_js()
+    return int(js.nucleos()) if js else (os.cpu_count() or 1)
+
+
+def zerar(pasta=None):
+    global _PASTA
+    _PASTA = pasta
+    METRICAS.update(disponivel=_js() is not None, maximo=maximo(), tarefas=0, workers=set())
+
+
+def resumo():
+    return {**METRICAS, 'workers': len(METRICAS['workers'])}
+
+
+class _Pronta:
+    """Tarefa que já rodou aqui mesmo (sem pool)."""
+
+    def __init__(self, resposta):
+        self.resposta = resposta
+
+
+def _registrar_modulos_do_aluno():
+    """O worker não tem os arquivos do aluno: os módulos dele vão por valor."""
+    if not _PASTA:
+        return
+    for nome, modulo in list(sys.modules.items()):
+        arquivo = getattr(modulo, '__file__', '') or ''
+        if nome != '__main__' and arquivo.startswith(_PASTA):
+            cloudpickle.register_pickle_by_value(modulo)
+
+
+def submeter(funcao, args=(), kwargs=None):
+    _registrar_modulos_do_aluno()
+    pacote = cloudpickle.dumps((funcao, tuple(args), kwargs or {}))
+    METRICAS['tarefas'] += 1
+    js = _js()
+    if js is None:
+        return _Pronta(tarefa.rodar(pacote))
+    from pyodide.ffi import to_js
+    return js.submeter(to_js(pacote))
+
+
+def esperar(promessa):
+    """Espera a tarefa: imprime o que ela imprimiu, entrega as filas e devolve (situacao, valor)."""
+    if isinstance(promessa, _Pronta):
+        resposta, worker = promessa.resposta, 0
+    else:
+        from pyodide.ffi import run_sync
+        r = run_sync(promessa)
+        resposta, worker = bytes(r.resultado.to_py()), int(r.worker)
+    METRICAS['workers'].add(worker)
+    situacao, valor, saida, filas = cloudpickle.loads(resposta)
+    if saida:
+        sys.stdout.write(saida)
+    if filas and AO_RECEBER_FILAS:
+        AO_RECEBER_FILAS(filas)
+    return situacao, valor
+
+
+def primeiro(promessas):
+    """Índice da primeira tarefa a terminar (as que já rodaram aqui contam como prontas)."""
+    for i, p in enumerate(promessas):
+        if isinstance(p, _Pronta):
+            return i
+    from pyodide.ffi import run_sync, to_js
+    return int(run_sync(_js().primeiro(to_js(list(promessas)))))
 
 
 def mapear(funcao, itens):
-    itens = list(itens)
-    js = _pool_js()
-    if js is None:
-        return _em_sequencia(funcao, itens)
-    from pyodide.ffi import run_sync, to_js
-    pacotes = [cloudpickle.dumps((funcao, item)) for item in itens]
-    resposta = run_sync(js.mapear(to_js(pacotes))).to_py()
-    resultados = [cloudpickle.loads(bytes(r)) for r in resposta['resultados']]
-    tarefas = resposta['tarefas']
-    ULTIMA.update(paralelo=True, workers=len({t['worker'] for t in tarefas}), tarefas=tarefas)
-    return resultados
-
-
-def _em_sequencia(funcao, itens):
-    inicio = time.perf_counter()
-    resultados, tarefas = [], []
-    for item in itens:
-        comeco = (time.perf_counter() - inicio) * 1000
-        resultados.append(funcao(item))
-        tarefas.append({'worker': 0, 'inicio': comeco, 'fim': (time.perf_counter() - inicio) * 1000})
-    ULTIMA.update(paralelo=False, workers=1, tarefas=tarefas)
+    """funcao(item) para cada item, em paralelo; o primeiro erro sobe aqui."""
+    promessas = [submeter(funcao, (item,)) for item in itens]
+    resultados = []
+    for p in promessas:
+        situacao, valor = esperar(p)
+        if situacao == 'erro':
+            raise valor
+        resultados.append(valor)
     return resultados

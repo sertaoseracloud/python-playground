@@ -8,11 +8,9 @@ import { PoolPython } from './pool.js';
 // No dev o Vite serve o Pyodide em /pyodide/; no build ele fica em dist/pyodide/ (copiado pelo
 // plugin do vite.config.js, por isso o Vite não acha a pasta: @vite-ignore).
 const indexURL = import.meta.env.DEV ? '/pyodide/' : new URL(/* @vite-ignore */ '../pyodide/', import.meta.url).href;
-let pool;
-// Enquanto os workers do pool carregam, o motor para o relógio (veja motor.js).
-const aoAbrir = (abrindo) => postMessage({ tipo: abrindo ? 'pool-abrindo' : 'pool-pronto' });
-const mapear = (tarefas) => (pool ??= new PoolPython()).mapear(tarefas, { aoAbrir });
-const sessao = carregarPython({ indexURL }).then((pyodide) => criarSessao(pyodide, { mapear }));
+// O pool só abre workers quando recebe tarefa. Enquanto eles carregam, o motor para o relógio (veja motor.js).
+const pool = new PoolPython({ aoAbrir: (abrindo) => postMessage({ tipo: abrindo ? 'pool-abrindo' : 'pool-pronto' }) });
+const sessao = carregarPython({ indexURL }).then((pyodide) => criarSessao(pyodide, { pool }));
 
 sessao.then(
   () => postMessage({ tipo: 'pronto' }),

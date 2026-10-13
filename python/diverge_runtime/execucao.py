@@ -8,6 +8,7 @@ import shutil
 import sys
 import traceback
 
+from . import pool
 from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
@@ -113,6 +114,7 @@ def _chamar(escopo, chamada):
 def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
     _gravar(arquivos)
     _esquecer_modulos_do_aluno(arquivos)
+    pool.zerar(PASTA)
     saida = _Saida()
     antigo_stdout, antigo_stderr, antigo_input = sys.stdout, sys.stderr, builtins.input
     antigo_path, antigo_cwd = list(sys.path), os.getcwd()
@@ -145,6 +147,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
     return {
         'saida': saida.getvalue(), 'erro': erro, 'variaveis': variaveis, 'retornos': retornos,
         'arquivos_gerados': _gerados(arquivos),
+        'paralelismo': pool.resumo(),
     }
 
 

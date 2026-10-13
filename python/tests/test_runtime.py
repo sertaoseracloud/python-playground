@@ -62,3 +62,23 @@ def test_gerador_infinito_vira_lista_limitada():
 def test_map_e_filter_viram_lista():
     assert descrever(map(str, [1, 2]))['valor'] == ['1', '2']
     assert descrever(filter(None, [0, 3]))['valor'] == [3]
+
+
+def test_tarefa_devolve_saida_erro_e_filas():
+    import cloudpickle
+    from diverge_runtime import tarefa
+
+    def f(x):
+        print('oi', x)
+        tarefa.FILAS_DA_TAREFA.setdefault(5, []).append(x * 2)
+        return x + 1
+
+    assert cloudpickle.loads(tarefa.rodar(cloudpickle.dumps((f, (1,), {})))) == ('ok', 2, 'oi 1\n', {5: [2]})
+    situacao, erro, saida, filas = cloudpickle.loads(tarefa.rodar(cloudpickle.dumps((int, ('x',), {}))))
+    assert situacao == 'erro' and isinstance(erro, ValueError) and saida == '' and filas == {}
+
+
+def test_paralelismo_sem_pool_roda_em_sequencia():
+    r = execucao.executar({'main.py': 'from diverge_runtime import pool\nprint(pool.mapear(abs, [-1, -2]))\n'})
+    assert r['saida'] == '[1, 2]\n'
+    assert r['paralelismo'] == {'disponivel': False, 'maximo': 1, 'tarefas': 2, 'workers': 1}

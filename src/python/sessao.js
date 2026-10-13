@@ -2,19 +2,27 @@
 // do Pyodide e roda o código do aluno. A mesma sessão é usada no worker do site e nos
 // testes no Node (tests/python-node.js).
 import { montarPacotes } from './pacotes.js';
+import { nucleosDoComputador } from './pool.js';
 
 export const FONTES = import.meta.glob(['../../python/**/*.py', '!../../python/tests/**'], {
   query: '?raw', import: 'default', eager: true,
 });
 
 /**
- * `mapear(tarefas: Uint8Array[]) -> Promise<{ resultados: Uint8Array[], tarefas: object[] }>`
- * é o pool de workers; sem ele, o paralelismo roda em sequência.
+ * `pool` é o pool de workers (PoolPython); o Python do aluno fala com ele pelo módulo
+ * diverge_pool_js (veja python/diverge_runtime/pool.py). Sem pool, as tarefas rodam em sequência.
  */
-export async function criarSessao(pyodide, { mapear, fontes = FONTES } = {}) {
+export async function criarSessao(pyodide, { pool, fontes = FONTES } = {}) {
   montarPacotes(pyodide, fontes);
   pyodide.runPython('import diverge_runtime.execucao');
-  if (mapear) pyodide.registerJsModule('diverge_pool_js', { mapear });
+  if (pool) {
+    pyodide.registerJsModule('diverge_pool_js', {
+      submeter: (bytes) => pool.submeter(bytes),
+      primeiro: (promessas) => Promise.race(Array.from(promessas, (p, i) => p.then(() => i, () => i))),
+      maximo: () => pool.maximo,
+      nucleos: () => nucleosDoComputador(),
+    });
+  }
 
   return {
     async executar(arquivos, { principal = 'main.py', entrada = [], chamadas = [] } = {}) {
