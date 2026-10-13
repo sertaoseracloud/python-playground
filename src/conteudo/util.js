@@ -5,3 +5,6 @@ export function py(partes, ...valores) {
   return texto.split('\n').map((l) => l.slice(margem)).join('\n').replace(/\s*$/, '\n');
 }
 export const main = (codigo) => ({ 'main.py': codigo });
+
+/** Código inicial dos exercícios de função: só a assinatura, que devolve None. */
+export const assinatura = (def, comentario) => main(`${comentario ? `# ${comentario}\n` : ''}def ${def}:\n    pass\n`);

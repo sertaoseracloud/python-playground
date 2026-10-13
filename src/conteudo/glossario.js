@@ -105,6 +105,36 @@ export const GLOSSARIO = [
     analogia: 'O alarme de incêndio: raise aperta o botão; except é a brigada que sabe o que fazer.',
     exemplo: 'try:\n    n = int("abc")\nexcept ValueError:\n    print("não é número")',
   },
+  {
+    id: 'none', termo: 'None', padroes: ['None'],
+    definicao: 'O valor que significa "nada". Uma função sem return devolve None.',
+    analogia: 'Uma caixa vazia de propósito: existe, mas não tem nada dentro.',
+    exemplo: 'def achar(lista):\n    return lista[0] if lista else None\nprint(achar([]))',
+  },
+  {
+    id: 'conjunto', termo: 'Conjunto (set)', padroes: ['conjuntos?', 'set'],
+    definicao: 'Uma coleção sem repetição e sem ordem garantida. Bom para saber rápido se um valor já apareceu.',
+    analogia: 'A lista de convidados na portaria: cada nome entra uma vez só.',
+    exemplo: 'vistos = set()\nvistos.add("umbu")\nprint("umbu" in vistos)',
+  },
+  {
+    id: 'ordenar', termo: 'Ordenar (sorted)', padroes: ['orde(m|nar|nada|nado|nados|nadas)', 'sorted', 'alfabétic(a|o)'],
+    definicao: 'sorted(colecao) devolve uma lista nova em ordem. key= diz por qual valor comparar.',
+    analogia: 'Arrumar as cartas na mão: do menor para o maior, ou pelo critério que você escolher.',
+    exemplo: 'print(sorted([3, 1, 2]))\nprint(sorted(["bia", "Al"], key=str.lower))',
+  },
+  {
+    id: 'argumento-padrao', termo: 'Argumento padrão', padroes: ['argumentos? padrão', 'valor padrão'],
+    definicao: 'Um parâmetro com valor já definido, usado quando quem chama a função não passa esse argumento.',
+    analogia: 'O "sem açúcar" que vem marcado no pedido do café: só muda se você pedir.',
+    exemplo: 'def ola(nome, cumprimento="Olá"):\n    return f"{cumprimento}, {nome}!"\nprint(ola("Ana"))',
+  },
+  {
+    id: 'busca-binaria', termo: 'Busca binária', padroes: ['busca binária'],
+    definicao: 'Procura numa lista ordenada olhando o meio e descartando metade a cada passo.',
+    analogia: 'Achar uma palavra no dicionário de papel: abre no meio e decide se vai para a frente ou para trás.',
+    exemplo: 'inicio, fim = 0, len(lista) - 1\nmeio = (inicio + fim) // 2',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.

@@ -1,16 +1,14 @@
 // 🐍 Python básico: variáveis, tipos, strings, condições, laços, funções, listas,
 // dicionários e exceções. Lições (tipo 'licao') e problemas (tipo 'problema').
 // O código fica no template `py`, que tira a indentação comum (veja util.js).
-import { py, main } from './util.js';
+import { py, main, assinatura } from './util.js';
+import { exerciciosListas, exerciciosDicionarios, exerciciosExcecoes } from './basico-colecoes.js';
 
 const tabuada = (n) => Array.from({ length: 10 }, (_, i) => `${n} x ${i + 1} = ${n * (i + 1)}`).join('\n');
 const fizzbuzz = (n) => Array.from({ length: n }, (_, i) => {
   const v = i + 1;
   return v % 15 === 0 ? 'FizzBuzz' : v % 3 === 0 ? 'Fizz' : v % 5 === 0 ? 'Buzz' : String(v);
 });
-
-/** Código inicial dos exercícios de função: só a assinatura, que devolve None. */
-const assinatura = (def, comentario) => main(`${comentario ? `# ${comentario}\n` : ''}def ${def}:\n    pass\n`);
 
 export const moduloBasico = {
   id: 'basico',
@@ -668,6 +666,7 @@ export const moduloBasico = {
         { descricao: 'até 15 e até 1', oculto: true, regras: [{ funcao: 'fizzbuzz', args: [15], igual: fizzbuzz(15) }, { funcao: 'fizzbuzz', args: [1], igual: ['1'] }] },
       ],
     },
+    ...exerciciosListas,
     {
       id: 'licao-dicionarios',
       tipo: 'licao',
@@ -690,6 +689,7 @@ export const moduloBasico = {
         print(votos)
       `),
     },
+    ...exerciciosDicionarios,
     {
       id: 'licao-excecoes',
       tipo: 'licao',
@@ -720,5 +720,6 @@ export const moduloBasico = {
             print("Não deu:", erro)
       `),
     },
+    ...exerciciosExcecoes,
   ],
 };
