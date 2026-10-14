@@ -3,12 +3,12 @@
 import { moduloBasico } from './basico.js';
 import { moduloDados } from './dados.js';
 import { moduloParalelismo } from './paralelismo.js';
+import { moduloPyspark } from './pyspark.js';
 
-export const modulos = [moduloBasico, moduloDados, moduloParalelismo];
+export const modulos = [moduloBasico, moduloDados, moduloParalelismo, moduloPyspark];
 
 /** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
 export const PROXIMOS_MODULOS = [
-  { id: 'pyspark', icone: '✨', titulo: 'PySpark' },
   { id: 'alem', icone: '🌊', titulo: 'Spark além do batch' },
   { id: 'projetos', icone: '🏗️', titulo: 'Projetos' },
 ];
@@ -23,7 +23,8 @@ export const LIVRE = {
   resumo: `
     <p>Escreva o Python que quiser. Use o <b>+</b> para criar arquivos e importá-los com <code>import</code>.</p>
     <p>Se o código usar <code>input()</code>, digite a resposta no próprio terminal e aperte Enter. No terminal também dá para rodar <code>python main.py</code>, abrir o modo interativo com <code>python</code> e ver os comandos com <code>help</code>.</p>
-    <p>Na aba <b>📦 Dados</b> há um <code>vendas.csv</code> de exemplo: abra com <code>open("vendas.csv")</code>.</p>`,
+    <p>Na aba <b>📦 Dados</b> há um <code>vendas.csv</code> de exemplo: abra com <code>open("vendas.csv")</code>.</p>
+    <p>O PySpark também funciona aqui: <code>from pyspark.sql import SparkSession</code>. Depois de uma ação (<code>show</code>, <code>count</code>), veja a aba <b>⚡ Execução</b>.</p>`,
   arquivos: { 'main.py': 'nome = input("Qual é o seu nome? ")\nprint(f"Olá, {nome}!")\n' },
   dados: {
     'vendas.csv': 'produto,regiao,quantidade,preco\nArroz 5kg,Nordeste,2,24.90\nFeijão 1kg,Sudeste,3,8.50\nCafé 500g,Nordeste,1,19.90\nRapadura,Norte,10,2.50\n',

@@ -54,6 +54,13 @@ export const CERTIFICADOS = {
     hashtags: ['Python', 'Paralelismo'],
     conteudos: ['Dividir o trabalho, partições e map-reduce', 'Processos com Pool e ProcessPoolExecutor', 'asyncio, condições de corrida e Lock', 'Speedup, Lei de Amdahl e custo de serializar'],
   },
+  pyspark: {
+    titulo: 'PySpark para Dados',
+    cargaHoraria: 24,
+    resumo: 'concluiu o módulo PySpark, resolvendo os 45 problemas práticos',
+    hashtags: ['PySpark', 'Spark', 'Dados'],
+    conteudos: ['RDD, partições e shuffle', 'DataFrame, funções, nulos e agregações', 'Joins, broadcast e funções de janela', 'Spark SQL, leitura e escrita, cache e explain'],
+  },
 };
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;

@@ -100,6 +100,12 @@ describe('verificarRegra', () => {
     expect(categoriaDe({ plano: 'df' })).toBe('Plano');
   });
 
+  it('dicionários são iguais em qualquer ordem de chaves (como no Python)', () => {
+    expect(verificarRegra({ variavel: 'd', igual: { Crato: 31.5, Sobral: 35 } }, ctx({ variaveis: { d: { Sobral: 35, Crato: 31.5 } } })).ok).toBe(true);
+    expect(verificarRegra({ variavel: 'd', igual: { a: { x: 1, y: 2 } } }, ctx({ variaveis: { d: { a: { y: 2, x: 1 } } } })).ok).toBe(true);
+    expect(verificarRegra({ variavel: 'l', igual: [1, 2] }, ctx({ variaveis: { l: [2, 1] } })).ok).toBe(false);
+  });
+
   it('regra desconhecida é erro de quem escreveu o exercício', () => {
     expect(() => verificarRegra({ inventada: 1 }, ctx())).toThrow('Regra desconhecida');
   });

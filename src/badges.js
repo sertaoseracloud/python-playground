@@ -7,6 +7,8 @@ export const BADGES = {
   basico: { cor: '#f1fa8c', simbolo: 'py', faixa: 'PYTHON' },
   dados: { cor: '#8be9fd', simbolo: '{ }', faixa: 'DADOS' },
   paralelismo: { cor: '#ffb86c', simbolo: '|||', faixa: 'PARALELISMO' },
+  // A estrela do logo do Spark: um asterisco simples, porque o gerador só tem a fonte do site.
+  pyspark: { cor: '#ff79c6', simbolo: '*', faixa: 'PYSPARK' },
   final: { cor: '#f1c40f', simbolo: '★', faixa: 'TRILHA COMPLETA' },
 };
 
@@ -138,8 +140,9 @@ export function svgCapa({ exercicios, projetos }) {
   <text x="70" y="468" font-family="${SANS}" font-size="26" fill="#9e9bb8">Leitor de tela, Libras, teclado e perfis para TDAH.</text>
   <rect x="70" y="510" width="330" height="62" rx="12" fill="#50fa7b"/>
   <text x="235" y="551" text-anchor="middle" font-family="${SANS}" font-size="28" font-weight="800" fill="#21222c">Começar a trilha</text>
-${badge('basico', 740, 40, 220)}
-${badge('dados', 870, 205, 220)}
-${badge('paralelismo', 740, 370, 220)}
+${badge('basico', 805, 40, 195)}
+${badge('dados', 985, 190, 195)}
+${badge('paralelismo', 805, 340, 195)}
+${badge('pyspark', 675, 190, 195)}
 </svg>`;
 }

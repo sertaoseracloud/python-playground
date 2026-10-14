@@ -17,7 +17,10 @@
 //                                          o plano físico de df (o que o df.explain() mostra)
 const json = (v) => JSON.stringify(v);
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
-const iguais = (a, b) => json(a) === json(b);
+/** JSON com as chaves dos objetos em ordem: dois dicionários iguais em ordens diferentes são iguais (como no Python). */
+const canonico = (v) => (Array.isArray(v) ? v.map(canonico)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonico(v[k])])) : v);
+const iguais = (a, b) => json(canonico(a)) === json(canonico(b));
 const chamada = (r) => `${r.funcao}(${(r.args ?? []).map(json).join(', ')})`;
 const linhas = (t) => String(t).replace(/\n$/, '').split('\n').map((l) => l.replace(/\s+$/, ''));
 
