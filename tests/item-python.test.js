@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { criarTelaItem } from '../src/ui/item.js';
+import { marcar, somarTentativa } from '../src/progresso.js';
 
 const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
 const corpo = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>'));
@@ -59,5 +60,46 @@ describe('tela do exercício (Python)', () => {
     tela.abrir('livre');
     await new Promise((r) => setTimeout(r, 20));
     expect(document.getElementById('saida-terminal').textContent).toContain('rodaram uma depois da outra');
+  });
+});
+
+describe('aba Solução (só depois do tempo estimado e se não resolvido)', () => {
+  beforeEach(() => localStorage.clear());
+  const ID = 'py-ola'; // exercício fácil (~15 min)
+
+  it('antes do tempo, a aba fica escondida e a descrição diz quanto falta', async () => {
+    const { tela } = montar({ saida: '', erro: null });
+    tela.abrir(ID);
+    expect(document.getElementById('aba-solucao').hidden).toBe(true);
+    expect(document.getElementById('desc-enunciado').textContent).toContain('A solução aparece depois de ~15 min tentando (faltam 15 min)');
+  });
+
+  it('depois do tempo, a aba aparece', async () => {
+    somarTentativa(ID, 15 * 60);
+    const { tela } = montar({ saida: '', erro: null });
+    tela.abrir(ID);
+    expect(document.getElementById('aba-solucao').hidden).toBe(false);
+    expect(document.getElementById('desc-enunciado').textContent).not.toContain('A solução aparece depois');
+  });
+
+  it('com o exercício resolvido, a aba não aparece', async () => {
+    somarTentativa(ID, 60 * 60);
+    marcar(ID, 'resolvido');
+    const { tela } = montar({ saida: '', erro: null });
+    tela.abrir(ID);
+    expect(document.getElementById('aba-solucao').hidden).toBe(true);
+  });
+
+  it('no perfil sem pressão, sem contagem de minutos', async () => {
+    document.documentElement.classList.add('a11y-sem-pressao');
+    try {
+      const { tela } = montar({ saida: '', erro: null });
+      tela.abrir(ID);
+      const texto = document.getElementById('desc-enunciado').textContent;
+      expect(texto).toContain('A solução aparece depois de um tempo tentando');
+      expect(texto).not.toContain('faltam');
+    } finally {
+      document.documentElement.classList.remove('a11y-sem-pressao');
+    }
   });
 });

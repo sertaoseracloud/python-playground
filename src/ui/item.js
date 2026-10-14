@@ -18,6 +18,7 @@ import { CERTIFICADOS } from '../certificados.js';
 import { LIMITE_DESBLOQUEIO } from '../gamificacao.js';
 import { $, esc } from './util.js';
 import { anunciar, falaDosTestes, leitorDeTela, frase } from './anuncios.js';
+import { solucaoLiberada, minutosQueFaltam, criarCronometro } from './solucao.js';
 
 const semPressao = () => document.documentElement.classList.contains('a11y-sem-pressao');
 
@@ -77,6 +78,33 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   }
   document.querySelectorAll('[data-desc]').forEach((b) => { b.onclick = () => mostrarDesc(b.dataset.desc); });
 
+  // ---------- aba Solução: só depois do tempo estimado e se não resolvido (veja solucao.js) ----------
+  function avisoDaSolucao(item) {
+    if (item?.tipo !== 'problema' || solucaoLiberada(item) || statusDe(item.id) === 'resolvido') return '';
+    const quando = semPressao()
+      ? 'depois de um tempo tentando'
+      : `depois de ~${minutosDoItem(item)} min tentando (faltam ${minutosQueFaltam(item)} min)`;
+    return `<p class="licao-chip aviso-solucao" id="aviso-solucao">🔒 A solução aparece ${quando}. Tentar antes é o que faz aprender.</p>`;
+  }
+
+  function atualizarSolucao({ avisar = false } = {}) {
+    const item = estado.item;
+    if (!item) return;
+    const liberada = solucaoLiberada(item);
+    const estava = !el.abaSolucao.hidden;
+    el.abaSolucao.hidden = !liberada;
+    if (!liberada && !paineisDesc.solucao.hidden) mostrarDesc('enunciado');
+    const aviso = document.getElementById('aviso-solucao');
+    if (aviso) aviso.outerHTML = avisoDaSolucao(item);
+    if (liberada && !estava && avisar) anunciar('A solução deste exercício está disponível na aba Solução.');
+  }
+
+  // Conta o tempo de tentativa só com a tela do exercício na frente.
+  const cronometro = criarCronometro({
+    ativo: () => Boolean(estado.item) && !el.titulo.closest('[hidden]'),
+    aoMudar: () => atualizarSolucao({ avisar: true }),
+  });
+
   function mostrarSaida(nome) {
     document.querySelectorAll('[data-saida-painel]').forEach((p) => { p.hidden = p.dataset.saidaPainel !== nome; });
     document.querySelectorAll('[data-saida]').forEach((b) => {
@@ -117,6 +145,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       ${glossario(item, item.titulo, item.enunciado, item.dica)}
       ${comoConferir(item.testes)}
       ${ocultos ? `<p class="licao-chip">+ ${ocultos} caso(s) oculto(s) rodam quando você clica em ⬆ Enviar. Eles usam outros dados, para conferir que o seu código não está "decorado".</p>` : ''}
+      ${avisoDaSolucao(item)}
       <details><summary>💡 Dica</summary><p><code>${esc(item.dica)}</code></p></details>`;
     aplicarChecklist(el.enunciado, item.id);
     $('btn-referencia')?.addEventListener('click', () => {
@@ -228,7 +257,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     renderCabecalho();
     renderDescricao();
     el.enviar.hidden = !ehProblema();
-    el.abaSolucao.hidden = !ehProblema();
+    el.abaSolucao.hidden = !solucaoLiberada(item);
+    cronometro.iniciar(item);
     el.abaTestes.hidden = !ehProblema();
     $('aba-dados').hidden = !item.dados;
     paineisDesc.dados.innerHTML = item.dados ? htmlDosDados(item.dados) : '';
@@ -507,6 +537,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       let conquista = '';
       marcar(estado.item.id, aprovado ? 'resolvido' : 'tentado');
       renderCabecalho();
+      atualizarSolucao();
       aoMudarProgresso();
       const jornada = jornadaAtual();
       const modulo = jornada.modulos.find((m) => m.id === estado.item.modulo);
