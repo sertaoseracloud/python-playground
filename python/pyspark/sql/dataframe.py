@@ -178,6 +178,27 @@ class DataFrame:
         from .plano_largo import Coalesce
         return self._novo(Coalesce(self._plano, int(numPartitions)))
 
+    # ---------- views e escrita ----------
+    def createOrReplaceTempView(self, name):
+        from .catalog import registrar_view
+        registrar_view(self.sparkSession, name, self)
+
+    def createTempView(self, name):
+        from .catalog import registrar_view
+        registrar_view(self.sparkSession, name, self, substituir=False)
+
+    createOrReplaceGlobalTempView = createOrReplaceTempView
+    registerTempTable = createOrReplaceTempView
+
+    @property
+    def write(self):
+        from .readwriter import DataFrameWriter
+        return DataFrameWriter(self)
+
+    @property
+    def writeStream(self):
+        raise NotImplementedError('O Structured Streaming chega no módulo 🌊 Spark além do batch.')
+
     # ---------- cache ----------
     def cache(self):
         return self.persist()

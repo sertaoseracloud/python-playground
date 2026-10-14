@@ -85,6 +85,8 @@ class SparkSession:
     def __init__(self, sparkContext):
         self._sc = sparkContext
         self.conf = RuntimeConfig(sparkContext._conf)
+        self._views = {}
+        self._udfs = {}
         SparkSession._ativa = self
 
     @_PropriedadeDeClasse
@@ -138,6 +140,39 @@ class SparkSession:
             rdd = self._sc.parallelize(linhas)
         atributos = [Atributo(f.name, f.dataType, anulavel=f.nullable) for f in schema.fields]
         return DataFrame(P.ScanRDD(self, rdd, atributos), self)
+
+    @property
+    def read(self):
+        from .readwriter import DataFrameReader
+        return DataFrameReader(self)
+
+    @property
+    def readStream(self):
+        raise NotImplementedError('O Structured Streaming chega no módulo 🌊 Spark além do batch.')
+
+    def sql(self, sqlQuery, args=None, **kwargs):
+        from .sql import executar
+        return executar(self, sqlQuery)
+
+    def table(self, tableName):
+        from .sql import tabela_nao_existe
+        achado = self._views.get(tableName.lower())
+        if achado is None:
+            raise tabela_nao_existe(tableName)
+        return achado[1]
+
+    @property
+    def catalog(self):
+        from .catalog import Catalog
+        return Catalog(self)
+
+    @property
+    def udf(self):
+        from .udf import UDFRegistration
+        return UDFRegistration(self)
+
+    def newSession(self):
+        return self
 
     def range(self, start, end=None, step=1, numPartitions=None):
         from .dataframe import DataFrame

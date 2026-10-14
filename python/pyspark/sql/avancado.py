@@ -30,6 +30,10 @@ def projetar(plano, exprs, operacao='select'):
         return agregar(plano, [], exprs, operacao)
     if tem_janela:
         return janelas(plano, exprs, operacao)
+    udfs = [n for x in exprs for n in x.percorrer() if n.eh_udf]
+    if udfs:
+        from .udf import BatchEvalPython
+        return P.Project(BatchEvalPython(plano, udfs), exprs, operacao)
     return P.Project(plano, exprs, operacao)
 
 

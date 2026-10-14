@@ -708,6 +708,31 @@ def broadcast(df):
     return df._novo(ComDica(df._plano))
 
 
+def explode(c):
+    from .gerador import Explode
+    return Column(Explode(para_expr(c)))
+
+
+def explode_outer(c):
+    from .gerador import Explode
+    return Column(Explode(para_expr(c), externo=True))
+
+
+def posexplode(c):
+    from .gerador import Explode
+    return Column(Explode(para_expr(c), posicao=True))
+
+
+def posexplode_outer(c):
+    from .gerador import Explode
+    return Column(Explode(para_expr(c), externo=True, posicao=True))
+
+
+def udf(f=None, returnType=None, *, useArrow=None):
+    from .udf import udf as criar
+    return criar(f, returnType)
+
+
 def hash(*cols):  # noqa: A001
     from .._motor import hash_estavel
     return _f('hash', [_c(c) for c in cols], lambda *v: (hash_estavel(list(v)) & 0x7FFFFFFF), _fixo(T.IntegerType()), propaga_nulo=False, anulavel=False)
