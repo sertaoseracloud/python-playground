@@ -30,8 +30,8 @@ Só na validação por **link ou código**: no resultado inicial de `#/validar/<
 "Link ou código". Fica abaixo da caixa de resultado e só existe quando o selo é `confere`.
 
 - O impresso fica fora porque não carrega as datas dos certificados anteriores.
-- O XML também fica fora, para manter um caminho só. Ele já contém o código do link, e a
-  página dele aponta para a aba "Link ou código".
+- O XML também fica fora, para manter um caminho só. Quem tem o XML tem também o link do
+  certificado (ele está dentro do arquivo), e é esse link que restaura.
 
 ## Os três casos do nome
 
@@ -48,7 +48,7 @@ Seja `salvo = lerNome().trim()` e `doCertificado = cert.nome.trim()`.
    - Não há botão.
 3. **Nome igual**:
    - O bloco lista o que volta, uma linha por módulo: "Fundamentos de Python · 40 exercícios e
-     8 lições · concluído em 13/10/2026".
+     N lições · concluído em 13/10/2026", com os números tirados do conteúdo.
    - Abaixo da lista fica o botão **"↩️ Restaurar o meu progresso neste navegador"**.
    - Depois do clique, o bloco vira uma confirmação com um link "Ir para a trilha".
    - A confirmação também é anunciada para leitores de tela pelo `anunciar()` de
@@ -124,9 +124,9 @@ export function restaurarItens(itens)
   - O teste de ida e volta: emitir um certificado com datas conhecidas, decodificá-lo, restaurar
     num `localStorage` vazio e recalcular `certificadosDaJornada`. O certificado gerado de novo
     tem o mesmo código.
-- `tests/progresso.test.js`:
+- Ainda em `tests/restaurar.test.js` (não existe `tests/progresso.test.js`):
   - `restaurarItens` não rebaixa nada, sobrescreve a data e não registra atividade.
-- `tests/validador.test.js` (happy-dom):
+- `tests/validador.test.js` (já existe, happy-dom):
   - Selo `nao-confere` não mostra o bloco.
   - Nome igual mostra o botão.
   - O clique restaura e anuncia.
