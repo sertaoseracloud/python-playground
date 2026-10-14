@@ -349,12 +349,23 @@ class _Largo(RDD):
         return self.n
 
     def _baldes(self, job):
-        """Para cada pai, as n partições novas (junta o balde j de cada tarefa, na ordem)."""
+        """Para cada pai, as n partições novas (junta o balde j de cada tarefa, na ordem).
+
+        Como no Spark, a saída do shuffle fica guardada: um job seguinte que precisa dela
+        (o job do resultado, depois do job de amostra de um orderBy) não roda o shuffle de
+        novo, e o estágio aparece como pulado."""
+        guardado = getattr(self, '_saida_shuffle', None)
+        if guardado is not None:
+            m.estagio_pulado(job, guardado[1])
+            return guardado[0]
         por_pai = []
+        nomes = ()
         for pai, particionar in zip(self.pais_, self.particionadores):
             tarefas = [(d, fs, ns + (self._nome,)) for d, fs, ns in pai._tarefas(job)]
+            nomes = tarefas[0][2] if tarefas else nomes
             baldes = m.rodar_estagio(job, tarefas, 'shuffle', particionar)
             por_pai.append([[x for b in baldes for x in b[j]] for j in range(self.n)])
+        self._saida_shuffle = (por_pai, nomes)
         return por_pai
 
     def _tarefas_sem_cache(self, job):

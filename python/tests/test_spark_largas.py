@@ -195,3 +195,14 @@ def test_ordenar_e_filtrar_por_coluna_que_saiu_do_select(spark):
     assert so_produto.filter(F.col('preco') > 10).count() == 2
     with pytest.raises(AnalysisException):
         so_produto.orderBy('nao_existe')
+
+
+def test_o_shuffle_que_ja_rodou_e_reaproveitado_no_job_seguinte(spark):
+    # Como no Spark: o job de amostra do orderBy roda o shuffle do groupBy; o job do
+    # collect reaproveita a saída dele (o estágio aparece como pulado, sem tarefas).
+    r = vendas(spark).groupBy('regiao').agg(F.sum('quantidade').alias('total')).orderBy('regiao')
+    assert tuplas(r) == [('Nordeste', 3), ('Norte', 10), ('Sudeste', 3)]
+    resumo = estagios.resumo()
+    assert resumo['shuffles'] == 2
+    pulados = [e for j in resumo['jobs'] for e in j['estagios'] if e['tipo'] == 'pulado']
+    assert len(pulados) == 1 and pulados[0]['tarefas'] == []

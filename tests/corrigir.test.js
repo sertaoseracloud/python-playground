@@ -16,6 +16,12 @@ const problema = {
 const certo = { 'main.py': 'def dobro(n):\n    return n * 2\nnome = input()\nprint(f"Olá, {nome}!")' };
 
 describe('corrigir', () => {
+  it('passa as tabelas do resultado para as regras', async () => {
+    const comTabela = { testes: [{ regras: [{ dataframe: 'df', total: 1 }] }] };
+    const falso = async () => ({ saida: '', erro: null, variaveis: {}, tabelas: { df: { colunas: [], linhas: [[1]], total: 1, plano: {} } } });
+    expect((await corrigir(comTabela, { 'main.py': '' }, falso)).aprovado).toBe(true);
+  });
+
   it('aprova a solução certa, com os ocultos', async () => {
     const { aprovado, relatorio } = await corrigir(problema, certo, executar);
     expect(aprovado).toBe(true);

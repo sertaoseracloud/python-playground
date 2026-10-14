@@ -329,5 +329,11 @@ def rodar_estagio(job, tarefas, tipo, final=None):
     return resultados
 
 
+def estagio_pulado(job, nomes):
+    """Um shuffle que já rodou num job anterior: o Spark mostra o estágio como "skipped"."""
+    if not estagios.em_local():
+        estagios.novo_estagio(job, _nome_do_estagio(nomes) if nomes else '(shuffle reaproveitado)', 'pulado')
+
+
 def novo_job(acao):
     return estagios.novo_job(acao)

@@ -68,6 +68,38 @@ describe('verificarRegra', () => {
     expect(categoriaDe(regra)).toBe('Paralelismo');
   });
 
+  it('dataframe: colunas, tipos e linhas (sem ordem, a não ser que o exercício peça)', () => {
+    const tabelas = {
+      df: { colunas: [{ nome: 'regiao', tipo: 'string' }, { nome: 'total', tipo: 'bigint' }], linhas: [['Sul', 1], ['Nordeste', 3]], total: 2, ordenado: false, plano: {} },
+      ruim: { erro: { tipo: 'ZeroDivisionError', mensagem: 'integer division or modulo by zero' } },
+    };
+    const v = (regra) => verificarRegra(regra, ctx({ tabelas, variaveis: { n: 1 } }));
+    expect(v({ dataframe: 'df', colunas: ['regiao', 'total'], linhas: [['Nordeste', 3], ['Sul', 1]] }).ok).toBe(true);
+    expect(v({ dataframe: 'df', linhas: [['Nordeste', 3], ['Sul', 1]], ordem: true })).toMatchObject({ ok: false, detalhe: 'linha 1: esperado ["Nordeste",3], veio ["Sul",1]' });
+    expect(v({ dataframe: 'df', colunas: ['regiao', 'soma'] }).detalhe).toBe('colunas esperadas [regiao, soma], vieram [regiao, total]');
+    expect(v({ dataframe: 'df', tipos: ['string', 'double'] }).detalhe).toBe('tipos esperados [string, double], vieram [string, bigint]');
+    expect(v({ dataframe: 'df', linhas: [['Sul', 1], ['Norte', 2]] }).detalhe).toBe('faltou a linha ["Norte",2]');
+    expect(v({ dataframe: 'df', linhas: [['Sul', 1]] }).detalhe).toBe('esperada 1 linha, vieram 2');
+    expect(v({ dataframe: 'df', linhas: [['Sul', 1.0000000001], ['Nordeste', 3]] }).ok).toBe(true);
+    expect(v({ dataframe: 'ruim', total: 1 }).detalhe).toBe('calcular ruim deu ZeroDivisionError: integer division or modulo by zero');
+    expect(v({ dataframe: 'n', total: 1 }).detalhe).toBe('n não é um DataFrame');
+    expect(v({ dataframe: 'x', total: 1 }).detalhe).toBe('a variável x não existe no fim do programa');
+    expect(v({ dataframe: 'df', total: 2 }).obtido).toBe('regiao | total · Sul | 1 · Nordeste | 3');
+    expect(categoriaDe({ dataframe: 'df' })).toBe('DataFrame');
+  });
+
+  it('plano: shuffles, broadcast, cache, partições e estágios', () => {
+    const plano = { shuffles: 1, broadcast: false, cache: true, particoes: 4, estagios: 2 };
+    const c = ctx({ tabelas: { df: { colunas: [], linhas: [], total: 0, plano } } });
+    expect(verificarRegra({ plano: 'df', shuffles: 1, cache: true }, c).ok).toBe(true);
+    expect(verificarRegra({ plano: 'df', shuffles: 0 }, c)).toMatchObject({ ok: false, detalhe: 'o plano tem 1 shuffle; o pedido é 0' });
+    expect(verificarRegra({ plano: 'df', broadcast: true }, c).detalhe).toBe('o join não usou broadcast');
+    expect(verificarRegra({ plano: 'df', particoes: 3 }, c).detalhe).toBe('o DataFrame tem 4 partições; o pedido é 3');
+    expect(verificarRegra({ plano: 'df', estagios: 1 }, c).obtido).toBe('1 shuffle · sem broadcast · em cache · 4 partições · 2 estágios');
+    expect(verificarRegra({ plano: 'df', estagios: 1 }, c).detalhe).toBe('o plano tem 2 estágios; o pedido é 1');
+    expect(categoriaDe({ plano: 'df' })).toBe('Plano');
+  });
+
   it('regra desconhecida é erro de quem escreveu o exercício', () => {
     expect(() => verificarRegra({ inventada: 1 }, ctx())).toThrow('Regra desconhecida');
   });

@@ -10,7 +10,13 @@
 //   { codigo: 'regex' } / { semCodigo }    o código-fonte (todos os arquivos)
 //   { arquivo: 'nome', igual | json }      o arquivo que o programa gravou (texto ou JSON)
 //   { paralelo: { workers, tarefas } }    quantos workers e tarefas o código usou (nunca o tempo)
+//   { dataframe: 'df', colunas?, tipos?, linhas?, ordem?, aprox?, total? }
+//                                          o DataFrame df no fim do programa (sem `ordem`, as linhas
+//                                          são comparadas em qualquer ordem, como no Spark)
+//   { plano: 'df', shuffles?, broadcast?, cache?, particoes?, estagios? }
+//                                          o plano físico de df (o que o df.explain() mostra)
 const json = (v) => JSON.stringify(v);
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 const iguais = (a, b) => json(a) === json(b);
 const chamada = (r) => `${r.funcao}(${(r.args ?? []).map(json).join(', ')})`;
 const linhas = (t) => String(t).replace(/\n$/, '').split('\n').map((l) => l.replace(/\s+$/, ''));
@@ -35,7 +41,87 @@ function aproximado(valor, esperado, tolerancia) {
   return iguais(valor, esperado);
 }
 
-export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {}, paralelismo = null }) {
+/** A tabela do DataFrame `nome`, ou o motivo de não dar para conferir. */
+function tabelaDe(nome, tabelas, variaveis) {
+  const tabela = tabelas[nome];
+  if (!tabela) return { motivo: nome in variaveis ? `${nome} não é um DataFrame` : `a variável ${nome} não existe no fim do programa` };
+  if (tabela.erro) return { motivo: `calcular ${nome} deu ${tabela.erro.tipo}: ${tabela.erro.mensagem}` };
+  return { tabela };
+}
+
+const textoDoValor = (v) => (v === null || v === undefined ? 'null' : typeof v === 'object' ? json(v) : String(v));
+
+/** As colunas e até 5 linhas, numa linha só: "regiao | total · Sul | 1 · Nordeste | 3 …". */
+function resumoDaTabela(t) {
+  const partes = [t.colunas.map((c) => c.nome).join(' | '), ...t.linhas.slice(0, 5).map((l) => l.map(textoDoValor).join(' | '))];
+  return `${partes.join(' · ')}${t.linhas.length > 5 ? ' …' : ''}`;
+}
+
+function verificarDataFrame(regra, tabelas, variaveis) {
+  const nome = regra.dataframe;
+  const mensagem = `O DataFrame ${nome} tem o resultado pedido`;
+  const { tabela, motivo } = tabelaDe(nome, tabelas, variaveis);
+  if (motivo) return res(regra, mensagem, false, motivo);
+  const obtido = resumoDaTabela(tabela);
+  const falha = (detalhe) => res(regra, mensagem, false, detalhe, obtido);
+  const nomes = tabela.colunas.map((c) => c.nome);
+  if (regra.colunas && !iguais(nomes, regra.colunas)) return falha(`colunas esperadas [${regra.colunas.join(', ')}], vieram [${nomes.join(', ')}]`);
+  const tipos = tabela.colunas.map((c) => c.tipo);
+  if (regra.tipos && !iguais(tipos, regra.tipos)) return falha(`tipos esperados [${regra.tipos.join(', ')}], vieram [${tipos.join(', ')}]`);
+  const total = regra.total ?? regra.linhas?.length;
+  if (total !== undefined && tabela.total !== total) {
+    return falha(`${total === 1 ? 'esperada 1 linha' : `esperadas ${total} linhas`}, ${tabela.total === 1 ? 'veio 1' : `vieram ${tabela.total}`}`);
+  }
+  if (regra.linhas) {
+    const tolerancia = regra.aprox ?? 1e-9;
+    const parecida = (a, b) => aproximado(a, b, tolerancia);
+    if (regra.ordem) {
+      const i = regra.linhas.findIndex((l, n) => !parecida(tabela.linhas[n], l));
+      if (i >= 0) return falha(`linha ${i + 1}: esperado ${json(regra.linhas[i])}, veio ${json(tabela.linhas[i])}`);
+    } else {
+      // Em qualquer ordem: cada linha esperada casa com uma linha obtida ainda livre.
+      const livres = [...tabela.linhas];
+      for (const esperada of regra.linhas) {
+        const achou = livres.findIndex((l) => parecida(l, esperada));
+        if (achou < 0) return falha(`faltou a linha ${json(esperada)}`);
+        livres.splice(achou, 1);
+      }
+      if (livres.length) return falha(`sobrou a linha ${json(livres[0])}`);
+    }
+  }
+  return res(regra, mensagem, true, undefined, obtido);
+}
+
+function verificarPlano(regra, tabelas, variaveis) {
+  const nome = regra.plano;
+  const pedidos = [
+    'shuffles' in regra && plural(regra.shuffles, 'shuffle', 'shuffles'),
+    'broadcast' in regra && (regra.broadcast ? 'broadcast' : 'sem broadcast'),
+    'cache' in regra && (regra.cache ? 'em cache' : 'sem cache'),
+    'particoes' in regra && plural(regra.particoes, 'partição', 'partições'),
+    'estagios' in regra && plural(regra.estagios, 'estágio', 'estágios'),
+  ].filter(Boolean);
+  const mensagem = `O plano de ${nome} tem ${pedidos.join(', ') || 'o pedido'}`;
+  const { tabela, motivo } = tabelaDe(nome, tabelas, variaveis);
+  if (motivo) return res(regra, mensagem, false, motivo);
+  const p = tabela.plano ?? {};
+  const obtido = [
+    plural(p.shuffles ?? 0, 'shuffle', 'shuffles'), p.broadcast ? 'com broadcast' : 'sem broadcast', p.cache ? 'em cache' : 'sem cache',
+    plural(p.particoes ?? 0, 'partição', 'partições'), plural(p.estagios ?? 0, 'estágio', 'estágios'),
+  ].join(' · ');
+  const detalhe = [
+    'shuffles' in regra && p.shuffles !== regra.shuffles && `o plano tem ${plural(p.shuffles, 'shuffle', 'shuffles')}; o pedido é ${regra.shuffles}`,
+    'broadcast' in regra && Boolean(p.broadcast) !== regra.broadcast && (regra.broadcast ? 'o join não usou broadcast' : 'o join usou broadcast; o pedido é sem broadcast'),
+    'cache' in regra && Boolean(p.cache) !== regra.cache && (regra.cache ? 'o DataFrame não está em cache' : 'o DataFrame está em cache; o pedido é sem cache'),
+    'particoes' in regra && p.particoes !== regra.particoes && `o DataFrame tem ${plural(p.particoes, 'partição', 'partições')}; o pedido é ${regra.particoes}`,
+    'estagios' in regra && p.estagios !== regra.estagios && `o plano tem ${plural(p.estagios, 'estágio', 'estágios')}; o pedido é ${regra.estagios}`,
+  ].find(Boolean);
+  return res(regra, mensagem, !detalhe, detalhe, obtido);
+}
+
+export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {}, paralelismo = null, tabelas = {} }) {
+  if ('dataframe' in regra) return verificarDataFrame(regra, tabelas, variaveis);
+  if ('plano' in regra) return verificarPlano(regra, tabelas, variaveis);
   if ('saidaIgual' in regra) {
     const { ok, detalhe } = compararLinhas(saida, regra.saidaIgual);
     return res(regra, 'A saída é exatamente a pedida', ok, detalhe, saida.trimEnd());
@@ -108,7 +194,8 @@ export function verificarRegra(regra, { saida = '', erro = null, variaveis = {},
 }
 
 const CATEGORIAS = [
-  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['paralelo', 'Paralelismo'], ['funcao', 'Função'], ['variavel', 'Variável'],
+  ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['paralelo', 'Paralelismo'],
+  ['dataframe', 'DataFrame'], ['plano', 'Plano'], ['funcao', 'Função'], ['variavel', 'Variável'],
   ['erro', 'Execução'], ['semErros', 'Execução'], ['codigo', 'Código'], ['semCodigo', 'Código'],
 ];
 export const categoriaDe = (regra) => CATEGORIAS.find(([chave]) => chave in regra)?.[1] ?? 'Verificação';
@@ -130,6 +217,8 @@ const DICAS = {
   Código: 'O enunciado pede (ou proíbe) um recurso específico do Python.',
   Paralelismo: 'Use Pool, Process ou ProcessPoolExecutor dentro do if __name__ == "__main__": e mande várias tarefas de uma vez (map, submit).',
   Arquivo: 'Confira o nome do arquivo, o cabeçalho e cada linha. Para ver o que foi gravado, use print(open(nome).read()).',
+  DataFrame: 'Confira as colunas (nomes e alias), os tipos e as linhas. Use df.show() e df.printSchema() para ver o que o seu DataFrame tem.',
+  Plano: 'Use df.explain() para ver o plano: cada Exchange é um shuffle, e BroadcastHashJoin é o join com broadcast.',
 };
 
 /** verificarRegra + categoria e dica, para a aba Testes. */
