@@ -26,17 +26,25 @@ onmessage = async ({ data }) => {
     return;
   }
   // A saída ao vivo vai para a página em blocos de até 30 ms (um print por mensagem seria lento).
+  // Enquanto o Python roda, o worker não processa timers: o bloco sai da própria escrita quando
+  // já passaram 30 ms, e o timer só cobre o fim de uma rajada.
   let pendente = '';
   let timer = null;
+  let ultimoEnvio = performance.now();
   const despejar = () => {
     clearTimeout(timer);
     timer = null;
     if (pendente) postMessage({ tipo: 'saida', id: data.id, texto: pendente });
     pendente = '';
+    ultimoEnvio = performance.now();
   };
   const opcoes = {
     ...data.opcoes,
-    aoSaida: (texto) => { pendente += texto; timer ??= setTimeout(despejar, 30); },
+    aoSaida: (texto) => {
+      pendente += texto;
+      if (performance.now() - ultimoEnvio >= 30) despejar();
+      else timer ??= setTimeout(despejar, 30);
+    },
     aoPedirEntrada: data.opcoes?.interativo
       ? () => { despejar(); postMessage({ tipo: 'entrada', id: data.id }); return new Promise((r) => esperando.set(data.id, r)); }
       : undefined,
