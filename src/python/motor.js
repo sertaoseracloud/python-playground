@@ -53,7 +53,7 @@ export class MotorPython {
             if (this.worker !== worker || !this.pendentes.has(data.id)) return; // interrompido enquanto esperava
             this.armarRelogio?.(this.limiteMs);
             worker.postMessage({ tipo: 'resposta-entrada', id: data.id, texto: texto ?? null });
-          });
+          }, () => {}); // leitura cancelada: quem cancelou interrompe a execução (motor.interromper)
         } else if (data.tipo === 'pool-abrindo' || data.tipo === 'pool-pronto') {
           const abrindo = data.tipo === 'pool-abrindo';
           this.armarRelogio?.(abrindo ? LIMITE_ABRIR_POOL_MS : this.limiteMs);

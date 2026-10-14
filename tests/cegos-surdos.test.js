@@ -54,7 +54,7 @@ describe('resultado dos testes, falado', () => {
   it('as execuções automáticas não falam: só o que a pessoa pediu', () => {
     const item = ler('src/ui/item.js');
     expect(item).toMatch(/const executarPeloAluno = \(\) => executar\([^)]*falar: true \}\);/);
-    expect(item).toContain('{ falar: falar && !comTestes && fala }');
+    expect(item).toContain('if (falar) anunciar(');
   });
 
   it('sem pressão: mensagem gentil', () => {

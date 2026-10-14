@@ -15,6 +15,15 @@ describe('terminal: runtime', () => {
     expect(r.erro).toBeNull();
     expect(eventos.findIndex((e) => e[0] === 'pediu')).toBeGreaterThan(eventos.findIndex((e) => e[1]?.includes('Nome: ')));
     expect(r.saida).toBe('antes\nNome: Ana\nOlá, Ana\n');
+    // O eco do que foi digitado não vai ao vivo: o terminal já mostrou a digitação.
+    expect(eventos.filter((e) => e[0] === 'saida').map((e) => e[1]).join('')).toBe('antes\nNome: Olá, Ana\n');
+  });
+
+  it('sem JSPI: um null na fila de respostas é o Ctrl+D (EOFError)', async () => {
+    const r = await (await sessao).executar({ 'main.py': 'a = input("A: ")\nb = input("B: ")\n' }, { interativo: true, semJSPI: true, entrada: ['1', null], aoSaida: () => {} });
+    expect(r.precisa_entrada).toBe(false);
+    expect(r.erro.tipo).toBe('EOFError');
+    expect(r.saida).toBe('A: 1\nB: ');
   });
 
   it('EOF (Ctrl+D) vira EOFError no programa', async () => {

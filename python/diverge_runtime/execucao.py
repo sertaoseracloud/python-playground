@@ -41,6 +41,14 @@ class _Saida(io.StringIO):
             return len(texto)
         return super().write(texto)
 
+    def eco(self, texto):
+        """O que a pessoa digitou: entra na saída guardada, mas não vai ao vivo (o terminal já mostrou)."""
+        ao_escrever, self.ao_escrever = self.ao_escrever, None
+        try:
+            self.write(texto)
+        finally:
+            self.ao_escrever = ao_escrever
+
 
 class _PrecisaDeEntrada(BaseException):
     """O input() precisa de uma resposta e não dá para esperar (sem JSPI): a página pede e roda de novo."""
@@ -123,11 +131,14 @@ def _input(entrada, saida, interativo=False):
         if not fila_acabou:
             try:
                 resposta = next(linhas)
-                if terminal is not None:
-                    saida.write(resposta + '\n')  # como se tivesse sido digitada
-                return resposta
             except StopIteration:
                 fila_acabou = True
+            else:
+                if resposta is None:  # Ctrl+D numa execução repetida (sem JSPI)
+                    raise EOFError('EOF when reading a line')
+                if terminal is not None:
+                    saida.eco(resposta + '\n')  # como se tivesse sido digitada
+                return resposta
         if terminal is None:
             raise EOFError('EOF when reading a line') from None
         if terminal.sem_jspi() or not _pode_esperar():
@@ -136,7 +147,7 @@ def _input(entrada, saida, interativo=False):
         resposta = run_sync(terminal.pedir())
         if resposta is None:
             raise EOFError('EOF when reading a line')
-        saida.write(str(resposta) + '\n')
+        saida.eco(str(resposta) + '\n')
         return str(resposta)
     return ler
 

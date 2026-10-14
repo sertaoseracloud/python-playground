@@ -20,7 +20,7 @@ export const DADOS_LOCAIS = [
   { chave: 'rascunho:*', dado: 'O código que você escreveu em cada exercício', finalidade: 'Não perder seu trabalho ao fechar a aba' },
   { chave: 'tentativa', dado: 'Quanto tempo você passou tentando cada exercício (só com ele aberto)', finalidade: 'Mostrar a aba Solução depois do tempo estimado do exercício' },
   { chave: 'tarefas:*', dado: 'Tarefas marcadas na lista de cada exercício', finalidade: 'Lembrar o que você já fez' },
-  { chave: 'entrada:*', dado: 'As respostas que você digitou na aba ⌨️ Entrada de cada exercício', finalidade: 'Não precisar digitar de novo ao voltar ao exercício' },
+  { chave: 'historico', dado: 'Os últimos 100 comandos que você digitou no terminal', finalidade: 'As setas ↑/↓ do terminal' },
   { chave: 'pref:*', dado: 'Preferências: acessibilidade, layout, tutorial visto, aviso de privacidade', finalidade: 'Abrir o site do jeito que você deixou' },
 ];
 

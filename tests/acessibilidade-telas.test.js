@@ -16,6 +16,7 @@ import { renderLicenca, renderTermos } from '../src/ui/paginas-legais.js';
 import { renderNovidades } from '../src/ui/novidades.js';
 import { renderCertificado } from '../src/ui/certificado.js';
 import { renderDeclaracaoAcessibilidade } from '../src/ui/declaracao-acessibilidade.js';
+import { criarTelaItem } from '../src/ui/item.js';
 
 const ler = (arquivo) => readFileSync(resolve(process.cwd(), arquivo), 'utf8');
 const telasJs = readdirSync(resolve(process.cwd(), 'src/ui')).filter((f) => f.endsWith('.js')).map((f) => [f, ler(`src/ui/${f}`)]);
@@ -58,6 +59,28 @@ describe('axe-core nas telas (WCAG 2.2 AA)', () => {
   it.each(Object.entries(TELAS))('%s: sem violações', async (_nome, render) => {
     render(document.getElementById('tela'));
     expect(await violacoes()).toEqual([]);
+  });
+
+  it.each(Object.keys(TEMAS))('exercício com o terminal esperando um input() (tema %s): sem violações', async (tema) => {
+    const html = ler('index.html');
+    document.body.innerHTML = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
+    aplicarPreferencias({ ...PADRAO, tema });
+    const motor = {
+      executar: async (a, o, g) => {
+        if (!o.interativo) return { saida: '', erro: null };
+        g.aoSaida('Nome: ');
+        return { saida: `Nome: ${await g.aoPedirEntrada()}\n`, erro: null };
+      },
+      interromper() {},
+    };
+    const tela = criarTelaItem({ motor, layout: { aplicar() {}, mostrarDescricao() {} }, definirStatus: () => {}, aoMudarProgresso: () => {} });
+    tela.aoMudarEstadoPython(true);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('campo-terminal').getAttribute('aria-label')).toBe('Resposta para o input()');
+    // Só a tela do exercício (o happy-dom não esconde [hidden] para o axe; tiramos as outras).
+    document.querySelectorAll('main[id^="tela-"]').forEach((t) => { if (t.id === 'tela-item') t.hidden = false; else t.remove(); });
+    expect((await violacoes()).join(' | ')).toBe('');
   });
 });
 

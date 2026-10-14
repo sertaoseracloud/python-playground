@@ -131,6 +131,28 @@ describe('MotorPython: terminal', () => {
     expect((await pendente).saida).toBe('2\n');
   });
 
+  it('a leitura cancelada (aoPedirEntrada rejeita) não deixa promessa solta nem responde ao worker', async () => {
+    const soltas = [];
+    const pegar = (e) => soltas.push(e);
+    process.on('unhandledRejection', pegar);
+    try {
+      const w = workerManual();
+      const motor = new MotorPython({ criarWorker: () => w });
+      w.onmessage({ data: { tipo: 'pronto' } });
+      const pendente = motor.executar({}, {}, { aoPedirEntrada: () => Promise.reject(new Error('cancelada')) });
+      await new Promise((r) => setTimeout(r));
+      const { id } = w.enviadas.at(-1);
+      w.onmessage({ data: { tipo: 'entrada', id } });
+      motor.interromper();
+      await expect(pendente).rejects.toBeInstanceOf(Interrompido);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(soltas).toEqual([]);
+      expect(w.enviadas.some((m) => m.tipo === 'resposta-entrada')).toBe(false);
+    } finally {
+      process.off('unhandledRejection', pegar);
+    }
+  });
+
   it('interromper rejeita com Interrompido e recria o worker', async () => {
     const criados = [];
     const motor = new MotorPython({ criarWorker: () => { const w = workerManual(); criados.push(w); return w; } });

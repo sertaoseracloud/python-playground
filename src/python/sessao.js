@@ -54,7 +54,8 @@ export async function criarSessao(pyodide, { pool, fontes = FONTES } = {}) {
       principal = 'main.py', entrada = [], chamadas = [], interativo = false, argv = [], ...ganchos
     } = {}) {
       return chamar('import diverge_runtime.execucao as _e\n_e.executar_json',
-        { arquivos, principal, entrada, chamadas, interativo, argv }, ganchos);
+        // null (Ctrl+D numa execução repetida) vira undefined, que chega no Python como None.
+        { arquivos, principal, entrada: entrada.map((r) => r ?? undefined), chamadas, interativo, argv }, ganchos);
     },
 
     /** O >>>: `{ acao: 'iniciar', doPrograma }` ou `{ acao: 'linha', texto }` → `{ saida, erro, continua }`. */
