@@ -206,3 +206,6 @@ def test_o_shuffle_que_ja_rodou_e_reaproveitado_no_job_seguinte(spark):
     assert resumo['shuffles'] == 2
     pulados = [e for j in resumo['jobs'] for e in j['estagios'] if e['tipo'] == 'pulado']
     assert len(pulados) == 1 and pulados[0]['tarefas'] == []
+    # Como no Spark UI: o pulado não conta entre os estágios que rodaram.
+    rodados = [e for j in resumo['jobs'] for e in j['estagios'] if e['tipo'] != 'pulado']
+    assert (resumo['estagios'], resumo['pulados']) == (len(rodados), 1)

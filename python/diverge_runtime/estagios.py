@@ -66,10 +66,13 @@ def _numero(x):
 def resumo():
     if not JOBS:
         return None
-    estagios = [e for j in JOBS for e in j['estagios']]
+    todos = [e for j in JOBS for e in j['estagios']]
+    # Como no Spark UI: o estágio pulado (o shuffle já tinha rodado) não conta entre os que rodaram.
+    estagios = [e for e in todos if e['tipo'] != 'pulado']
     tarefas = [t for e in estagios for t in e['tarefas']]
     ms = round(max((t['fim'] for t in tarefas), default=0) - min((t['inicio'] for t in tarefas), default=0), 1)
     return {
         'jobs': JOBS, 'estagios': len(estagios), 'shuffles': sum(e['tipo'] == 'shuffle' for e in estagios),
         'tarefas': len(tarefas), 'workers': len({t['worker'] for t in tarefas}), 'ms': _numero(ms),
+        'pulados': len(todos) - len(estagios),
     }

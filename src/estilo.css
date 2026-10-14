@@ -863,4 +863,39 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
 .tabela-dados caption { text-align: left; font-weight: 700; padding: 6px 0; }
 .tabela-dados th, .tabela-dados td { border: 1px solid var(--linha); padding: 3px 8px; text-align: left; }
 .nota-dados { color: var(--suave); font-size: 0.85rem; }
+
+/* aba ⚡ Execução: jobs, estágios e tarefas do Spark */
+.execucao { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; }
+.execucao[hidden] { display: none; }
+.resumo-execucao { font-weight: 700; margin: 0 0 8px; }
+.execucao .job { margin-bottom: 18px; }
+.execucao h3 { font-size: 1rem; margin: 10px 0 6px; }
+.linha-do-tempo { display: grid; gap: 4px; margin-bottom: 8px; }
+.linha-do-tempo .faixa { display: grid; grid-template-columns: 6.5em 1fr; align-items: center; gap: 6px; }
+.rotulo-worker { color: var(--suave); font-size: 0.8rem; font-family: var(--fonte-codigo); }
+.linha-do-tempo .trilho { position: relative; height: 1.5em; background: var(--fundo-mais-escuro); border-radius: 4px; }
+.linha-do-tempo .barra {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  border: 1px solid var(--texto); /* separa barras vizinhas sem depender da cor */
+  border-radius: 4px;
+  color: var(--sobre-cor);
+  font-family: var(--fonte-codigo);
+  font-size: 0.75rem;
+  line-height: 1.4em;
+  padding: 0 3px;
+  white-space: nowrap;
+}
+.barra.cor-0 { background: var(--roxo); }
+.barra.cor-1 { background: var(--verde); }
+.barra.cor-2 { background: var(--laranja); }
+.barra.cor-3 { background: var(--ciano); }
+.tabela-execucao { border-collapse: collapse; font-family: var(--fonte-codigo); font-size: 0.85rem; }
+.tabela-execucao caption { text-align: left; font-weight: 700; padding: 6px 0; }
+.tabela-execucao th, .tabela-execucao td { border: 1px solid var(--linha); padding: 3px 8px; text-align: left; }
+.tabela-execucao td { text-align: right; }
+.tabela-execucao tr.estagio th { background: var(--fundo-escuro); }
+.nota-execucao { color: var(--suave); font-size: 0.85rem; }
 .titulo-dado { font-size: 1rem; }

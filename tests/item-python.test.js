@@ -76,6 +76,25 @@ describe('tela do exercício (Python)', () => {
     expect(document.getElementById('anuncio').textContent).toMatch(/O programa rodou sem erros\..*caso/);
   });
 
+  it('com jobs do Spark, a aba ⚡ Execução aparece; sem jobs, some (e volta para o Terminal)', async () => {
+    const spark = { jobs: [{ id: 1, acao: 'count', estagios: [{ id: 1, nome: 'parallelize', tipo: 'resultado', linhas_embaralhadas: 0, tarefas: [{ particao: 0, worker: 0, linhas: 1, inicio: 0, fim: 1 }] }] }], estagios: 1, shuffles: 0, tarefas: 1, workers: 1, ms: 1 };
+    let resposta = { saida: '1\n', erro: null, spark };
+    const motor = { executar: async () => ({ ms: 1, retornos: [], variaveis: {}, ...resposta }), interromper() {} };
+    const { tela } = montarCom(motor);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('aba-execucao').hidden).toBe(false);
+    expect(document.getElementById('saida-execucao').textContent).toContain('Job 1 · count()');
+    document.getElementById('aba-execucao').click();
+    expect(document.getElementById('saida-execucao').hidden).toBe(false);
+    resposta = { saida: '', erro: null, spark: null };
+    document.getElementById('btn-executar').click();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(document.getElementById('aba-execucao').hidden).toBe(true);
+    expect(document.getElementById('saida-execucao').hidden).toBe(true);
+    expect(document.getElementById('terminal').hidden).toBe(false);
+  });
+
   it('o input() do programa é respondido no terminal', async () => {
     const motor = {
       executar: async (a, o, g) => {

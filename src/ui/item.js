@@ -10,6 +10,7 @@ import {
 } from '../progresso.js';
 import { criarTerminal } from './terminal.js';
 import { criarShell } from './shell.js';
+import { htmlDaExecucao, falaDaExecucao } from './execucao.js';
 import { EditorArquivos } from './editor.js';
 import { iniciarLeitura } from './acessibilidade.js';
 import { aplicarChecklist } from './neuro.js';
@@ -287,6 +288,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     }
     el.terminal.classList.remove('com-erro');
     mostrarDesc('enunciado');
+    mostrarExecucao(null);
     mostrarSaida('terminal');
     // O programa do exercício anterior (esperando um input(), por exemplo) é interrompido antes.
     if (estado.pythonPronto) executar({ limpar: true });
@@ -298,6 +300,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   /** Depois de cada programa (pelo ▶ Executar ou digitado no terminal): avisos, status e progresso. */
   function aoTerminarPrograma(r) {
     el.terminal.classList.toggle('com-erro', Boolean(r.erro));
+    mostrarExecucao(r.spark);
     if (r.erro?.tipo === 'EOFError') terminal.escrever('💡 O programa pediu um input() e recebeu Ctrl+D (fim da entrada).\n', 'aviso');
     const aviso = avisoSemParalelismo(r.paralelismo);
     if (aviso) terminal.escrever(`ℹ️ ${aviso}\n`, 'aviso');
@@ -308,6 +311,15 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       marcar(item.id, 'resolvido');
       aoMudarProgresso();
     }
+  }
+
+  /** A aba ⚡ Execução só existe quando o programa rodou algum job do Spark. */
+  function mostrarExecucao(spark) {
+    const tem = Boolean(spark?.jobs?.length);
+    const estavaAberta = !$('saida-execucao').hidden;
+    $('aba-execucao').hidden = !tem;
+    $('saida-execucao').innerHTML = tem ? htmlDaExecucao(spark) : '';
+    if (!tem && estavaAberta) mostrarSaida('terminal');
   }
 
   /** Onde não deu para rodar em paralelo, o resultado é o mesmo: o terminal (e a fala) explicam. */
@@ -328,6 +340,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       : `Erro interno do DivergePython: ${erro?.message ?? erro}`;
     terminal.escrever(`${texto}\n`, 'erro');
     el.terminal.classList.add('com-erro');
+    mostrarExecucao(null);
     mostrarSaida('terminal');
     definirStatus(tempo ? 'Tempo esgotado' : 'Erro ao executar', { falar: frase(texto) });
   }
@@ -335,7 +348,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   /** O resultado da execução, falado: a saída (curta) ou o erro com a linha. */
   function falaDoPython(r) {
     const paralelo = textoDoParalelismo(r.paralelismo);
-    const extra = [paralelo && `Rodou ${paralelo}.`, avisoSemParalelismo(r.paralelismo)].filter(Boolean).join(' ');
+    const spark = r.spark?.jobs?.length ? `No Spark: ${falaDaExecucao(r.spark)}` : '';
+    const extra = [paralelo && !spark && `Rodou ${paralelo}.`, spark, avisoSemParalelismo(r.paralelismo)].filter(Boolean).join(' ');
     const texto = falaDoResultado(r);
     return extra ? `${texto} ${extra}` : texto;
   }

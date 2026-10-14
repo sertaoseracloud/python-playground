@@ -61,6 +61,32 @@ describe('axe-core nas telas (WCAG 2.2 AA)', () => {
     expect(await violacoes()).toEqual([]);
   });
 
+  it.each(Object.keys(TEMAS))('aba ⚡ Execução aberta (tema %s): sem violações', async (tema) => {
+    const html = ler('index.html');
+    document.body.innerHTML = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
+    aplicarPreferencias({ ...PADRAO, tema });
+    const tarefa = (particao, worker, inicio, fim) => ({ particao, worker, linhas: 2, inicio, fim });
+    const spark = {
+      jobs: [{
+        id: 1, acao: 'show',
+        estagios: [
+          { id: 1, nome: 'csv → groupBy', tipo: 'shuffle', linhas_embaralhadas: 6, tarefas: [tarefa(0, 0, 0, 10)] },
+          { id: 2, nome: 'groupBy', tipo: 'resultado', linhas_embaralhadas: 0, tarefas: [0, 1, 2, 3].map((p) => tarefa(p, p, 12, 20)) },
+        ],
+      }],
+      estagios: 2, shuffles: 1, tarefas: 5, workers: 4, ms: 20,
+    };
+    const motor = { executar: async () => ({ saida: '', erro: null, variaveis: {}, retornos: [], spark }), interromper() {} };
+    const tela = criarTelaItem({ motor, layout: { aplicar() {}, mostrarDescricao() {} }, definirStatus: () => {}, aoMudarProgresso: () => {} });
+    tela.aoMudarEstadoPython(true);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    document.getElementById('aba-execucao').click();
+    expect(document.getElementById('saida-execucao').hidden).toBe(false);
+    document.querySelectorAll('main[id^="tela-"]').forEach((t) => { if (t.id === 'tela-item') t.hidden = false; else t.remove(); });
+    expect((await violacoes()).join(' | ')).toBe('');
+  });
+
   it.each(Object.keys(TEMAS))('exercício com o terminal esperando um input() (tema %s): sem violações', async (tema) => {
     const html = ler('index.html');
     document.body.innerHTML = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
