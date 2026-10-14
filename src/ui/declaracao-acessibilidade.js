@@ -4,7 +4,7 @@
 import { NOME, REPOSITORIO } from '../seo.js';
 import { dataPorExtenso } from './util.js';
 
-export const ATUALIZADA_EM = '2026-10-13';
+export const ATUALIZADA_EM = '2026-10-14';
 
 /** Atalhos de teclado do site (também listados no painel ♿). */
 export const ATALHOS = [
@@ -68,6 +68,8 @@ export function renderDeclaracaoAcessibilidade(el) {
       <h2>Limites conhecidos</h2>
       <ul>
         <li>O editor de código usa o CodeMirror. Ele funciona com leitores de tela, mas o Tab sai do editor em vez de recuar a linha: use Ctrl + ] para recuar.</li>
+        <li>O PySpark daqui é uma implementação para aprender, com a API do PySpark 4, e não o Spark: os resultados, o show() e os erros seguem o Spark, mas o desempenho e os detalhes internos não.</li>
+        <li>Na aba ⚡ Execução, a linha do tempo das tarefas é só visual; a tabela logo abaixo tem as mesmas informações em texto, e o leitor de tela fala o resumo da execução.</li>
         <li>O paralelismo real usa um recurso novo dos navegadores (JSPI). Onde ele não existe, os processos rodam em sequência: o resultado é o mesmo, só mais devagar, e o terminal avisa. O asyncio.run também depende desse recurso.</li>
         <li>A primeira execução carrega o Python (alguns megabytes) e pode demorar; a barra de status avisa enquanto carrega. Abrir os workers em paralelo também demora alguns segundos na primeira vez.</li>
         <li>O VLibras é um serviço do Governo Federal: se ele estiver fora do ar, a tradução não aparece.</li>

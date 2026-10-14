@@ -25,8 +25,13 @@ fica no GitHub Pages.
   intervalo, map-reduce, `Pool`, `ProcessPoolExecutor`, `Process` e `Queue`, `asyncio`, condições de
   corrida, `Lock` e `Semaphore`, GIL, speedup e Lei de Amdahl. Os processos rodam de verdade, ao mesmo
   tempo, nos núcleos do computador.
+- **✨ PySpark** (0.4.0): **14 lições e 45 exercícios**: SparkSession e avaliação preguiçosa, RDD
+  (`map`, `reduceByKey`, `glom`, `mapPartitions`), DataFrame, funções de coluna, UDF, nulos,
+  agregações e `pivot`, joins e broadcast, funções de janela, leitura e escrita (CSV, JSON, schema
+  DDL), Spark SQL, partições, shuffle, skew, cache e `explain()`. As partições rodam em paralelo nos
+  workers do navegador, e a aba **⚡ Execução** mostra os jobs, os estágios e as tarefas.
 - **Em breve**, nas próximas versões (aparecem na landing e no fim da trilha como "em breve"):
-  ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
+  🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal**, um terminal de verdade: o `print` aparece
@@ -78,6 +83,30 @@ pelos dele (`Pool` com `map`, `starmap`, `imap`, `apply_async`; `Process`, `Queu
   enviar ao executor dá o mesmo `RuntimeError` do Python (início spawn).
 - **Sem JSPI** (ou com 1 worker só), as tarefas rodam em sequência, com o mesmo resultado; o terminal e
   o leitor de tela avisam. A barra de status mostra "⚡ N tarefas em W workers".
+
+### PySpark
+
+O aluno escreve `from pyspark.sql import SparkSession` como no Spark de verdade. O pacote
+[`python/pyspark`](python/pyspark) é **uma implementação para aprender**, em Python puro, com a API do
+PySpark 4: não é o Spark, mas os resultados, o `show()`, o `printSchema()`, o `explain()` e as mensagens
+de erro seguem o Spark.
+
+- **API coberta**: `SparkSession` (`builder`, `conf`, `range`, `createDataFrame`, `read`, `sql`,
+  `catalog`), RDD (`parallelize`, `textFile`, transformações e ações, pares chave-valor, `join`,
+  `glom`, `mapPartitions`, `repartition`/`coalesce`, `cache`), DataFrame (`select`, `filter`,
+  `withColumn`, `groupBy`/`agg`/`pivot`, joins com `broadcast`, `Window`, `na`, `orderBy`, `explain`,
+  `write` em CSV, JSON e um parquet simplificado), `functions` (texto, números, datas, nulos, coleções,
+  janelas, `udf`) e Spark SQL (`SELECT`, `JOIN`, `GROUP BY`/`HAVING`, `ORDER BY`, `OVER`, CTEs e
+  subconsultas).
+- **Como roda**: cada partição vira uma tarefa no pool de workers (o mesmo do paralelismo); os
+  shuffles separam os estágios, com `hashpartitioning` determinístico. O Spark de verdade usa 200
+  partições de shuffle; aqui são 4, para caber no navegador. A aba **⚡ Execução** mostra cada job, os
+  estágios (os que reaproveitam um shuffle aparecem como pulados, como no Spark UI) e a linha do tempo
+  das tarefas, com uma tabela equivalente para o leitor de tela.
+- **Conformidade**: [`python/conformidade`](python/conformidade) tem 10 programas que rodam no
+  PySpark 4.0.1 de verdade no CI (job `conformidade`, Java 17); a saída tem de bater com a nossa, e o
+  build só sai depois.
+- **Fica para a fase 5**: Structured Streaming, MLlib e Delta Lake (módulo 🌊 Spark além do batch).
 - **asyncio** roda de verdade (`gather`, `create_task`, `Lock`, `Semaphore`, `Queue`, `wait_for`): a
   condição de corrida perde atualizações de fato. **Threads** dão o erro do próprio Pyodide (`can't start
   new thread`) e entram como conceito. `Value`/`Array` (memória compartilhada) precisam de
@@ -177,6 +206,8 @@ que trocam os arquivos do exercício (os casos ocultos usam outros dados). As re
 | `{ codigo }` / `{ semCodigo }` | regex no código do aluno (ex.: proibir `sum(`) |
 | `{ paralelo: { workers, tarefas } }` | quantos workers trabalharam e em quantas tarefas o trabalho foi dividido (nunca o tempo); não cobra paralelismo onde o navegador não consegue |
 | `{ arquivo, igual }` / `{ arquivo, json }` | o arquivo que o programa gravou: o texto (sem diferenciar `\r\n`) ou os dados do JSON |
+| `{ dataframe, colunas, tipos, linhas, ordem, aprox, total }` | o DataFrame no fim do programa: colunas, tipos e linhas (em qualquer ordem, a não ser com `ordem: true`) |
+| `{ plano, shuffles, broadcast, cache, particoes, estagios }` | o plano físico do DataFrame (o que o `explain()` mostra) |
 
 `tests/conteudo.test.js` roda **toda a trilha** no Python de verdade: as lições rodam sem erro, cada
 solução passa em todos os casos e cada código inicial ainda não passa.

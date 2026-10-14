@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.4.0',
+    data: '2026-10-14',
+    titulo: 'PySpark no navegador',
+    resumo: 'O quarto módulo: RDD, DataFrame, joins, janelas e Spark SQL, com as partições rodando em paralelo no seu computador.',
+    grupos: [
+      { titulo: '✨ PySpark', itens: ['14 lições e 45 exercícios: RDD, DataFrame, nulos, agregações, joins e broadcast, Window, leitura e escrita, Spark SQL, partições, shuffle, cache, explain e UDF.', 'Certificado PySpark para Dados.'] },
+      { titulo: '⚡ Execução', itens: ['Uma aba nova mostra os estágios, as tarefas de cada partição e a linha do tempo dos workers, com uma tabela equivalente.', 'show(), printSchema(), explain() e as mensagens de erro saem no formato do Spark, conferidas com o PySpark real a cada versão.'] },
+      { titulo: '♿ Acessibilidade', itens: ['O leitor de tela fala o resumo da execução: estágios, shuffles, tarefas e workers.'] },
+    ],
+  },
+  {
     versao: '0.3.2',
     data: '2026-10-14',
     titulo: 'Um terminal de verdade',
