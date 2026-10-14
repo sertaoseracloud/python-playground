@@ -7,6 +7,7 @@ ParseException |
 AnalysisException | [PATH_NOT_FOUND] Path does not exist: file:<tmp>/nao_existe.csv. SQLSTATE: 42K03
 AnalysisException | [AMBIGUOUS_REFERENCE] Reference `id` is ambiguous, could be: [`a`.`id`, `b`.`id`]. SQLSTATE: 42704
 AnalysisException | [NUM_COLUMNS_MISMATCH] UNION can only be performed on inputs with the same number of columns, but the first input has 3 columns and the second input has 2 columns. SQLSTATE: 42826;
-PySparkTypeError | [CANNOT_MERGE_TYPE] Can not merge type `LongType` and `StringType` for field x.
+[('x', 'string')]
+sem erro
 PySparkValueError | [CANNOT_DETERMINE_TYPE] Some of types cannot be determined after inferring.
 AnalysisException | Window function row_number() requires window to be ordered, please add ORDER BY clause. For example SELECT row_number()(value_expr) OVER (PARTITION BY window_partition ORDER BY window_ordering) from table.

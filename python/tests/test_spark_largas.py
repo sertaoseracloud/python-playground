@@ -34,6 +34,8 @@ def test_group_by_e_agg(spark):
     assert vendas(spark).groupBy('regiao').count().orderBy(F.desc('count'), 'regiao').first() == Row(regiao='Nordeste', count=2)
     assert vendas(spark).agg(F.max('preco').alias('m')).first().m == 24.9
     assert vendas(spark).groupBy('regiao').agg({'preco': 'max'}).columns == ['regiao', 'max(preco)']
+    # com um dicionário, o Spark devolve as agregações em ordem de nome da coluna
+    assert vendas(spark).groupBy('produto').agg({'quantidade': 'sum', 'preco': 'max'}).columns == ['produto', 'max(preco)', 'sum(quantidade)']
     listas = vendas(spark).groupBy('regiao').agg(F.sort_array(F.collect_list('produto')).alias('p')).orderBy('regiao')
     assert tuplas(listas)[0] == ('Nordeste', ['Arroz', 'Café'])
 

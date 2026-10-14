@@ -25,7 +25,7 @@ class GroupedData:
     def agg(self, *exprs):
         if len(exprs) == 1 and isinstance(exprs[0], dict):
             lista = []
-            for coluna, funcao in exprs[0].items():
+            for coluna, funcao in sorted(exprs[0].items()):  # o Spark devolve em ordem de nome da coluna
                 nome = _FUNCOES_DO_DICIONARIO.get(funcao.lower())
                 if nome is None:
                     raise AnalysisException(f'Undefined function: `{funcao}`.', 'UNRESOLVED_ROUTINE', {}, '42883')

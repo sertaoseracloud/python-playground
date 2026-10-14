@@ -59,7 +59,7 @@ class Converter:
         return [converter_linha(linha, self.schema) for linha in linhas]
 
 
-def converter_linha(linha, schema):
+def converter_linha(linha, schema, inferido=False):
     campos = schema.fields
     if isinstance(linha, dict):
         valores = [linha.get(f.name) for f in campos]
@@ -74,7 +74,7 @@ def converter_linha(linha, schema):
         from ..errors import PySparkValueError
         raise PySparkValueError(f'The length of obj ({len(valores)}) and fields ({len(campos)}) should be the same.',
                                 'LENGTH_SHOULD_BE_THE_SAME', {'arg1': 'obj', 'arg2': 'fields', 'arg1_length': str(len(valores)), 'arg2_length': str(len(campos))})
-    return tuple(T.conferir(v, f.dataType, f.name) for v, f in zip(valores, campos))
+    return tuple(T.conferir(v, f.dataType, f.name, inferido) for v, f in zip(valores, campos))
 
 
 def tamanho_da_linha(atributos):

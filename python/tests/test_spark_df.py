@@ -38,8 +38,11 @@ def test_schema_inferido(spark, capsys):
     assert spark.createDataFrame([Row(nome='Ana', idade=3)]).dtypes == [('nome', 'string'), ('idade', 'bigint')]
     with pytest.raises(PySparkValueError, match='CANNOT_DETERMINE_TYPE'):
         spark.createDataFrame([(None,)], ['x'])
-    with pytest.raises(PySparkTypeError, match='CANNOT_MERGE_TYPE'):
-        spark.createDataFrame([(1,), ('a',)], ['x'])
+    # Spark 4: tipos diferentes na mesma coluna viram texto (antes era o erro CANNOT_MERGE_TYPE)
+    misturado = spark.createDataFrame([(1,), ('a',)], ['x'])
+    assert misturado.dtypes == [('x', 'string')]
+    assert [r.x for r in misturado.collect()] == ['1', 'a']
+    assert spark.createDataFrame([(1,), (2.5,)], ['x']).dtypes == [('x', 'double')]
 
 
 def test_show_como_o_spark(spark, capsys):

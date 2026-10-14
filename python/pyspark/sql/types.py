@@ -287,6 +287,12 @@ def juntar_tipos(a, b, campo=None):
         return StructType([StructField(k, v) for k, v in campos.items()])
     if a == b:
         return a
+    # Spark 4: tipos simples diferentes se juntam (números no mais largo; o resto vira texto).
+    simples = (StringType, BooleanType, DateType, TimestampType) + NUMERICOS
+    if isinstance(a, simples) and isinstance(b, simples):
+        if isinstance(a, NUMERICOS) and isinstance(b, NUMERICOS):
+            return tipo_mais_largo(a, b)
+        return StringType()
     nome = f' for field {campo}' if campo else ''
     raise PySparkTypeError(f'Can not merge type `{type(a).__name__}` and `{type(b).__name__}`{nome}.',
                            'CANNOT_MERGE_TYPE', {'data_type1': type(a).__name__, 'data_type2': type(b).__name__})
@@ -350,10 +356,16 @@ def _tem_nulo(tipo):
     return False
 
 
-def conferir(valor, tipo, campo):
-    """Valor convertido para o tipo do campo (ou erro, como o PySpark faz no createDataFrame)."""
+def conferir(valor, tipo, campo, inferido=False):
+    """Valor convertido para o tipo do campo (ou erro, como o PySpark faz no createDataFrame).
+
+    `inferido`: o schema saiu dos próprios dados; uma coluna com tipos misturados virou texto
+    e os valores que não são texto são convertidos (como no Spark 4)."""
     if valor is None:
         return None
+    if inferido and isinstance(tipo, StringType) and not isinstance(valor, str):
+        from .mostrar import texto_do_valor
+        return texto_do_valor(valor)
 
     def erro():
         return PySparkTypeError(f'field {campo}: {tipo!r} can not accept object {valor!r} in type {type(valor)}.',

@@ -131,12 +131,13 @@ class SparkSession:
             if hasattr(data, 'to_dict') and hasattr(data, 'columns'):
                 raise NotImplementedError('O pandas não é carregado no DivergePython: passe uma lista de tuplas ou de dicionários.')
             linhas = list(data)
-            if schema is None:
+            inferido = schema is None
+            if inferido:
                 _conferir_linhas(linhas)
                 schema = T.schema_dos_dados(linhas, nomes)
             elif nomes:
                 schema = T.StructType([T.StructField(n, f.dataType, f.nullable) for n, f in zip(nomes, schema.fields)])
-            linhas = [P.converter_linha(linha, schema) for linha in linhas]
+            linhas = [P.converter_linha(linha, schema, inferido) for linha in linhas]
             rdd = self._sc.parallelize(linhas)
         atributos = [Atributo(f.name, f.dataType, anulavel=f.nullable) for f in schema.fields]
         return DataFrame(P.ScanRDD(self, rdd, atributos), self)
