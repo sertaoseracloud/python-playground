@@ -46,7 +46,8 @@ pessoas.fillna(0).orderBy('idade').select('nome', 'nota').show()
 print(pessoas.filter(F.col('nota') > 7.5).count(), pessoas.filter(F.col('cidade').isNull()).count())
 
 erro(lambda: pessoas.select((F.col('idade') / 0).alias('x')).collect())
-erro(lambda: pessoas.select(F.col('nome').cast('int')).collect())
+# uma linha só: com várias, o Spark acusa a da partição que falhar primeiro (varia)
+erro(lambda: pessoas.filter(F.col('idade') == 17).select(F.col('nome').cast('int')).collect())
 print(pessoas.select((F.col('idade') / 4).alias('q')).orderBy('q').collect())
 
 spark.stop()
