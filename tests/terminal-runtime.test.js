@@ -27,4 +27,12 @@ describe('terminal: runtime', () => {
     expect(r.precisa_entrada).toBe(true);
     expect(r.saida).toBe('1\nx? ');
   });
+
+  it('REPL: linha a linha, com o escopo do programa (python -i)', async () => {
+    const s = await sessao;
+    await s.executar({ 'main.py': 'nome = "Ana"' });
+    await s.repl({ acao: 'iniciar', doPrograma: true });
+    expect((await s.repl({ acao: 'linha', texto: 'nome.upper()' })).saida).toBe("'ANA'\n");
+    expect((await s.repl({ acao: 'linha', texto: 'if True:' })).continua).toBe(true);
+  });
 });

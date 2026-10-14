@@ -119,6 +119,18 @@ describe('MotorPython: terminal', () => {
     expect(vistos).toEqual(['oi\n']);
   });
 
+  it('repl entra na mesma fila e manda a mensagem do REPL', async () => {
+    const w = workerManual();
+    const motor = new MotorPython({ criarWorker: () => w });
+    w.onmessage({ data: { tipo: 'pronto' } });
+    const pendente = motor.repl({ acao: 'linha', texto: '1 + 1', interativo: true });
+    await new Promise((r) => setTimeout(r));
+    const m = w.enviadas.at(-1);
+    expect(m).toMatchObject({ tipo: 'repl', opcoes: { acao: 'linha', texto: '1 + 1' } });
+    w.onmessage({ data: { tipo: 'resposta', id: m.id, saida: '2\n', erro: null, continua: false } });
+    expect((await pendente).saida).toBe('2\n');
+  });
+
   it('interromper rejeita com Interrompido e recria o worker', async () => {
     const criados = [];
     const motor = new MotorPython({ criarWorker: () => { const w = workerManual(); criados.push(w); return w; } });

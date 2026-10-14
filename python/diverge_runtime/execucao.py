@@ -17,6 +17,7 @@ PASTA = '/home/pyodide/exercicio'
 LIMITE_SAIDA = 100_000
 LIMITE_ARQUIVOS = 20
 _json_dumps = json.dumps  # referência própria: um json.py do aluno não pode trocar isto
+ULTIMO_ESCOPO = None  # as variáveis do último programa, para o `python -i` (repl.py)
 
 
 class _Saida(io.StringIO):
@@ -194,6 +195,8 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         sys.path[:] = antigo_path
         sys.argv = antigo_argv
         os.chdir(antigo_cwd)
+    global ULTIMO_ESCOPO
+    ULTIMO_ESCOPO = escopo
     variaveis = {}
     for nome, valor in escopo.items():
         if nome.startswith('_') or callable(valor) or type(valor).__name__ == 'module':

@@ -133,3 +133,31 @@ def test_chamadas_da_correcao_nunca_pedem_resposta():
 def test_argv():
     r = execucao.executar({'main.py': 'import sys\nprint(sys.argv)\n'}, argv=['a', 'b'])
     assert r['saida'] == "['main.py', 'a', 'b']\n"
+
+
+def test_repl_expressoes_blocos_e_erros():
+    from diverge_runtime import repl
+    repl.iniciar()
+    assert repl.linha('x = 2') == {'saida': '', 'erro': None, 'continua': False}
+    assert repl.linha('x * 21')['saida'] == '42\n'
+    assert repl.linha('_ + 1')['saida'] == '43\n'
+    assert repl.linha("'oi'")['saida'] == "'oi'\n"
+    assert repl.linha('None')['saida'] == ''
+    assert repl.linha('for i in range(2):')['continua'] is True
+    assert repl.linha('    print(i)')['continua'] is True
+    assert repl.linha('')['saida'] == '0\n1\n'
+    r = repl.linha('1/0')
+    assert r['erro']['tipo'] == 'ZeroDivisionError'
+    assert 'File "<stdin>", line 1' in r['erro']['traceback']
+    assert repl.linha('def f(')['continua'] is True
+    r = repl.linha('')  # linha vazia termina o bloco: o erro aparece, o prompt volta a >>>
+    assert r['continua'] is False and r['erro']['tipo'] == 'SyntaxError'
+
+
+def test_repl_com_o_escopo_do_programa():
+    from diverge_runtime import repl
+    execucao.executar({'main.py': 'total = 10\n'})
+    repl.iniciar(do_programa=True)
+    assert repl.linha('total + 1')['saida'] == '11\n'
+    repl.iniciar()
+    assert repl.linha('total')['erro']['tipo'] == 'NameError'

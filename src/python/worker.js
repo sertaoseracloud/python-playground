@@ -42,7 +42,8 @@ onmessage = async ({ data }) => {
       : undefined,
   };
   try {
-    const resultado = await (await sessao).executar(data.arquivos, opcoes);
+    const s = await sessao;
+    const resultado = data.tipo === 'repl' ? await s.repl(opcoes) : await s.executar(data.arquivos, opcoes);
     despejar();
     postMessage({ tipo: 'resposta', id: data.id, ...resultado });
   } catch (erro) {

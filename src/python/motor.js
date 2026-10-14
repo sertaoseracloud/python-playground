@@ -79,6 +79,13 @@ export class MotorPython {
     return tarefa;
   }
 
+  /** Uma ação do REPL (`{ acao: 'iniciar' | 'linha', ... }`), na mesma fila e com o mesmo relógio. */
+  repl(opcoes, ganchos = {}) {
+    const tarefa = this.fila.then(() => this.#rodar({ tipo: 'repl', opcoes }, ganchos));
+    this.fila = tarefa.catch(() => {});
+    return tarefa;
+  }
+
   /** Ctrl+C: encerra a execução em andamento (o worker é recriado). */
   interromper() {
     const atual = this.atual;
