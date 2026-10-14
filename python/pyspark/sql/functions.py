@@ -144,7 +144,7 @@ def _substring(s, pos, tamanho):
     if pos > 0:
         inicio = pos - 1
     elif pos < 0:
-        inicio = max(len(s) + pos, 0)
+        inicio = len(s) + pos if len(s) + pos > 0 else 0  # (max aqui é a agregação do Spark)
     else:
         inicio = 0
     return s[inicio:inicio + tamanho] if tamanho > 0 else ''
@@ -562,6 +562,150 @@ def desc_nulls_last(c):
 def expr(texto):
     from .sql import ler_expressao
     return Column(ler_expressao(texto))
+
+
+# ---------- agregações ----------
+# (definidas no fim do módulo porque os nomes sum, min, max e count escondem os do Python)
+
+def _agg(funcao, c, **kw):
+    from .agregacoes import Agg
+    return Column(Agg(funcao, [para_expr(c)], **kw))
+
+
+def count(c):
+    from .agregacoes import Agg
+    if isinstance(c, str) and c == '*':
+        return Column(Agg('count', [Lit(1)]))
+    return _agg('count', c)
+
+
+def sum(c):  # noqa: A001
+    return _agg('sum', c)
+
+
+def avg(c):
+    return _agg('avg', c)
+
+
+mean = avg
+
+
+def min(c):  # noqa: A001
+    return _agg('min', c)
+
+
+def max(c):  # noqa: A001
+    return _agg('max', c)
+
+
+def countDistinct(c, *cols):
+    from .agregacoes import Agg
+    return Column(Agg('count', [para_expr(x) for x in (c, *cols)], distinto=True))
+
+
+count_distinct = countDistinct
+
+
+def sum_distinct(c):
+    return _agg('sum', c, distinto=True)
+
+
+sumDistinct = sum_distinct
+
+
+def approx_count_distinct(c, rsd=None):
+    return _agg('approx_count_distinct', c)
+
+
+approxCountDistinct = approx_count_distinct
+
+
+def collect_list(c):
+    return _agg('collect_list', c)
+
+
+def collect_set(c):
+    return _agg('collect_set', c)
+
+
+def first(c, ignorenulls=False):
+    return _agg('first', c, ignorar_nulos=ignorenulls)
+
+
+def last(c, ignorenulls=False):
+    return _agg('last', c, ignorar_nulos=ignorenulls)
+
+
+def stddev(c):
+    return _agg('stddev', c)
+
+
+stddev_samp = stddev
+
+
+def stddev_pop(c):
+    return _agg('stddev_pop', c)
+
+
+def variance(c):
+    return _agg('variance', c)
+
+
+var_samp = variance
+
+
+def var_pop(c):
+    return _agg('var_pop', c)
+
+
+def any_value(c):
+    return _agg('first', c)
+
+# ---------- janelas ----------
+
+
+def _ranking(nome, tipo=None, args=()):
+    from .window import FuncaoDeJanela
+    return Column(FuncaoDeJanela(nome, [Lit(a) for a in args], tipo or T.IntegerType()))
+
+
+def row_number():
+    return _ranking('row_number')
+
+
+def rank():
+    return _ranking('rank')
+
+
+def dense_rank():
+    return _ranking('dense_rank')
+
+
+def percent_rank():
+    return _ranking('percent_rank', T.DoubleType())
+
+
+def cume_dist():
+    return _ranking('cume_dist', T.DoubleType())
+
+
+def ntile(n):
+    return _ranking('ntile', T.IntegerType(), (int(n),))
+
+
+def lag(c, offset=1, default=None):
+    from .window import deslocamento
+    return Column(deslocamento('lag', c, offset, default))
+
+
+def lead(c, offset=1, default=None):
+    from .window import deslocamento
+    return Column(deslocamento('lead', c, offset, default))
+
+
+def broadcast(df):
+    from .plano_largo import ComDica
+    return df._novo(ComDica(df._plano))
 
 
 def hash(*cols):  # noqa: A001

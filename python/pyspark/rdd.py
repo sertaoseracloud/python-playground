@@ -284,6 +284,24 @@ class _Estreito(RDD):
         return saida
 
 
+class _EstreitoTardio(RDD):
+    """Estreito cuja função só é montada na hora da ação (o broadcast calcula o lado pequeno num job antes)."""
+
+    def __init__(self, pai, fabrica, nome):
+        super().__init__(pai.ctx, nome)
+        self.pai, self.fabrica = pai, fabrica
+
+    def _pais(self):
+        return [self.pai]
+
+    def _num(self):
+        return self.pai._num()
+
+    def _tarefas_sem_cache(self, job):
+        funcao = self.fabrica()
+        return [(d, fs + (funcao,), ns + (self._nome,)) for d, fs, ns in self.pai._tarefas(job)]
+
+
 class _Uniao(RDD):
     def __init__(self, pais):
         super().__init__(pais[0].ctx, 'union')

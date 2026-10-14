@@ -88,7 +88,155 @@ class DataFrame:
         return self._novo(self._projetar(self._exprs(cols), 'select'))
 
     def _projetar(self, exprs, operacao):
-        return P.Project(self._plano, exprs, operacao)
+        from .avancado import projetar
+        return projetar(self._plano, exprs, operacao)
+
+    # ---------- transformações largas ----------
+    def groupBy(self, *cols):
+        from .group import GroupedData
+        return GroupedData(self, self._exprs(cols))
+
+    groupby = groupBy
+
+    def agg(self, *exprs):
+        return self.groupBy().agg(*exprs)
+
+    def _ordens(self, cols, ascending):
+        from .column import Ordem, como_ordem
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+            cols = cols[0]
+        ordens = [como_ordem(para_expr(c)) for c in cols]
+        if ascending is not None:
+            lista = ascending if isinstance(ascending, (list, tuple)) else [ascending] * len(ordens)
+            ordens = [Ordem(o.filho, bool(a)) if not isinstance(para_expr(c), Ordem) else o
+                      for o, a, c in zip(ordens, lista, cols)]
+        return ordens
+
+    def orderBy(self, *cols, ascending=None):
+        from .avancado import ordenar
+        return self._novo(ordenar(self._plano, self._ordens(cols, ascending)))
+
+    sort = orderBy
+
+    def sortWithinPartitions(self, *cols, ascending=None):
+        from .plano_largo import Sort
+        return self._novo(Sort(self._plano, self._ordens(cols, ascending), False))
+
+    def distinct(self):
+        from .avancado import agregar
+        refs = [Ref(a) for a in self._plano.saida]
+        return self._novo(agregar(self._plano, refs, refs, 'distinct'))
+
+    def dropDuplicates(self, subset=None):
+        from .agregacoes import Agg
+        from .avancado import agregar
+        if subset is None:
+            return self.distinct()
+        if isinstance(subset, str):
+            subset = [subset]
+        e = self._entrada()
+        chaves = [Ref(e.atributos[e.achar(c)]) for c in subset]
+        ids = {k.atributo.id for k in chaves}
+        saidas = [Ref(a) if a.id in ids else Alias(Agg('first', [Ref(a)]), a.nome) for a in self._plano.saida]
+        return self._novo(agregar(self._plano, chaves, saidas, 'dropDuplicates'))
+
+    drop_duplicates = dropDuplicates
+
+    def join(self, other, on=None, how=None):
+        from .avancado import juntar
+        return self._novo(juntar(self._plano, other._plano, on, how))
+
+    def crossJoin(self, other):
+        return self.join(other, how='cross')
+
+    def union(self, other):
+        from .avancado import unir
+        return self._novo(unir([self._plano, other._plano]))
+
+    unionAll = union
+
+    def unionByName(self, other, allowMissingColumns=False):
+        from .avancado import por_nome
+        return self._novo(por_nome(self._plano, other._plano, allowMissingColumns))
+
+    def repartition(self, numPartitions=None, *cols):
+        from .plano_largo import ChaveLinha, Exchange, _atributo_da_chave
+        if isinstance(numPartitions, (str, Column)):
+            cols, numPartitions = (numPartitions, *cols), None
+        if not cols:
+            return self._novo(Exchange(self._plano, 'roundrobin', int(numPartitions), operacao='repartition'))
+        n = int(numPartitions) if numPartitions is not None else int(self.sparkSession.conf.get('spark.sql.shuffle.partitions'))
+        e = self._entrada()
+        exprs = self._exprs(cols)
+        for x in exprs:
+            x.tipo(e)
+        return self._novo(Exchange(self._plano, 'hash', n, chave=ChaveLinha([x.compilar(e) for x in exprs]),
+                                   atributos=[_atributo_da_chave(x, e) for x in exprs], motivo='REPARTITION_BY_NUM' if numPartitions else 'REPARTITION_BY_COL',
+                                   operacao='repartition'))
+
+    def coalesce(self, numPartitions):
+        from .plano_largo import Coalesce
+        return self._novo(Coalesce(self._plano, int(numPartitions)))
+
+    # ---------- cache ----------
+    def cache(self):
+        return self.persist()
+
+    def persist(self, storageLevel=None):
+        from .plano_largo import Guardado, InMemoryTableScan
+        if not self.is_cached:
+            self._sem_cache = self._plano
+            self._plano = InMemoryTableScan(Guardado(self._plano))
+        return self
+
+    def unpersist(self, blocking=False):
+        if self.is_cached:
+            self._plano = self._sem_cache
+        return self
+
+    @property
+    def is_cached(self):
+        from .plano_largo import InMemoryTableScan
+        return isinstance(self._plano, InMemoryTableScan)
+
+    @property
+    def storageLevel(self):
+        from ..storagelevel import StorageLevel
+        return StorageLevel(True, True, False, True, 1) if self.is_cached else StorageLevel.NONE
+
+    # ---------- para a correção ----------
+    def _plano_resumo(self):
+        from .plano_largo import BroadcastHashJoin, Exchange, InMemoryTableScan
+        resumo = {'shuffles': 0, 'broadcast': False, 'cache': False}
+
+        def visitar(no):
+            for x in P.nos(no):
+                if isinstance(x, Exchange):
+                    resumo['shuffles'] += 1
+                elif isinstance(x, BroadcastHashJoin):
+                    resumo['broadcast'] = True
+                elif isinstance(x, InMemoryTableScan):
+                    resumo['cache'] = True
+                    if not x.interno.calculado:
+                        visitar(x.interno.plano)
+        visitar(self._plano)
+        return {**resumo, 'particoes': self._plano.num_particoes(), 'estagios': resumo['shuffles'] + 1}
+
+    def _diverge_tabela(self, limite):
+        from diverge_runtime import estagios
+        from .plano_largo import Sort
+        with estagios.local():
+            linhas = self._linhas('tabela')
+        topo = self._plano
+        while topo.transparente() or isinstance(topo, (P.Project, P.Filter, P.Limit)):
+            topo = topo.filhos[0]
+        return {
+            'colunas': [{'nome': a.nome, 'tipo': a.tipo.simpleString()} for a in self._plano.saida],
+            'linhas': [[_para_json(v) for v in linha] for linha in linhas[:limite]],
+            'total': len(linhas),
+            'ordenado': isinstance(topo, Sort) and topo.global_,
+            'plano': self._plano_resumo(),
+        }
 
     def filter(self, condicao):
         if isinstance(condicao, str):
@@ -249,6 +397,25 @@ class DataFrame:
         return self.sparkSession.sparkContext.parallelize(
             [json.dumps({k: _json(v) for k, v in zip(nomes, linha) if v is not None}, ensure_ascii=False, separators=(',', ':'))
              for linha in self._linhas('toJSON')])
+
+
+def _para_json(v):
+    """Valor de uma célula para a correção (JSON): datas como no show, Row vira dicionário."""
+    import datetime
+    import math
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    if isinstance(v, (datetime.date, datetime.datetime)):
+        return mostrar.texto_do_valor(v)
+    if isinstance(v, T.Row) and hasattr(v, '__fields__'):
+        return {k: _para_json(x) for k, x in zip(v.__fields__, v)}
+    if isinstance(v, (list, tuple)):
+        return [_para_json(x) for x in v]
+    if isinstance(v, dict):
+        return {str(k): _para_json(x) for k, x in v.items()}
+    if isinstance(v, (bytes, bytearray)):
+        return mostrar.texto_do_valor(v)
+    return v
 
 
 def _json(v):
