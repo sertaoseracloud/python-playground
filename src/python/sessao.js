@@ -25,8 +25,22 @@ export async function criarSessao(pyodide, { pool, fontes = FONTES } = {}) {
   }
 
   return {
-    async executar(arquivos, { principal = 'main.py', entrada = [], chamadas = [] } = {}) {
-      const args = pyodide.toPy({ arquivos, principal, entrada, chamadas });
+    /**
+     * `interativo`: o input() sem resposta na fila pede ao terminal (`aoPedirEntrada`, que
+     * resolve com o texto ou com null = EOF); `aoSaida` recebe cada escrita na hora; com
+     * `semJSPI`, o resultado volta com `precisa_entrada` em vez de esperar.
+     */
+    async executar(arquivos, {
+      principal = 'main.py', entrada = [], chamadas = [], interativo = false, argv = [],
+      aoSaida, aoPedirEntrada, semJSPI = false,
+    } = {}) {
+      const args = pyodide.toPy({ arquivos, principal, entrada, chamadas, interativo, argv });
+      pyodide.registerJsModule('diverge_terminal_js', {
+        escrever: (texto) => aoSaida?.(texto),
+        // EOF vira undefined: o null do JS chega no Python como jsnull, não como None.
+        pedir: () => Promise.resolve(aoPedirEntrada?.()).then((texto) => texto ?? undefined),
+        sem_jspi: () => semJSPI || !aoPedirEntrada,
+      });
       try {
         pyodide.globals.set('_diverge_args', args);
         const json = await pyodide.runPythonAsync('import diverge_runtime.execucao as _e\n_e.executar_json(_diverge_args)');
@@ -34,6 +48,8 @@ export async function criarSessao(pyodide, { pool, fontes = FONTES } = {}) {
       } finally {
         args.destroy();
         pyodide.globals.delete('_diverge_args');
+        pyodide.unregisterJsModule('diverge_terminal_js');
+        pyodide.runPython("import sys; sys.modules.pop('diverge_terminal_js', None)");
       }
     },
   };

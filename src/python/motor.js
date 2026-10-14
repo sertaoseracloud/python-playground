@@ -1,4 +1,6 @@
 export class TempoEsgotado extends Error {}
+/** Ctrl+C no terminal: a execução foi interrompida e o worker, recriado. */
+export class Interrompido extends Error {}
 
 const workerDoSite = () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 
@@ -26,6 +28,7 @@ export class MotorPython {
   iniciar() {
     this.worker?.terminate();
     this.pendentes = new Map();
+    this.ganchos = new Map();
     this.aoMudarEstado('carregando');
     this.worker = this.criarWorker();
     this.pronto = new Promise((resolve, reject) => {
@@ -39,6 +42,18 @@ export class MotorPython {
         } else if (data.tipo === 'resposta') {
           this.pendentes.get(data.id)?.(data);
           this.pendentes.delete(data.id);
+          this.ganchos.delete(data.id);
+        } else if (data.tipo === 'saida') {
+          this.ganchos.get(data.id)?.aoSaida?.(data.texto);
+        } else if (data.tipo === 'entrada') {
+          // Esperando a pessoa digitar: o relógio para e volta a contar com a resposta.
+          const worker = this.worker;
+          this.armarRelogio?.(null);
+          Promise.resolve(this.ganchos.get(data.id)?.aoPedirEntrada?.() ?? null).then((texto) => {
+            if (this.worker !== worker || !this.pendentes.has(data.id)) return; // interrompido enquanto esperava
+            this.armarRelogio?.(this.limiteMs);
+            worker.postMessage({ tipo: 'resposta-entrada', id: data.id, texto: texto ?? null });
+          });
         } else if (data.tipo === 'pool-abrindo' || data.tipo === 'pool-pronto') {
           const abrindo = data.tipo === 'pool-abrindo';
           this.armarRelogio?.(abrindo ? LIMITE_ABRIR_POOL_MS : this.limiteMs);
@@ -54,33 +69,53 @@ export class MotorPython {
     this.pronto.catch(() => {});
   }
 
-  /** Roda os arquivos: `opcoes = { principal, entrada, chamadas }`. */
-  executar(arquivos, opcoes = {}) {
-    const tarefa = this.fila.then(() => this.#rodar({ arquivos, opcoes }));
+  /**
+   * Roda os arquivos: `opcoes = { principal, entrada, chamadas, interativo, argv, semJSPI }`;
+   * `ganchos = { aoSaida(texto), aoPedirEntrada() → Promise<string | null> }` (o terminal).
+   */
+  executar(arquivos, opcoes = {}, ganchos = {}) {
+    const tarefa = this.fila.then(() => this.#rodar({ arquivos, opcoes }, ganchos));
     this.fila = tarefa.catch(() => {});
     return tarefa;
   }
 
-  async #rodar(mensagem) {
+  /** Ctrl+C: encerra a execução em andamento (o worker é recriado). */
+  interromper() {
+    const atual = this.atual;
+    if (!atual) return;
+    this.atual = null;
+    atual.parar();
+    this.iniciar();
+    atual.reject(new Interrompido('KeyboardInterrupt'));
+  }
+
+  async #rodar(mensagem, ganchos) {
     await this.pronto;
     const id = this.proximoId++;
     const inicio = performance.now();
     return new Promise((resolve, reject) => {
       let relogio;
-      const esgotar = () => {
-        this.pendentes.delete(id);
+      const parar = () => {
+        clearTimeout(relogio);
         this.armarRelogio = null;
+        this.pendentes.delete(id);
+        if (this.atual?.id === id) this.atual = null;
+      };
+      const esgotar = () => {
+        parar();
         this.iniciar();
         reject(new TempoEsgotado(`O Python passou de ${this.limiteMs / 1000} s e foi interrompido.`));
       };
+      // ms = null: só para o relógio (esperando a digitação).
       this.armarRelogio = (ms) => {
         clearTimeout(relogio);
-        relogio = setTimeout(esgotar, ms);
+        if (ms !== null) relogio = setTimeout(esgotar, ms);
       };
       this.armarRelogio(this.limiteMs);
+      this.atual = { id, parar, reject };
+      this.ganchos.set(id, ganchos);
       this.pendentes.set(id, (resposta) => {
-        clearTimeout(relogio);
-        this.armarRelogio = null;
+        parar();
         if (resposta.erroInterno) reject(new Error(resposta.erroInterno));
         else resolve({ ...resposta, ms: Math.round(performance.now() - inicio) });
       });

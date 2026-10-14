@@ -17,11 +17,36 @@ sessao.then(
   (erro) => postMessage({ tipo: 'falha', erro: String(erro?.message ?? erro) }),
 );
 
+const esperando = new Map(); // id → resolve da resposta do input()
+
 onmessage = async ({ data }) => {
+  if (data.tipo === 'resposta-entrada') {
+    esperando.get(data.id)?.(data.texto);
+    esperando.delete(data.id);
+    return;
+  }
+  // A saída ao vivo vai para a página em blocos de até 30 ms (um print por mensagem seria lento).
+  let pendente = '';
+  let timer = null;
+  const despejar = () => {
+    clearTimeout(timer);
+    timer = null;
+    if (pendente) postMessage({ tipo: 'saida', id: data.id, texto: pendente });
+    pendente = '';
+  };
+  const opcoes = {
+    ...data.opcoes,
+    aoSaida: (texto) => { pendente += texto; timer ??= setTimeout(despejar, 30); },
+    aoPedirEntrada: data.opcoes?.interativo
+      ? () => { despejar(); postMessage({ tipo: 'entrada', id: data.id }); return new Promise((r) => esperando.set(data.id, r)); }
+      : undefined,
+  };
   try {
-    const resultado = await (await sessao).executar(data.arquivos, data.opcoes);
+    const resultado = await (await sessao).executar(data.arquivos, opcoes);
+    despejar();
     postMessage({ tipo: 'resposta', id: data.id, ...resultado });
   } catch (erro) {
+    despejar();
     postMessage({ tipo: 'resposta', id: data.id, erroInterno: String(erro?.message ?? erro) });
   }
 };

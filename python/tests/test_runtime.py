@@ -82,3 +82,54 @@ def test_paralelismo_sem_pool_roda_em_sequencia():
     r = execucao.executar({'main.py': 'from diverge_runtime import pool\nprint(pool.mapear(abs, [-1, -2]))\n'})
     assert r['saida'] == '[1, 2]\n'
     assert r['paralelismo'] == {'disponivel': False, 'maximo': 1, 'tarefas': 2, 'workers': 1}
+
+
+# ---------- terminal interativo ----------
+import types  # noqa: E402
+
+
+def _terminal_falso(respostas, sem_jspi=True):
+    saidas = []
+    modulo = types.ModuleType('diverge_terminal_js')
+    modulo.escrever = saidas.append
+    modulo.sem_jspi = lambda: sem_jspi
+    modulo.pedir = lambda: None
+    sys.modules['diverge_terminal_js'] = modulo
+    return saidas
+
+
+def test_saida_ao_vivo_e_input_sem_jspi_pede_resposta():
+    saidas = _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'print("antes")\nnome = input("Nome: ")\nprint("Olá", nome)\n'}, interativo=True)
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['precisa_entrada'] is True
+    assert r['erro'] is None
+    assert ''.join(saidas) == 'antes\nNome: '
+    assert r['saida'] == 'antes\nNome: '
+
+
+def test_input_interativo_usa_as_respostas_ja_dadas_antes_de_pedir():
+    _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'a = input("A: ")\nb = input("B: ")\nprint(a + b)\n'}, entrada=['1'], interativo=True)
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['precisa_entrada'] is True
+    assert r['saida'] == 'A: 1\nB: '  # a resposta dada aparece como se tivesse sido digitada
+
+
+def test_chamadas_da_correcao_nunca_pedem_resposta():
+    _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'def f():\n    return input()\n'}, interativo=True, chamadas=[{'funcao': 'f', 'args': []}])
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['retornos'][0]['erro']['tipo'] == 'EOFError'
+    assert not r.get('precisa_entrada')
+
+
+def test_argv():
+    r = execucao.executar({'main.py': 'import sys\nprint(sys.argv)\n'}, argv=['a', 'b'])
+    assert r['saida'] == "['main.py', 'a', 'b']\n"
