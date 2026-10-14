@@ -295,6 +295,103 @@ export const GLOSSARIO = [
     analogia: 'Na mudança, um carregador pega o piano e os outros, as almofadas: o caminhão só sai quando ele termina.',
     exemplo: 'tamanhos = [100, 2, 3]  # a primeira partição atrasa todas',
   },
+  // ---------- PySpark ----------
+  {
+    id: 'spark', termo: 'Spark', padroes: ['spark', 'pyspark'],
+    definicao: 'Um motor que divide o processamento de dados grandes entre vários computadores (os workers). O PySpark é o Spark usado pelo Python.',
+    analogia: 'Um mutirão: o trabalho do roçado é dividido entre muita gente, e cada um faz a sua parte ao mesmo tempo.',
+    exemplo: 'from pyspark.sql import SparkSession\nspark = SparkSession.builder.getOrCreate()',
+  },
+  {
+    id: 'sparksession', termo: 'SparkSession', padroes: ['SparkSession', 'sessão do spark'],
+    definicao: 'O ponto de entrada do Spark: é por ela que você lê arquivos, cria DataFrames e roda SQL.',
+    analogia: 'A recepção da empresa: tudo começa ali, e ela encaminha para o setor certo.',
+    exemplo: 'spark = SparkSession.builder.appName("aula").getOrCreate()',
+  },
+  {
+    id: 'rdd', termo: 'RDD', padroes: ['RDDs?'],
+    definicao: 'A coleção distribuída do Spark: uma lista dividida em partições, que os workers processam em paralelo.',
+    analogia: 'Uma colheita dividida em faixas do roçado: cada trabalhador cuida da sua faixa.',
+    exemplo: 'rdd = sc.parallelize([1, 2, 3, 4])\nprint(rdd.map(lambda x: x * 2).collect())',
+  },
+  {
+    id: 'dataframe', termo: 'DataFrame', padroes: ['DataFrames?'],
+    definicao: 'Uma tabela distribuída, com colunas que têm nome e tipo. Você diz o que quer, e o Spark monta o plano.',
+    analogia: 'Uma planilha gigante dividida entre vários computadores, que você usa como se fosse uma só.',
+    exemplo: 'df = spark.createDataFrame([("Ana", 31)], ["nome", "idade"])\ndf.show()',
+  },
+  {
+    id: 'preguicosa', termo: 'Avaliação preguiçosa: transformação e ação', padroes: ['preguiços[oa]', 'transformaç(ão|ões)', 'aç(ão|ões)'],
+    definicao: 'Transformações (filter, select, groupBy) só anotam a receita; nada roda até uma ação (count, show, collect).',
+    analogia: 'Anotar a lista de compras: ninguém sai de casa até alguém dizer "vai".',
+    exemplo: 'pares = df.filter(df.id % 2 == 0)  # nada rodou\nprint(pares.count())  # agora roda',
+  },
+  {
+    id: 'schema', termo: 'Schema', padroes: ['schemas?', 'printSchema'],
+    definicao: 'A lista das colunas de um DataFrame, com o nome e o tipo de cada uma.',
+    analogia: 'O cabeçalho de um formulário: diz o que vai em cada campo e de que jeito.',
+    exemplo: 'df.printSchema()\n# |-- nome: string (nullable = true)',
+  },
+  {
+    id: 'shuffle', termo: 'Shuffle', padroes: ['shuffles?', 'Exchange'],
+    definicao: 'Quando os dados mudam de partição pela rede (groupBy, join, orderBy). É a parte cara de um job.',
+    analogia: 'A apuração da eleição: os votos de todas as seções vão para a central para serem somados por candidato.',
+    exemplo: 'df.groupBy("regiao").count().explain()  # o Exchange é o shuffle',
+  },
+  {
+    id: 'estagio', termo: 'Estágio e tarefa', padroes: ['estágios?', 'tarefas?', 'jobs?'],
+    definicao: 'Cada ação vira um job; o job se divide em estágios nos shuffles; cada estágio roda uma tarefa por partição.',
+    analogia: 'Uma linha de produção: cada estação (estágio) tem vários operários (tarefas) fazendo a mesma coisa em peças diferentes.',
+    exemplo: 'df.groupBy("regiao").count().show()  # veja a aba ⚡ Execução',
+  },
+  {
+    id: 'broadcast', termo: 'Broadcast', padroes: ['broadcast', 'BroadcastHashJoin'],
+    definicao: 'Mandar uma cópia de uma tabela pequena para cada worker, para o join não precisar de shuffle.',
+    analogia: 'Dar a cada vendedor uma cópia da tabela de preços em vez de todo mundo ir perguntar no escritório.',
+    exemplo: 'vendas.join(F.broadcast(regioes), "regiao")',
+  },
+  {
+    id: 'join', termo: 'Join', padroes: ['joins?', 'SortMergeJoin', 'left_anti'],
+    definicao: 'Juntar duas tabelas pelas linhas que têm a mesma chave. inner fica só com os pares; left fica com todas da esquerda.',
+    analogia: 'Juntar a lista de alunos com a lista de notas pelo número da matrícula.',
+    exemplo: 'pedidos.join(clientes, "id_cliente", "left")',
+  },
+  {
+    id: 'janela', termo: 'Função de janela', padroes: ['janelas?', 'Window', 'row_number', 'rank'],
+    definicao: 'Um cálculo que olha para as linhas vizinhas do mesmo grupo (posição, linha anterior, soma acumulada) sem juntar o grupo numa linha só.',
+    analogia: 'O placar do campeonato: cada time sabe a sua posição e quantos pontos tinha na rodada passada.',
+    exemplo: 'w = Window.partitionBy("regiao").orderBy("data")\nF.row_number().over(w)',
+  },
+  {
+    id: 'spark-sql', termo: 'Spark SQL e view', padroes: ['spark\\.sql', 'Spark SQL', 'views?', 'createOrReplaceTempView'],
+    definicao: 'Consultar DataFrames com SQL: a view dá um nome à tabela, e spark.sql devolve outro DataFrame.',
+    analogia: 'Outra porta para a mesma loja: entrando pelo SQL ou pelo DataFrame, você chega às mesmas prateleiras.',
+    exemplo: 'df.createOrReplaceTempView("vendas")\nspark.sql("SELECT regiao, COUNT(*) FROM vendas GROUP BY regiao").show()',
+  },
+  {
+    id: 'cache', termo: 'Cache', padroes: ['cache', 'persist'],
+    definicao: 'Guardar o resultado de um DataFrame na memória, para a próxima ação não refazer o caminho todo.',
+    analogia: 'Deixar o feijão cozido na geladeira: no outro dia é só esquentar.',
+    exemplo: 'caros = df.filter(df.preco > 10).cache()\ncaros.count()\ncaros.show()',
+  },
+  {
+    id: 'explain', termo: 'Plano de execução (explain)', padroes: ['explain', 'plano de execução', 'plano físico'],
+    definicao: 'O passo a passo que o Spark montou para rodar a consulta. df.explain() mostra: cada Exchange é um shuffle.',
+    analogia: 'O roteiro da viagem antes de sair: dá para ver onde vai ter baldeação.',
+    exemplo: 'df.groupBy("regiao").count().explain()',
+  },
+  {
+    id: 'udf', termo: 'UDF', padroes: ['UDFs?'],
+    definicao: 'Uma função Python sua usada dentro do Spark. É mais lenta que as funções prontas, porque cada valor passa pelo Python.',
+    analogia: 'Um serviço terceirizado: resolve o que a casa não faz, mas cada pedido sai e volta pela portaria.',
+    exemplo: '@F.udf("string")\ndef rotulo(x):\n    return "alto" if x > 10 else "baixo"',
+  },
+  {
+    id: 'nulo', termo: 'Valor nulo (NULL)', padroes: ['NULL', 'nulos?', 'isNull'],
+    definicao: 'Um valor que falta. NULL comparado com qualquer coisa não é verdadeiro nem falso: o filter descarta.',
+    analogia: 'Uma resposta em branco no questionário: não dá para dizer se é sim ou não.',
+    exemplo: 'df.filter(df.nota.isNull()).show()\ndf.na.fill({"nota": 0.0})',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
@@ -306,7 +403,7 @@ const REGEX = new Map(GLOSSARIO.map((t) => [
 
 // Nível de cada termo: o módulo em que ele aparece primeiro (a ordem do glossário).
 const ORDEM_MODULOS = ['basico', 'dados', 'paralelismo', 'pyspark', 'alem', 'projetos'];
-const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo' };
+const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo', pyspark: 'spark' };
 const NIVEL = new Map();
 {
   let nivel = 0;
@@ -318,13 +415,15 @@ const NIVEL = new Map();
 }
 
 /**
- * Termos do glossário que aparecem no texto, na ordem em que aparecem.
- * Se passarem de `max`, ficam os do nível do módulo (ou o mais próximo dele).
+ * Termos do glossário que aparecem no texto, na ordem em que aparecem, até o nível do
+ * módulo. Se passarem de `max`, ficam os do nível do módulo (ou o mais próximo dele).
  */
 export function termosDoTexto(texto, { max = MAX_TERMOS, modulo } = {}) {
   const nivelItem = modulo ? ORDEM_MODULOS.indexOf(modulo) : Infinity;
   const prioridade = (t) => Math.min(NIVEL.get(t.id), nivelItem);
   return GLOSSARIO
+    // Um termo de um módulo que vem depois não aparece antes (o "join" do str.join não é o join do Spark).
+    .filter((t) => NIVEL.get(t.id) <= nivelItem)
     .map((t) => ({ termo: t, posicao: texto.search(REGEX.get(t.id)) }))
     .filter((x) => x.posicao >= 0)
     .sort((a, b) => prioridade(b.termo) - prioridade(a.termo) || a.posicao - b.posicao)

@@ -459,8 +459,10 @@ class Parser:
         if self.aceitar_op('('):
             df = self.consulta()
             self.esperar_op(')')
-            self.aceitar('as')
-            return df.alias(self.nome())
+            if self.aceitar('as') or self.atual.tipo in ('nome', 'crase'):
+                return df.alias(self.nome())
+            # Como no Spark, a subconsulta sem apelido ganha um nome automático.
+            return df.alias('__auto_generated_subquery_name')
         nome = self.nome()
         while self.aceitar_op('.'):
             nome = self.nome()

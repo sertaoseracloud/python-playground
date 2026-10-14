@@ -113,6 +113,9 @@ def test_sql(spark):
     assert tuplas(j) == [('Arroz', 'Recife'), ('Café', 'Recife')]
     w = spark.sql('SELECT produto, ROW_NUMBER() OVER (PARTITION BY regiao ORDER BY preco DESC) AS pos FROM vendas ORDER BY produto')
     assert tuplas(w) == [('Arroz', 1), ('Café', 2), ('Feijão', 1), ('Rapadura', 1)]
+    # Como no Spark, a subconsulta no FROM não precisa de apelido.
+    s = spark.sql('SELECT produto FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY regiao ORDER BY preco DESC) AS pos FROM vendas) WHERE pos = 1 ORDER BY produto')
+    assert tuplas(s) == [('Arroz',), ('Feijão',), ('Rapadura',)]
     assert spark.sql('SELECT 1 + 1 AS dois').first().dois == 2
     assert spark.sql('SELECT SUM(quantidade) FROM vendas').columns == ['sum(quantidade)']
     assert spark.sql('WITH ne AS (SELECT * FROM vendas WHERE regiao = "Nordeste") SELECT COUNT(*) AS n FROM ne').first().n == 2
