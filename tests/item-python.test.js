@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// Tela do exercício com um motor falso: Executar mostra a saída e o traceback no
-// terminal, usa a aba ⌨️ Entrada e roda os casos visíveis.
+// Tela do exercício com um motor falso: Executar roda os casos visíveis e depois
+// `python main.py` no terminal (o input() é respondido no próprio terminal).
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -10,14 +10,21 @@ import { marcar, somarTentativa } from '../src/progresso.js';
 const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
 const corpo = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>'));
 
-function montar(resposta) {
+function montarCom(motor) {
   document.body.innerHTML = corpo;
-  const pedidos = [];
-  const motor = { executar: async (arquivos, opcoes) => { pedidos.push({ ...opcoes, arquivos }); return { ms: 5, retornos: [], variaveis: {}, ...resposta }; } };
   const layout = { aplicar() {}, mostrarDescricao() {} };
   const tela = criarTelaItem({ motor, layout, definirStatus: () => {}, aoMudarProgresso: () => {} });
   tela.aoMudarEstadoPython(true);
-  return { tela, pedidos };
+  return { tela };
+}
+
+function montar(resposta) {
+  const pedidos = [];
+  const motor = {
+    executar: async (arquivos, opcoes) => { pedidos.push({ ...opcoes, arquivos }); return { ms: 5, retornos: [], variaveis: {}, ...resposta }; },
+    interromper() {},
+  };
+  return { ...montarCom(motor), pedidos };
 }
 
 describe('tela do exercício (Python)', () => {
@@ -38,13 +45,73 @@ describe('tela do exercício (Python)', () => {
     expect(texto.indexOf('antes')).toBeLessThan(texto.indexOf('ZeroDivisionError'));
   });
 
-  it('as linhas da aba ⌨️ Entrada vão para o input()', async () => {
-    const { tela, pedidos } = montar({ saida: '', erro: null });
-    tela.abrir('livre');
-    document.getElementById('entrada').value = 'Ana\nBia';
-    document.getElementById('btn-executar').click();
+  it('não existe mais a aba ⌨️ Entrada', () => {
+    montar({ saida: '', erro: null });
+    expect(document.getElementById('entrada')).toBeNull();
+    expect(document.querySelector('[data-saida="entrada"]')).toBeNull();
+  });
+
+  it('▶ Executar roda os testes visíveis e depois python main.py no terminal', async () => {
+    const { tela, pedidos } = montar({ saida: 'Olá\n', erro: null });
+    tela.abrir('py-ola');
     await new Promise((r) => setTimeout(r, 20));
-    expect(pedidos.at(-1).entrada).toEqual(['Ana', 'Bia']);
+    pedidos.length = 0;
+    document.getElementById('btn-executar').click();
+    await new Promise((r) => setTimeout(r, 30));
+    const ultimo = pedidos.at(-1);
+    expect(ultimo.interativo).toBe(true);
+    expect(pedidos.length).toBeGreaterThan(1);
+    expect(pedidos.slice(0, -1).every((p) => !p.interativo)).toBe(true);
+    expect(document.getElementById('saida-terminal').textContent).toContain('$ python main.py');
+    expect(document.getElementById('prompt-terminal').textContent).toBe('aluno@sertao:~/py-ola$ ');
+  });
+
+  it('abrir o exercício não fala; o ▶ Executar fala o resultado do programa e dos testes', async () => {
+    const { tela } = montar({ saida: 'Olá\n', erro: null });
+    tela.abrir('py-ola');
+    await new Promise((r) => setTimeout(r, 150));
+    expect(document.getElementById('anuncio').textContent).toBe('');
+    document.getElementById('btn-executar').click();
+    await new Promise((r) => setTimeout(r, 150));
+    expect(document.getElementById('anuncio').textContent).toMatch(/O programa rodou sem erros\..*caso/);
+  });
+
+  it('o input() do programa é respondido no terminal', async () => {
+    const motor = {
+      executar: async (a, o, g) => {
+        if (!o.interativo) return { saida: '', erro: null };
+        g.aoSaida('Nome: ');
+        const nome = await g.aoPedirEntrada();
+        return { saida: `Nome: ${nome}\nOlá, ${nome}!\n`, erro: null, ms: 1 };
+      },
+      interromper() {},
+    };
+    const { tela } = montarCom(motor);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('prompt-terminal').textContent).toBe('Nome: ');
+    expect(document.getElementById('campo-terminal').getAttribute('aria-label')).toBe('Resposta para o input()');
+    const campo = document.getElementById('campo-terminal');
+    campo.value = 'Ana';
+    campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('saida-terminal').textContent).toContain('Nome: Ana\nOlá, Ana!\n');
+  });
+
+  it('trocar de exercício com o programa esperando um input() cancela a espera', async () => {
+    // Só o livre (que tem dados) espera a digitação; o py-ola termina na hora.
+    const motor = {
+      executar: async (a, o, g) => (o.interativo && a['vendas.csv'] ? (await g.aoPedirEntrada(), { saida: '', erro: null }) : { saida: '', erro: null, ms: 1 }),
+      interromper() {},
+    };
+    const { tela } = montarCom(motor);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(tela.terminal.ocupado).toBe(true);
+    expect(document.getElementById('prompt-terminal').textContent).toBe('');
+    tela.abrir('py-ola');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(document.getElementById('prompt-terminal').textContent).toBe('aluno@sertao:~/py-ola$ ');
   });
 
   it('o livre mostra a aba 📦 Dados e envia os dados junto com o código', async () => {

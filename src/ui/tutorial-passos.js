@@ -62,7 +62,7 @@ export const PASSOS = [
     alvo: '.painel-preview',
     titulo: 'O terminal',
     texto: `<p>A aba <b>🖥️ Terminal</b> mostra o que o programa imprimiu e, se der erro, o <b>traceback</b>: a última linha diz o erro e a linha do código.</p>
-      <p>Se o código usa <code>input()</code>, escreva as respostas na aba <b>⌨️ Entrada</b>, uma por linha.</p>`,
+      <p>É um terminal de verdade: o <code>input()</code> espera você digitar ali mesmo, e no prompt dá para rodar <code>python main.py</code>, abrir o <code>python</code> (o modo <code>&gt;&gt;&gt;</code>) e usar <code>ls</code>, <code>cat</code> e <code>help</code>. <kbd>Esc</kbd> sai do terminal.</p>`,
   },
   {
     tela: 'item',

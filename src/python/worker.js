@@ -17,11 +17,45 @@ sessao.then(
   (erro) => postMessage({ tipo: 'falha', erro: String(erro?.message ?? erro) }),
 );
 
+const esperando = new Map(); // id → resolve da resposta do input()
+
 onmessage = async ({ data }) => {
+  if (data.tipo === 'resposta-entrada') {
+    esperando.get(data.id)?.(data.texto);
+    esperando.delete(data.id);
+    return;
+  }
+  // A saída ao vivo vai para a página em blocos de até 30 ms (um print por mensagem seria lento).
+  // Enquanto o Python roda, o worker não processa timers: o bloco sai da própria escrita quando
+  // já passaram 30 ms, e o timer só cobre o fim de uma rajada.
+  let pendente = '';
+  let timer = null;
+  let ultimoEnvio = performance.now();
+  const despejar = () => {
+    clearTimeout(timer);
+    timer = null;
+    if (pendente) postMessage({ tipo: 'saida', id: data.id, texto: pendente });
+    pendente = '';
+    ultimoEnvio = performance.now();
+  };
+  const opcoes = {
+    ...data.opcoes,
+    aoSaida: (texto) => {
+      pendente += texto;
+      if (performance.now() - ultimoEnvio >= 30) despejar();
+      else timer ??= setTimeout(despejar, 30);
+    },
+    aoPedirEntrada: data.opcoes?.interativo
+      ? () => { despejar(); postMessage({ tipo: 'entrada', id: data.id }); return new Promise((r) => esperando.set(data.id, r)); }
+      : undefined,
+  };
   try {
-    const resultado = await (await sessao).executar(data.arquivos, data.opcoes);
+    const s = await sessao;
+    const resultado = data.tipo === 'repl' ? await s.repl(opcoes) : await s.executar(data.arquivos, opcoes);
+    despejar();
     postMessage({ tipo: 'resposta', id: data.id, ...resultado });
   } catch (erro) {
+    despejar();
     postMessage({ tipo: 'resposta', id: data.id, erroInterno: String(erro?.message ?? erro) });
   }
 };

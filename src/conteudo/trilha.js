@@ -22,7 +22,7 @@ export const LIVRE = {
   titulo: 'Playground livre',
   resumo: `
     <p>Escreva o Python que quiser. Use o <b>+</b> para criar arquivos e importá-los com <code>import</code>.</p>
-    <p>Se o código usar <code>input()</code>, escreva as respostas na aba <b>⌨️ Entrada</b>, uma por linha.</p>
+    <p>Se o código usar <code>input()</code>, digite a resposta no próprio terminal e aperte Enter. No terminal também dá para rodar <code>python main.py</code>, abrir o modo interativo com <code>python</code> e ver os comandos com <code>help</code>.</p>
     <p>Na aba <b>📦 Dados</b> há um <code>vendas.csv</code> de exemplo: abra com <code>open("vendas.csv")</code>.</p>`,
   arquivos: { 'main.py': 'nome = input("Qual é o seu nome? ")\nprint(f"Olá, {nome}!")\n' },
   dados: {

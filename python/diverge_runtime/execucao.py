@@ -17,6 +17,7 @@ PASTA = '/home/pyodide/exercicio'
 LIMITE_SAIDA = 100_000
 LIMITE_ARQUIVOS = 20
 _json_dumps = json.dumps  # referência própria: um json.py do aluno não pode trocar isto
+ULTIMO_ESCOPO = None  # as variáveis do último programa, para o `python -i` (repl.py)
 
 
 class _Saida(io.StringIO):
@@ -25,8 +26,11 @@ class _Saida(io.StringIO):
     def __init__(self):
         super().__init__()
         self.cortada = False
+        self.ao_escrever = None  # o terminal da página (saída ao vivo)
 
     def write(self, texto):
+        if self.ao_escrever is not None:
+            self.ao_escrever(texto)
         if self.cortada:
             return len(texto)
         restante = LIMITE_SAIDA - self.tell()
@@ -36,6 +40,34 @@ class _Saida(io.StringIO):
             self.cortada = True
             return len(texto)
         return super().write(texto)
+
+    def eco(self, texto):
+        """O que a pessoa digitou: entra na saída guardada, mas não vai ao vivo (o terminal já mostrou)."""
+        ao_escrever, self.ao_escrever = self.ao_escrever, None
+        try:
+            self.write(texto)
+        finally:
+            self.ao_escrever = ao_escrever
+
+
+class _PrecisaDeEntrada(BaseException):
+    """O input() precisa de uma resposta e não dá para esperar (sem JSPI): a página pede e roda de novo."""
+
+
+def _terminal_js():
+    try:
+        import diverge_terminal_js
+    except ImportError:
+        return None
+    return diverge_terminal_js
+
+
+def _pode_esperar():
+    try:
+        from pyodide.ffi import can_run_sync
+    except ImportError:
+        return False
+    return can_run_sync()
 
 
 def _gravar(arquivos):
@@ -88,15 +120,35 @@ def _erro(excecao, arquivos):
     }
 
 
-def _input(entrada, saida):
+def _input(entrada, saida, interativo=False):
     linhas = iter(entrada)
+    terminal = _terminal_js() if interativo else None
+    fila_acabou = False
 
     def ler(prompt=''):
+        nonlocal fila_acabou
         saida.write(str(prompt))
-        try:
-            return next(linhas)
-        except StopIteration:
+        if not fila_acabou:
+            try:
+                resposta = next(linhas)
+            except StopIteration:
+                fila_acabou = True
+            else:
+                if resposta is None:  # Ctrl+D numa execução repetida (sem JSPI)
+                    raise EOFError('EOF when reading a line')
+                if terminal is not None:
+                    saida.eco(resposta + '\n')  # como se tivesse sido digitada
+                return resposta
+        if terminal is None:
             raise EOFError('EOF when reading a line') from None
+        if terminal.sem_jspi() or not _pode_esperar():
+            raise _PrecisaDeEntrada()
+        from pyodide.ffi import run_sync
+        resposta = run_sync(terminal.pedir())
+        if resposta is None:
+            raise EOFError('EOF when reading a line')
+        saida.eco(str(resposta) + '\n')
+        return str(resposta)
     return ler
 
 
@@ -127,40 +179,53 @@ def _tabelas(escopo):
     return tabelas
 
 
-def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
+def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=False, argv=None):
     _gravar(arquivos)
     _esquecer_modulos_do_aluno(arquivos)
     pool.zerar(PASTA)
     estagios.zerar()
     saida = _Saida()
     antigo_stdout, antigo_stderr, antigo_input = sys.stdout, sys.stderr, builtins.input
-    antigo_path, antigo_cwd = list(sys.path), os.getcwd()
+    antigo_path, antigo_cwd, antigo_argv = list(sys.path), os.getcwd(), sys.argv
     escopo = {'__name__': '__main__', '__file__': principal, '__builtins__': builtins}
     erro = None
+    precisa = False
     retornos = []
     tabelas = {}
+    terminal = _terminal_js() if interativo else None
+    saida.ao_escrever = terminal.escrever if terminal is not None else None
     # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
     desfazer_paralelo = instalar_paralelo(principal, arquivos.get(principal, ''))
     try:
         sys.stdout = sys.stderr = saida
-        builtins.input = _input(entrada, saida)
+        fila = iter(entrada)  # a mesma fila segue para as chamadas da correção
+        builtins.input = _input(fila, saida, interativo)
+        sys.argv = [principal, *(argv or [])]
         sys.path.insert(0, PASTA)
         os.chdir(PASTA)
         try:
             codigo = compile(arquivos.get(principal, ''), principal, 'exec')
             exec(codigo, escopo)
+        except _PrecisaDeEntrada:
+            precisa = True
         except BaseException as e:  # SystemExit e KeyboardInterrupt também viram erro do aluno
             erro = _erro(e, arquivos)
-        for chamada in chamadas:
-            retornos.append(_chamar(escopo, chamada))
-        tabelas = _tabelas(escopo)
+        builtins.input = _input(fila, saida)  # as chamadas da correção nunca esperam digitação
+        saida.ao_escrever = None
+        if not precisa:
+            for chamada in chamadas:
+                retornos.append(_chamar(escopo, chamada))
+        tabelas = {} if precisa else _tabelas(escopo)
     finally:
         try:
             desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
         finally:
             sys.stdout, sys.stderr, builtins.input = antigo_stdout, antigo_stderr, antigo_input
         sys.path[:] = antigo_path
+        sys.argv = antigo_argv
         os.chdir(antigo_cwd)
+    global ULTIMO_ESCOPO
+    ULTIMO_ESCOPO = escopo
     variaveis = {}
     for nome, valor in escopo.items():
         if nome.startswith('_') or callable(valor) or type(valor).__name__ == 'module':
@@ -174,6 +239,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=()):
         'paralelismo': pool.resumo(),
         'spark': estagios.resumo(),
         'tabelas': tabelas,
+        'precisa_entrada': precisa,
     }
 
 
@@ -185,5 +251,7 @@ def executar_json(args):
         args.get('principal', 'main.py'),
         args.get('entrada', []),
         args.get('chamadas', []),
+        bool(args.get('interativo', False)),
+        list(args.get('argv', None) or []),
     )
     return _json_dumps(resultado, ensure_ascii=False)

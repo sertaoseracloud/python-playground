@@ -77,9 +77,9 @@ export const moduloBasico = {
       titulo: 'Lendo dados com input()',
       resumo: `
         <p><code>input()</code> espera a pessoa digitar uma linha e devolve o que foi digitado, sempre como texto.
-          É a pergunta que o programa faz; a resposta vem da aba <b>⌨️ Entrada</b>, uma linha por <code>input()</code>.</p>
+          É a pergunta que o programa faz: no terminal, o programa para e espera você digitar a resposta e apertar Enter.</p>
         <p>Para fazer conta, converta o texto: <code>int(input())</code> vira número inteiro e <code>float(input())</code>, número com vírgula.</p>
-        <p>Esta lição já vem com <code>7</code> na aba Entrada. Troque o número e execute de novo.</p>`,
+        <p>Execute, digite <code>7</code> no terminal e aperte Enter. Depois rode de novo (no terminal, <code>python main.py</code>) com outro número.</p>`,
       entrada: ['7'],
       arquivos: main(py`
         n = int(input("Digite um número: "))

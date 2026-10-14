@@ -6,8 +6,10 @@ import { linkItem, linkCompartilhado } from '../compartilhar.js';
 import { htmlDosDados } from './dados.js';
 import { corrigir, textoDaChamada } from '../corrigir.js';
 import {
-  statusDe, marcar, lerRascunho, gravarRascunho, apagarRascunho, lerEntrada, gravarEntrada,
+  statusDe, marcar, lerRascunho, gravarRascunho, apagarRascunho, lerHistorico, gravarHistorico,
 } from '../progresso.js';
+import { criarTerminal } from './terminal.js';
+import { criarShell } from './shell.js';
 import { EditorArquivos } from './editor.js';
 import { iniciarLeitura } from './acessibilidade.js';
 import { aplicarChecklist } from './neuro.js';
@@ -41,10 +43,9 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     solucao: $('desc-solucao'),
     testes: $('saida-testes'),
     terminal: $('saida-terminal'),
-    entrada: $('entrada'),
   };
 
-  const estado = { item: null, pythonPronto: false, ocupado: false, origem: null };
+  const estado = { item: null, pythonPronto: false, ocupado: false, origem: null, vez: 0 };
 
   let salvarTimer;
   const editor = new EditorArquivos({
@@ -57,6 +58,22 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       const id = estado.item.id;
       salvarTimer = setTimeout(() => gravarRascunho(id, arquivos), 300);
     },
+  });
+
+  // 🖥️ O terminal: o shell (python, ls, cat...) com os arquivos do editor e os dados do exercício.
+  const arquivosDoTerminal = () => ({ ...editor.arquivos, ...(estado.item?.dados ?? {}) });
+  const terminal = criarTerminal($('terminal'), {
+    historico: lerHistorico(),
+    aoMudarHistorico: gravarHistorico,
+    completar: (texto) => shell.completar(texto),
+  });
+  const shell = criarShell({
+    terminal,
+    motor,
+    arquivos: arquivosDoTerminal,
+    pasta: () => estado.item?.id ?? 'livre',
+    aoTerminar: (r) => aoTerminarPrograma(r),
+    aoErro: (erro) => tratarErro(erro),
   });
 
   // 🔊 Ouvir: lê a aba visível do painel de descrição.
@@ -268,31 +285,29 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
       renderSolucao();
       renderTestesPendentes();
     }
-    el.terminal.textContent = '';
     el.terminal.classList.remove('com-erro');
-    // Sem respostas salvas, a aba ⌨️ Entrada começa com as da lição ou do primeiro caso visível.
-    const entradaInicial = item.entrada ?? item.testes?.find((t) => !t.oculto && t.entrada)?.entrada ?? [];
-    el.entrada.value = lerEntrada(id) || entradaInicial.join('\n');
     mostrarDesc('enunciado');
     mostrarSaida('terminal');
-    if (estado.pythonPronto) executar();
+    // O programa do exercício anterior (esperando um input(), por exemplo) é interrompido antes.
+    if (estado.pythonPronto) executar({ limpar: true });
+    else terminal.limpar();
     return true;
   }
 
   // ---------- execução ----------
-  /** As linhas da aba ⌨️ Entrada; a última linha vazia (do Enter final) não conta. */
-  const entradaAtual = () => el.entrada.value.split('\n').filter((l, i, todas) => i < todas.length - 1 || l !== '');
-
-  // O input() sem resposta para com EOFError: o terminal explica onde escrever.
-  const DICA_EOF = '\n💡 O programa pediu um input(), mas a aba ⌨️ Entrada não tinha mais respostas. Escreva uma resposta por linha lá.';
-
-  function mostrarTerminal(r) {
-    const dica = r.erro?.tipo === 'EOFError' ? DICA_EOF : '';
-    el.terminal.textContent = `${r.saida ?? ''}${r.erro ? r.erro.traceback + dica : ''}` || '(o programa não imprimiu nada)';
+  /** Depois de cada programa (pelo ▶ Executar ou digitado no terminal): avisos, status e progresso. */
+  function aoTerminarPrograma(r) {
     el.terminal.classList.toggle('com-erro', Boolean(r.erro));
+    if (r.erro?.tipo === 'EOFError') terminal.escrever('💡 O programa pediu um input() e recebeu Ctrl+D (fim da entrada).\n', 'aviso');
     const aviso = avisoSemParalelismo(r.paralelismo);
-    if (aviso) el.terminal.textContent += `\nℹ️ ${aviso}`;
-    mostrarSaida('terminal');
+    if (aviso) terminal.escrever(`ℹ️ ${aviso}\n`, 'aviso');
+    const paralelo = textoDoParalelismo(r.paralelismo);
+    definirStatus(`Python 3.14 · ${r.erro ? r.erro.tipo : 'ok'} · ${r.ms ?? 0} ms${paralelo ? ` · ⚡ ${paralelo}` : ''}`, { falar: false });
+    const item = estado.item;
+    if (item?.tipo === 'licao' && !r.erro && !statusDe(item.id)) {
+      marcar(item.id, 'resolvido');
+      aoMudarProgresso();
+    }
   }
 
   /** Onde não deu para rodar em paralelo, o resultado é o mesmo: o terminal (e a fala) explicam. */
@@ -308,12 +323,13 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
 
   function tratarErro(erro) {
     const tempo = erro instanceof TempoEsgotado;
-    el.terminal.textContent = tempo
+    const texto = tempo
       ? `⏱️ ${erro.message}\nVerifique se algum laço (for/while) nunca termina.`
       : `Erro interno do DivergePython: ${erro?.message ?? erro}`;
+    terminal.escrever(`${texto}\n`, 'erro');
     el.terminal.classList.add('com-erro');
     mostrarSaida('terminal');
-    definirStatus(tempo ? 'Tempo esgotado' : 'Erro ao executar', { falar: frase(el.terminal.textContent) });
+    definirStatus(tempo ? 'Tempo esgotado' : 'Erro ao executar', { falar: frase(texto) });
   }
 
   /** O resultado da execução, falado: a saída (curta) ou o erro com a linha. */
@@ -327,7 +343,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   function falaDoResultado(r) {
     if (r.erro) {
       const parou = frase(`O programa parou na linha ${r.erro.linha ?? 'desconhecida'} com ${r.erro.tipo}: ${r.erro.mensagem}`);
-      return r.erro.tipo === 'EOFError' ? `${parou} Escreva as respostas do input na aba Entrada, uma por linha.` : parou;
+      return r.erro.tipo === 'EOFError' ? `${parou} O input recebeu o fim da entrada, com Control D.` : parou;
     }
     const linhas = (r.saida ?? '').trimEnd().split('\n').filter(Boolean);
     if (!linhas.length) return 'O programa rodou sem erros e não imprimiu nada.';
@@ -347,35 +363,35 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     mostrarDesc('testes');
   }
 
-  // `falar`: só quando a pessoa pediu (botão ou atalho); as execuções automáticas
-  // (abrir o exercício, restaurar) não interrompem o leitor de tela.
-  async function executar({ abrirTestes = false, falar = false } = {}) {
+  // ▶ Executar: (1) para o que estiver no terminal (um programa esperando input(), o >>>);
+  // (2) roda os casos visíveis; (3) digita `python main.py` no terminal e roda, interativo;
+  // (4) o terminal volta ao prompt. `falar`: só quando a pessoa pediu (botão ou atalho); as
+  // execuções automáticas (abrir o exercício, restaurar) não interrompem o leitor de tela.
+  async function executar({ abrirTestes = false, falar = false, limpar = false } = {}) {
     if (!estado.pythonPronto || !estado.item) return;
     const item = estado.item;
+    const vez = ++estado.vez;
+    const valendo = () => vez === estado.vez && estado.item === item;
+    await shell.parar();
+    if (!valendo()) return;
+    if (limpar) terminal.limpar();
     definirStatus('Executando…', { falar: false });
     el.terminal.setAttribute('aria-busy', 'true');
     try {
-      const r = await motor.executar({ ...editor.arquivos, ...(item.dados ?? {}) }, { entrada: entradaAtual() });
-      if (estado.item !== item) return;
-      mostrarTerminal(r);
-      const fala = falaDoPython(r);
       const comTestes = item.tipo === 'problema';
-      const paralelo = textoDoParalelismo(r.paralelismo);
-      definirStatus(`Python 3.14 · ${r.erro ? r.erro.tipo : 'ok'} · ${r.ms} ms${paralelo ? ` · ⚡ ${paralelo}` : ''}`, { falar: falar && !comTestes && fala });
-      if (item.tipo === 'licao' && !r.erro && !statusDe(item.id)) {
-        marcar(item.id, 'resolvido');
-        aoMudarProgresso();
-      }
-      if (comTestes) {
-        const resultado = await rodarTestes({ incluirOcultos: false });
-        if (estado.item !== item) return;
-        if (falar) anunciar(`${fala} ${falarTestes(resultado, false, { codigoComErro: Boolean(r.erro) })}`);
-        if (abrirTestes) abrirAbaTestes();
-      }
+      const resultado = comTestes ? await rodarTestes({ incluirOcultos: false }) : null;
+      if (!valendo()) return;
+      if (comTestes && abrirTestes) abrirAbaTestes();
+      el.terminal.setAttribute('aria-busy', 'false');
+      const r = await shell.executarPrograma('main.py', [], { eco: true, focar: falar });
+      if (!valendo() || !r) return;
+      const fala = falaDoPython(r);
+      if (falar) anunciar(comTestes ? `${fala} ${falarTestes(resultado, false, { codigoComErro: Boolean(r.erro) })}` : fala);
     } catch (erro) {
-      tratarErro(erro);
+      if (valendo()) tratarErro(erro);
     } finally {
       el.terminal.setAttribute('aria-busy', 'false');
+      if (vez === estado.vez) shell.iniciar();
     }
   }
 
@@ -576,9 +592,6 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     executar();
   };
 
-  // As respostas da aba ⌨️ Entrada ficam salvas por exercício.
-  el.entrada.addEventListener('input', () => estado.item && gravarEntrada(estado.item.id, el.entrada.value));
-
   el.compartilhar.onclick = async () => {
     const link = `${location.origin}${location.pathname}${linkCompartilhado({ item: estado.item.id, arquivos: editor.arquivos })}`;
     try {
@@ -591,6 +604,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
 
   return {
     abrir,
+    terminal,
     redesenharDescricao: () => estado.item && renderDescricao(),
     aoMudarEstadoPython(pronto) {
       const primeiraVez = pronto && !estado.jaIniciou;

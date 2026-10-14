@@ -131,3 +131,87 @@ def test_resultado_traz_spark_e_tabelas_de_objetos_com_tabela():
     assert r['spark'] is None
     assert r['tabelas']['t'] == {'colunas': [{'nome': 'a', 'tipo': 'bigint'}], 'linhas': [['oi']]}
     assert r['tabelas']['r'] == {'erro': {'tipo': 'ValueError', 'mensagem': 'não deu'}}
+
+
+# ---------- terminal interativo ----------
+import types  # noqa: E402
+
+
+def _terminal_falso(respostas, sem_jspi=True):
+    saidas = []
+    modulo = types.ModuleType('diverge_terminal_js')
+    modulo.escrever = saidas.append
+    modulo.sem_jspi = lambda: sem_jspi
+    modulo.pedir = lambda: None
+    sys.modules['diverge_terminal_js'] = modulo
+    return saidas
+
+
+def test_saida_ao_vivo_e_input_sem_jspi_pede_resposta():
+    saidas = _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'print("antes")\nnome = input("Nome: ")\nprint("Olá", nome)\n'}, interativo=True)
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['precisa_entrada'] is True
+    assert r['erro'] is None
+    assert ''.join(saidas) == 'antes\nNome: '
+    assert r['saida'] == 'antes\nNome: '
+
+
+def test_input_interativo_usa_as_respostas_ja_dadas_antes_de_pedir():
+    _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'a = input("A: ")\nb = input("B: ")\nprint(a + b)\n'}, entrada=['1'], interativo=True)
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['precisa_entrada'] is True
+    assert r['saida'] == 'A: 1\nB: '  # a resposta dada aparece como se tivesse sido digitada
+
+
+def test_chamadas_da_correcao_nunca_pedem_resposta():
+    _terminal_falso([])
+    try:
+        r = execucao.executar({'main.py': 'def f():\n    return input()\n'}, interativo=True, chamadas=[{'funcao': 'f', 'args': []}])
+    finally:
+        del sys.modules['diverge_terminal_js']
+    assert r['retornos'][0]['erro']['tipo'] == 'EOFError'
+    assert not r.get('precisa_entrada')
+
+
+def test_argv():
+    r = execucao.executar({'main.py': 'import sys\nprint(sys.argv)\n'}, argv=['a', 'b'])
+    assert r['saida'] == "['main.py', 'a', 'b']\n"
+
+
+def test_repl_expressoes_blocos_e_erros():
+    from diverge_runtime import repl
+    repl.iniciar()
+    assert repl.linha('x = 2') == {'saida': '', 'erro': None, 'continua': False}
+    assert repl.linha('x * 21')['saida'] == '42\n'
+    assert repl.linha('_ + 1')['saida'] == '43\n'
+    assert repl.linha("'oi'")['saida'] == "'oi'\n"
+    assert repl.linha('None')['saida'] == ''
+    assert repl.linha('for i in range(2):')['continua'] is True
+    assert repl.linha('    print(i)')['continua'] is True
+    assert repl.linha('')['saida'] == '0\n1\n'
+    r = repl.linha('1/0')
+    assert r['erro']['tipo'] == 'ZeroDivisionError'
+    assert 'File "<stdin>", line 1' in r['erro']['traceback']
+    assert repl.linha('def f(')['continua'] is True
+    r = repl.linha('')  # linha vazia termina o bloco: o erro aparece, o prompt volta a >>>
+    assert r['continua'] is False and r['erro']['tipo'] == 'SyntaxError'
+
+
+def test_repl_com_o_escopo_do_programa():
+    from diverge_runtime import repl
+    execucao.executar({'main.py': 'total = 10\n'})
+    repl.iniciar(do_programa=True)
+    assert repl.linha('total + 1')['saida'] == '11\n'
+    repl.iniciar()
+    assert repl.linha('total')['erro']['tipo'] == 'NameError'
+
+
+def test_chamadas_usam_as_respostas_que_sobraram_na_fila():
+    r = execucao.executar({'main.py': 'a = input()\ndef f():\n    return input()\n'}, entrada=['1', '2'], chamadas=[{'funcao': 'f', 'args': []}])
+    assert r['retornos'][0]['valor'] == '2'

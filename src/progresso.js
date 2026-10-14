@@ -83,9 +83,9 @@ export const lerRascunho = (id) => ler(`rascunho:${id}`);
 export const gravarRascunho = (id, arquivos) => gravar(`rascunho:${id}`, arquivos);
 export const apagarRascunho = (id) => remover(`rascunho:${id}`);
 
-// ---------- respostas da aba ⌨️ Entrada (as linhas do input()) ----------
-export const lerEntrada = (id) => ler(`entrada:${id}`, '');
-export const gravarEntrada = (id, texto) => (texto ? gravar(`entrada:${id}`, texto) : remover(`entrada:${id}`));
+// ---------- histórico do terminal (as setas ↑/↓), até 100 comandos ----------
+export const lerHistorico = () => ler('historico', []);
+export const gravarHistorico = (lista) => gravar('historico', lista.slice(-100));
 
 // ---------- preferências (layout, acessibilidade, tutorial) ----------
 export const lerPreferencia = (chave, padrao = null) => ler(`pref:${chave}`, padrao);

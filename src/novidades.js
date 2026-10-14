@@ -10,6 +10,16 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.3.2',
+    data: '2026-10-14',
+    titulo: 'Um terminal de verdade',
+    resumo: 'O input() é respondido no próprio terminal, o print aparece na hora, e dá para digitar comandos e usar o Python interativo (>>>).',
+    grupos: [
+      { titulo: '🖥️ Terminal', itens: ['O programa para no input() e você digita a resposta no terminal, na mesma linha da pergunta.', 'O print aparece na hora em que roda.', 'Depois que o programa termina, o prompt $ aceita python main.py, python (o modo >>>), python -i, ls, cat, clear e help.', 'Setas para o histórico, Tab para completar, Ctrl+C para interromper, Ctrl+D para o fim da entrada, Ctrl+L para limpar.', 'A aba ⌨️ Entrada saiu: tudo acontece no terminal. O ▶ Executar roda os testes visíveis e depois o programa, no terminal.'] },
+      { titulo: '♿ Acessibilidade', itens: ['O campo do terminal tem rótulo (comando, resposta do input() ou linha do Python) e a saída nova é anunciada sem reler tudo.', 'Esc tira o foco do terminal (o Tab completa comandos).'] },
+    ],
+  },
+  {
     versao: '0.3.1',
     data: '2026-10-14',
     titulo: 'Solução só depois de tentar',
