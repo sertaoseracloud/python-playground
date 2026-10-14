@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // O shell: cada comando, o REPL, o input() (com e sem JSPI) e o Ctrl+C, com um motor falso.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { criarTerminal } from '../src/ui/terminal.js';
 import { criarShell, dividir } from '../src/ui/shell.js';
 import { Interrompido } from '../src/python/motor.js';
@@ -163,6 +163,63 @@ describe('shell', () => {
     await s.parar();
     await laco;
     expect(terminal.ocupado).toBe(false);
+  });
+
+  it('parar() espera o programa do ▶ Executar terminar de escrever (o KeyboardInterrupt sai antes)', async () => {
+    // O motor de verdade rejeita depois de alguns saltos (fila, worker): aqui, no próximo ciclo.
+    let rejeitar;
+    const motor = {
+      executar: (a, o, g) => new Promise((_, r) => { rejeitar = r; g.aoPedirEntrada().catch(() => {}); }),
+      interromper: () => setTimeout(() => rejeitar(new Interrompido('KeyboardInterrupt'))),
+    };
+    const s = shell(motor);
+    s.executarPrograma('main.py', [], { eco: true });
+    await espera();
+    await s.parar();
+    expect(saida()).toContain('KeyboardInterrupt');
+    terminal.limpar();
+    await espera();
+    expect(saida()).toBe('');
+  });
+
+  it('parar() com o programa esperando input(): manda EOF (sem reiniciar o Python) e não mostra o erro dele', async () => {
+    let interrompeu = false;
+    const motor = {
+      executar: async (a, o, g) => {
+        const resposta = await g.aoPedirEntrada();
+        return resposta === null
+          ? { saida: '', erro: { tipo: 'EOFError', traceback: 'EOFError: EOF when reading a line\n' } }
+          : { saida: 'ok\n', erro: null };
+      },
+      interromper: () => { interrompeu = true; },
+    };
+    const s = shell(motor);
+    s.executarPrograma('main.py', [], { eco: true });
+    await espera();
+    await s.parar();
+    expect(interrompeu).toBe(false);
+    expect(saida()).toContain('KeyboardInterrupt');
+    expect(saida()).not.toContain('EOFError');
+  });
+
+  it('parar(): se o programa não termina depois do EOF, o Python é reiniciado', async () => {
+    vi.useFakeTimers();
+    try {
+      let rejeitar;
+      const motor = {
+        executar: (a, o, g) => new Promise((_, r) => { rejeitar = r; g.aoPedirEntrada(); }), // ignora o EOF
+        interromper: () => rejeitar(new Interrompido('KeyboardInterrupt')),
+      };
+      const s = shell(motor);
+      s.executarPrograma('main.py');
+      await vi.advanceTimersByTimeAsync(5);
+      const parado = s.parar();
+      await vi.advanceTimersByTimeAsync(1500);
+      await parado;
+      expect(saida()).toContain('KeyboardInterrupt');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('completar: comandos e arquivos', () => {

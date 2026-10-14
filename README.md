@@ -29,9 +29,15 @@ fica no GitHub Pages.
   ✨ PySpark, 🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
-- **Tela do exercício**: descrição, editor e **🖥️ Terminal** com a saída e o traceback. As respostas
-  do `input()` ficam na aba **⌨️ Entrada**, uma por linha (salvas por exercício). Quando o código pede um
-  `input()` sem resposta, o terminal explica onde escrever.
+- **Tela do exercício**: descrição, editor e **🖥️ Terminal**, um terminal de verdade: o `print` aparece
+  na hora, o programa para no `input()` e a pessoa digita a resposta ali, na mesma linha da pergunta.
+  Depois, o prompt `aluno@sertao:~/<exercício>$` aceita `python main.py [argumentos]` (vão para
+  `sys.argv`), `python` (o modo interativo `>>>`, com `...` nos blocos), `python -i main.py`, `ls`,
+  `cat`, `clear` e `help`. Teclas: ↑/↓ histórico (salvo, até 100), Tab completa, Ctrl+C interrompe (o
+  worker é recriado), Ctrl+D é o fim da entrada, Ctrl+L limpa, Esc sai do terminal. O relógio de 10 s
+  para enquanto o programa espera a digitação. **▶ Executar** roda os casos visíveis e depois
+  `python main.py` no terminal. Sem JSPI no navegador, o programa roda de novo a cada resposta (o
+  terminal avisa).
 - **Casos de teste detalhados** (aba 🧪 Testes): cada caso mostra o **cenário** como uma sessão de
   terminal (`$ python main.py`, as entradas `> …` e as chamadas `>>> area(3, 4)`), o placar, cada
   verificação com a **categoria** (Saída, Função, Variável, Execução, Código), o que o programa fez de
@@ -51,7 +57,7 @@ fica no GitHub Pages.
   tela; Libras pelo VLibras.
 - **Instruções com estrutura previsível**: roteiro curto, 🎯 O que fazer, 📚 Palavras técnicas (com
   analogia e exemplo, de `src/conteudo/glossario.js`), ✅ Como saber que deu certo e 💡 Dica.
-- **Playground livre** (`#/livre`) com o código e as respostas do `input()` salvos no navegador, e um
+- **Playground livre** (`#/livre`) com o código salvo no navegador, e um
   `vendas.csv` de exemplo na aba 📦 Dados.
 - **Compartilhar**: link com o código embutido. Nada é enviado a servidor.
 
@@ -132,7 +138,7 @@ endereço canônico, Open Graph, Twitter e os dados estruturados (Organization, 
 
 - **Sem cookies e sem rastreamento**: não há analytics, anúncios nem servidor próprio.
 - **Dados só no navegador** (`localStorage`, prefixo `python-playground:`): progresso, datas, dias de
-  estudo, nome do certificado, código, respostas da aba ⌨️ Entrada, tarefas marcadas e preferências.
+  estudo, nome do certificado, código, histórico de comandos do terminal, tarefas marcadas e preferências.
   A tabela fica em [`src/privacidade.js`](src/privacidade.js), e um teste falha se o código gravar uma
   chave que não está documentada.
 - **O Pyodide é servido pelo próprio site** (`/pyodide/`), sem CDN de terceiros.

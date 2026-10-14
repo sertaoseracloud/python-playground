@@ -1,6 +1,6 @@
 {
   "name": "python-playground",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "DivergePython: Python até PySpark no navegador, com dados em paralelo e acessibilidade para pessoas cegas, surdas e neurodivergentes",
   "scripts": {
     "dev": "vite",

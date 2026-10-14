@@ -161,3 +161,8 @@ def test_repl_com_o_escopo_do_programa():
     assert repl.linha('total + 1')['saida'] == '11\n'
     repl.iniciar()
     assert repl.linha('total')['erro']['tipo'] == 'NameError'
+
+
+def test_chamadas_usam_as_respostas_que_sobraram_na_fila():
+    r = execucao.executar({'main.py': 'a = input()\ndef f():\n    return input()\n'}, entrada=['1', '2'], chamadas=[{'funcao': 'f', 'args': []}])
+    assert r['retornos'][0]['valor'] == '2'

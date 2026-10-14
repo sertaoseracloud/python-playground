@@ -15,7 +15,8 @@ Teclas: ↑/↓ histórico · Tab completa · Ctrl+C interrompe · Ctrl+D fim da
 `;
 
 const COMANDOS = ['python', 'ls', 'cat', 'clear', 'help', 'pip'];
-const AVISO_SEM_JSPI = '(neste navegador o programa roda de novo a cada resposta do input(): o resultado é o mesmo)\n';
+const ESPERA_EOF_MS = 1000;
+const AVISO_SEM_JSPI ='(neste navegador o programa roda de novo a cada resposta do input(): o resultado é o mesmo)\n';
 
 /** Divide a linha em palavras, respeitando aspas simples e duplas. */
 export function dividir(linha) {
@@ -44,17 +45,33 @@ export function criarShell({
   // Ctrl+C com o programa rodando (sem leitura aberta): o motor recria o worker.
   terminal.aoInterromper = () => { if (rodando) motor.interromper?.(); };
 
-  /** A resposta de um input(): o prompt é o fim da última linha da saída (fica na mesma linha). */
+  /**
+   * A resposta de um input(): o prompt é o fim da última linha da saída (fica na mesma linha).
+   * Ctrl+C interrompe (o worker é recriado); parar() responde com EOF, e o programa termina
+   * sozinho, sem recarregar o Python.
+   */
+  let lendoEntrada = false;
   async function lerEntrada({ focar = false } = {}) {
     const leitura = terminal.ler({ rotulo: 'Resposta para o input()', historico: false });
     if (focar) terminal.focar();
+    lendoEntrada = true;
     try {
       return await leitura;
     } catch (erro) {
-      if (erro instanceof Cancelado) motor.interromper?.();
+      if (!(erro instanceof Cancelado)) throw erro;
+      if (parando) return null;
+      motor.interromper?.();
       throw erro;
+    } finally {
+      lendoEntrada = false;
     }
   }
+
+  /** O programa foi parado (parar()): no lugar do resultado dele, só o KeyboardInterrupt. */
+  const descartar = () => {
+    terminal.escrever('KeyboardInterrupt\n', 'erro');
+    return null;
+  };
 
   /** Os ganchos de uma execução com saída ao vivo; `contar` soma o que já está na tela. */
   function ganchosAoVivo(contar, opcoes) {
@@ -100,6 +117,7 @@ export function criarShell({
       const contar = (n) => { mostrado += n; };
       for (let avisado = false; ;) {
         const resultado = await motor.executar(arquivos(), { principal: arquivo, argv, interativo: true, entrada, semJSPI }, ganchosAoVivo(contar, { focar }));
+        if (parando) return descartar();
         if (!resultado.precisa_entrada) {
           escreverResultado(resultado, mostrado);
           return resultado;
@@ -141,6 +159,7 @@ export function criarShell({
         ganchosAoVivo((n) => { mostrado += n; }, {}),
       ));
       if (!r) return; // Ctrl+C no meio de uma linha: o Python foi reiniciado e o escopo do >>> se perdeu
+      if (parando) return void descartar();
       escreverResultado(r, mostrado);
       continua = r.continua;
     }
@@ -166,6 +185,16 @@ export function criarShell({
       return executarPrograma(args[0], args.slice(1));
     }
     terminal.escrever(`bash: ${comando}: command not found\n`, 'erro');
+  }
+
+  // Comandos chamados de fora do laço (o ▶ Executar): parar() espera por eles.
+  const emCurso = new Set();
+  function acompanhar(tarefa) {
+    parando = false;
+    const promessa = tarefa();
+    emCurso.add(promessa);
+    promessa.finally(() => emCurso.delete(promessa)).catch(() => {});
+    return promessa;
   }
 
   /** O laço do prompt, até parar(). */
@@ -194,17 +223,26 @@ export function criarShell({
   }
 
   return {
-    rodar: (linha) => { parando = false; return rodar(linha); },
+    rodar: (linha) => acompanhar(() => rodar(linha)),
     iniciar,
-    executarPrograma: (...args) => { parando = false; return executarPrograma(...args); },
+    executarPrograma: (...args) => acompanhar(() => executarPrograma(...args)),
     get rodando() { return rodando > 0; },
-    /** Para o laço, cancela a leitura aberta (o >>> sai) e interrompe o programa em andamento. */
+    /**
+     * Para o laço, cancela a leitura aberta (o >>> sai) e interrompe o programa em andamento;
+     * só resolve depois que tudo terminou de escrever (o KeyboardInterrupt sai antes de limpar).
+     */
     async parar() {
       ativo = false;
       parando = true;
+      const esperavaEntrada = lendoEntrada;
       terminal.cancelarLeitura();
-      if (rodando) motor.interromper?.();
-      await laco;
+      // Esperando um input(): o EOF já faz o programa terminar; se ele não terminar logo
+      // (um laço que ignora o EOFError), o Python é reiniciado.
+      let reserva;
+      if (rodando && !esperavaEntrada) motor.interromper?.();
+      else if (rodando) reserva = setTimeout(() => { if (rodando) motor.interromper?.(); }, ESPERA_EOF_MS);
+      await Promise.allSettled([laco, ...emCurso]);
+      clearTimeout(reserva);
     },
     completar(texto) {
       const palavras = dividir(texto);

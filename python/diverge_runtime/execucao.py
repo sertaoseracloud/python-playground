@@ -182,7 +182,8 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
     desfazer_paralelo = instalar_paralelo(principal, arquivos.get(principal, ''))
     try:
         sys.stdout = sys.stderr = saida
-        builtins.input = _input(entrada, saida, interativo)
+        fila = iter(entrada)  # a mesma fila segue para as chamadas da correção
+        builtins.input = _input(fila, saida, interativo)
         sys.argv = [principal, *(argv or [])]
         sys.path.insert(0, PASTA)
         os.chdir(PASTA)
@@ -193,7 +194,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
             precisa = True
         except BaseException as e:  # SystemExit e KeyboardInterrupt também viram erro do aluno
             erro = _erro(e, arquivos)
-        builtins.input = _input([], saida)  # as chamadas da correção nunca esperam digitação
+        builtins.input = _input(fila, saida)  # as chamadas da correção nunca esperam digitação
         saida.ao_escrever = None
         if not precisa:
             for chamada in chamadas:
