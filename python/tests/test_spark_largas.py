@@ -183,3 +183,13 @@ def test_tabela_para_a_correcao(spark):
         'colunas': [{'nome': 'produto', 'tipo': 'string'}], 'linhas': [['Arroz'], ['Café']], 'total': 4, 'ordenado': True,
         'plano': {'shuffles': 1, 'broadcast': False, 'cache': False, 'particoes': 4, 'estagios': 2}}
     assert estagios.resumo() is None  # calcular para a correção não aparece para o aluno
+
+
+def test_ordenar_e_filtrar_por_coluna_que_saiu_do_select(spark):
+    # Como no Spark: a coluna que falta é procurada no DataFrame de antes do select.
+    so_produto = vendas(spark).select('produto')
+    assert [r.produto for r in so_produto.orderBy('preco').collect()] == ['Rapadura', 'Feijão', 'Café', 'Arroz']
+    assert so_produto.orderBy('preco').columns == ['produto']
+    assert so_produto.filter(F.col('preco') > 10).count() == 2
+    with pytest.raises(AnalysisException):
+        so_produto.orderBy('nao_existe')

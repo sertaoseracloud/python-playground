@@ -75,10 +75,10 @@ def agregar(plano, chaves, saidas, operacao='groupBy'):
                 raise
             nome = next((n.nome() for n in x.percorrer() if isinstance(n, (Col, Ref))), original.nome())
             raise AnalysisException(
-                f'The non-aggregating expression `{nome}` is based on columns which are not participating in the GROUP BY clause. '
-                f'Add the columns or the expression to the GROUP BY, aggregate the expression, or use `any_value({nome})` if you do not '
+                f'The non-aggregating expression "{nome}" is based on columns which are not participating in the GROUP BY clause. '
+                f'Add the columns or the expression to the GROUP BY, aggregate the expression, or use "any_value({nome})" if you do not '
                 'care which of the values within a group is returned.', 'MISSING_AGGREGATION',
-                {'expression': f'`{nome}`'}, '42803') from None
+                {'expression': f'"{nome}"'}, '42803') from None
     atributos_saida = [P.atributo_de_saida(x, e2) for x in novas]
     parcial = L.HashAggregate(plano, chaves, atributos_chave, aggs, atributos_agg, None, None, False, plano, operacao)
     troca_ = L.Exchange(parcial, 'hash' if chaves else 'single', _particoes_de_shuffle(plano), chave=m.chave_do_par,

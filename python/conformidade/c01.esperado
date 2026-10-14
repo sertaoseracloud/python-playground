@@ -1,0 +1,21 @@
+glom range [[0, 1], [2, 3, 4], [5, 6], [7, 8, 9]]
+glom lista [[0, 1], [2, 3], [4, 5], [6, 7, 8, 9]]
+glom 3 [[], [1], [2], [3]]
+glom range 7 em 3 [[0, 1], [2, 3], [4, 5, 6]]
+partições 4 4
+quadrados dos pares [4, 16, 36, 64, 100]
+reduce 55 count 10 take [1, 2, 3] first 1
+soma por partição [3, 12, 13, 27]
+flatMap ['a', 'b', 'c']
+reduceByKey [('mar', 2), ('rio', 1), ('sol', 3)] 4
+groupByKey [('m', ['mar', 'mar']), ('r', ['rio']), ('s', ['sol', 'sol', 'sol'])]
+distinct + sortBy ['mar', 'rio', 'sol']
+sortBy desc [5, 4, 1]
+sortByKey [('a', 1), ('b', 2), ('c', 0)]
+countByValue [('mar', 2), ('rio', 1), ('sol', 3)]
+join [(1, ('a', 10)), (1, ('a', 11))]
+leftOuterJoin [(1, ('a', 10)), (2, ('b', None))]
+union [1, 2, 3]
+mapValues [('a', 10), ('a', 30)]
+textFile 2 ['o sertão', 'vai virar mar', 'e o mar', 'vai virar sertão']
+palavras do texto [('e', 1), ('mar', 2), ('o', 2), ('sertão', 2), ('vai', 2), ('virar', 2)]

@@ -1,6 +1,6 @@
 """DataFrame do pyspark do DivergePython: transformações montam o plano; ações o executam."""
 from .. import _motor as m
-from ..errors import PySparkTypeError, PySparkValueError
+from ..errors import AnalysisException, PySparkTypeError, PySparkValueError
 from ..rdd import _Estreito
 from . import mostrar
 from . import plano as P
@@ -114,7 +114,22 @@ class DataFrame:
 
     def orderBy(self, *cols, ascending=None):
         from .avancado import ordenar
-        return self._novo(ordenar(self._plano, self._ordens(cols, ascending)))
+        ordens = self._ordens(cols, ascending)
+        return self._novo(self._abaixo_do_select(lambda plano: ordenar(plano, ordens)))
+
+    def _abaixo_do_select(self, montar):
+        """orderBy/filter com uma coluna que saiu no select: como o Spark, faz antes do select e repete o select."""
+        try:
+            return montar(self._plano)
+        except AnalysisException as erro:
+            plano = self._plano
+            if not str(erro.getErrorClass()).startswith('UNRESOLVED_COLUMN') or not isinstance(plano, P.Project):
+                raise
+            try:
+                abaixo = montar(plano.filhos[0])
+            except AnalysisException:
+                raise erro from None
+            return P.Project(abaixo, [Ref(a) if isinstance(x, (Col, Ref)) else x for x, a in zip(plano.exprs, plano.saida)], plano.operacao)
 
     sort = orderBy
 
@@ -263,7 +278,8 @@ class DataFrame:
         if isinstance(condicao, str):
             from .sql import ler_expressao
             condicao = Column(ler_expressao(condicao))
-        return self._novo(P.Filter(self._plano, para_expr(condicao)))
+        expr = para_expr(condicao)
+        return self._novo(self._abaixo_do_select(lambda plano: P.Filter(plano, expr)))
 
     where = filter
 

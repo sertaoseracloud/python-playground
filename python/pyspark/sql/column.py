@@ -80,7 +80,7 @@ class Entrada:
             return achados[0]
         texto = f'{qualificador}.{nome}' if qualificador else nome
         if len(achados) > 1:
-            candidatos = ', '.join(f'`{self.atributos[i].nome}`' for i in achados)
+            candidatos = ', '.join((f'`{a.qualificador}`.' if a.qualificador else '') + f'`{a.nome}`' for a in (self.atributos[i] for i in achados))
             raise AnalysisException(f'Reference `{texto}` is ambiguous, could be: [{candidatos}].', 'AMBIGUOUS_REFERENCE',
                                     {'name': f'`{texto}`', 'referenceNames': f'[{candidatos}]'}, '42704', plano=self._linha_plano(texto))
         raise erro_de_coluna(texto, [a.nome for a in self.atributos], self._linha_plano(texto))

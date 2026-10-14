@@ -1,0 +1,78 @@
++-------+-----+
+|produto|preco|
++-------+-----+
+|  Arroz| 24.9|
+|   Café| 19.9|
++-------+-----+
+
++--------+-------+---+
+|  regiao|receita|  n|
++--------+-------+---+
+|Nordeste|   69.7|  2|
+| Sudeste|   25.5|  1|
+|   Norte|   25.0|  1|
++--------+-------+---+
+
++--------+-------+
+| produto|capital|
++--------+-------+
+|   Arroz| Recife|
+|    Café| Recife|
+|Rapadura|  Belém|
++--------+-------+
+
++--------+-------+
+| produto|capital|
++--------+-------+
+|   Arroz| Recife|
+|    Café| Recife|
+|  Feijão|   NULL|
+|Rapadura|  Belém|
++--------+-------+
+
++--------+---+
+| produto|pos|
++--------+---+
+|   Arroz|  1|
+|    Café|  2|
+|  Feijão|  1|
+|Rapadura|  1|
++--------+---+
+
++---+
+|  n|
++---+
+|  2|
++---+
+
++--------+
+|  regiao|
++--------+
+|Nordeste|
+|   Norte|
+| Sudeste|
++--------+
+
++--------+------+
+| produto| faixa|
++--------+------+
+|   Arroz|  caro|
+|    Café|  caro|
+|  Feijão|barato|
+|Rapadura|barato|
++--------+------+
+
++--------+---------------+
+|  regiao|sum(quantidade)|
++--------+---------------+
+|Nordeste|              3|
+|   Norte|             10|
+| Sudeste|              3|
++--------+---------------+
+
+['sum(quantidade)', 'count(1)', 'avg(preco)', 'max(produto)']
+['dois', 'upper(produto)']
+[Row(produto='Arroz'), Row(produto='Feijão'), Row(produto='Rapadura')]
+[Row(produto='Café')]
+['capitais', 'vendas']
+4

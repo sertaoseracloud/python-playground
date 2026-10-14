@@ -1,0 +1,54 @@
+[('data', 'date'), ('produto', 'string'), ('quantidade', 'int'), ('preco', 'double'), ('ativo', 'boolean')]
+root
+ |-- data: date (nullable = true)
+ |-- produto: string (nullable = true)
+ |-- quantidade: integer (nullable = true)
+ |-- preco: double (nullable = true)
+ |-- ativo: boolean (nullable = true)
+
++----------+-------------+----------+-----+-----+
+|      data|      produto|quantidade|preco|ativo|
++----------+-------------+----------+-----+-----+
+|2026-01-05|        Arroz|         2| 24.9| true|
+|2026-02-10|Café, torrado|      NULL| 19.9|false|
+|2026-02-11|     Rapadura|        10|  2.5| true|
++----------+-------------+----------+-----+-----+
+
+[('data', 'string'), ('produto', 'string'), ('quantidade', 'string'), ('preco', 'string'), ('ativo', 'string')]
+['_c0', '_c1', '_c2', '_c3', '_c4'] 4
+[('data', 'date'), ('produto', 'string'), ('quantidade', 'int'), ('preco', 'double'), ('ativo', 'boolean')]
++----------+-------------+----------+-----+-----+
+|      data|      produto|quantidade|preco|ativo|
++----------+-------------+----------+-----+-----+
+|2026-01-05|        Arroz|         2| 24.9| true|
+|2026-02-10|Café, torrado|      NULL| 19.9|false|
+|2026-02-11|     Rapadura|        10|  2.5| true|
++----------+-------------+----------+-----+-----+
+
+3 1
+[('nome', 'string'), ('nota', 'double'), ('tags', 'array<string>'), ('turma', 'bigint')]
+root
+ |-- nome: string (nullable = true)
+ |-- nota: double (nullable = true)
+ |-- tags: array (nullable = true)
+ |    |-- element: string (containsNull = true)
+ |-- turma: long (nullable = true)
+
++----+----+----+-----+
+|nome|nota|tags|turma|
++----+----+----+-----+
+| Ana| 9.5| [a]|    1|
+| Bia| 7.0|NULL|    2|
+|Caio|NULL|NULL| NULL|
++----+----+----+-----+
+
+True 1
+2 [('data', 'date'), ('produto', 'string'), ('quantidade', 'int'), ('preco', 'double'), ('ativo', 'boolean')]
++----------+--------+----------+-----+-----+
+|      data| produto|quantidade|preco|ativo|
++----------+--------+----------+-----+-----+
+|2026-01-05|   Arroz|         2| 24.9| true|
+|2026-02-11|Rapadura|        10|  2.5| true|
++----------+--------+----------+-----+-----+
+
+[Row(produto='Arroz', quantidade=2), Row(produto='Café, torrado', quantidade=None), Row(produto='Rapadura', quantidade=10)]

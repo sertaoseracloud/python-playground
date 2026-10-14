@@ -1,0 +1,97 @@
+inner ['id', 'nome', 'cidade', 'pedido', 'valor']
++---+----+------+------+-----+
+| id|nome|cidade|pedido|valor|
++---+----+------+------+-----+
+|  1| Ana|Recife|    10| 50.0|
+|  1| Ana|Recife|    11| 20.0|
+|  3|Caio|Recife|    12| 10.0|
++---+----+------+------+-----+
+
+left ['id', 'nome', 'cidade', 'pedido', 'valor']
++---+----+------+------+-----+
+| id|nome|cidade|pedido|valor|
++---+----+------+------+-----+
+|  1| Ana|Recife|    10| 50.0|
+|  1| Ana|Recife|    11| 20.0|
+|  2| Bia| Natal|  NULL| NULL|
+|  3|Caio|Recife|    12| 10.0|
++---+----+------+------+-----+
+
+right ['id', 'nome', 'cidade', 'pedido', 'valor']
++---+----+------+------+-----+
+| id|nome|cidade|pedido|valor|
++---+----+------+------+-----+
+|  1| Ana|Recife|    10| 50.0|
+|  1| Ana|Recife|    11| 20.0|
+|  3|Caio|Recife|    12| 10.0|
+|  4|NULL|  NULL|    13|  5.0|
++---+----+------+------+-----+
+
+full ['id', 'nome', 'cidade', 'pedido', 'valor']
++---+----+------+------+-----+
+| id|nome|cidade|pedido|valor|
++---+----+------+------+-----+
+|  1| Ana|Recife|    10| 50.0|
+|  1| Ana|Recife|    11| 20.0|
+|  2| Bia| Natal|  NULL| NULL|
+|  3|Caio|Recife|    12| 10.0|
+|  4|NULL|  NULL|    13|  5.0|
++---+----+------+------+-----+
+
+left_semi ['id', 'nome', 'cidade']
++---+----+------+
+| id|nome|cidade|
++---+----+------+
+|  1| Ana|Recife|
+|  3|Caio|Recife|
++---+----+------+
+
+left_anti ['id', 'nome', 'cidade']
++---+----+------+
+| id|nome|cidade|
++---+----+------+
+|  2| Bia| Natal|
++---+----+------+
+
+['id', 'nome', 'cidade', 'pedido', 'id', 'valor']
++----+-----+
+|nome|valor|
++----+-----+
+|Caio| 10.0|
+| Ana| 20.0|
+| Ana| 50.0|
++----+-----+
+
++----+-----+
+|nome|total|
++----+-----+
+| Ana| 70.0|
+|Caio| 10.0|
++----+-----+
+
++----+-----+
+|nome|valor|
++----+-----+
+| Ana| 20.0|
+| Ana| 50.0|
+| Bia| NULL|
+|Caio| 10.0|
++----+-----+
+
++---+-----+
+| id|letra|
++---+-----+
+|  1|    x|
+|  1|    y|
+|  2|    x|
+|  2|    y|
+|  3|    x|
+|  3|    y|
++---+-----+
+
+createDataFrame ['SortMergeJoin', 'Sort', 'Exchange hashpartitioning', 'Sort', 'Exchange hashpartitioning']
+hint ['BroadcastHashJoin', 'BroadcastExchange']
+range ['BroadcastHashJoin', 'BroadcastExchange']
+sem broadcast ['SortMergeJoin', 'Sort', 'Exchange hashpartitioning', 'Sort', 'Exchange hashpartitioning']
+hint sem limite ['BroadcastHashJoin', 'BroadcastExchange']
+10

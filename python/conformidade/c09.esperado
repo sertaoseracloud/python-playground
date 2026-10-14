@@ -1,0 +1,16 @@
+filter []
+groupBy ['HashAggregate', 'Exchange hashpartitioning', 'HashAggregate']
+groupBy + orderBy ['Sort', 'Exchange rangepartitioning', 'HashAggregate', 'Exchange hashpartitioning', 'HashAggregate']
+orderBy ['Sort', 'Exchange rangepartitioning']
+repartition ['Exchange RoundRobinPartitioning']
+repartition col ['Exchange hashpartitioning']
+distinct ['HashAggregate', 'Exchange hashpartitioning', 'HashAggregate']
+agg global ['HashAggregate', 'Exchange SinglePartition', 'HashAggregate']
+janela ['Window', 'Sort', 'Exchange hashpartitioning']
+janela sem partição ['Window', 'Sort', 'Exchange SinglePartition']
+udf ['BatchEvalPython']
+cache ['InMemoryTableScan', 'HashAggregate', 'Exchange hashpartitioning', 'HashAggregate']
+cache + orderBy ['Sort', 'Exchange rangepartitioning', 'InMemoryTableScan', 'HashAggregate', 'Exchange hashpartitioning', 'HashAggregate']
+True Disk Memory Deserialized 1x Replicated
+partições 4 3 1 4 2 8 4
+shuffle 8 8

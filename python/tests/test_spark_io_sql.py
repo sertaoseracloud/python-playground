@@ -117,6 +117,7 @@ def test_sql(spark):
     assert spark.sql('SELECT SUM(quantidade) FROM vendas').columns == ['sum(quantidade)']
     assert spark.sql('WITH ne AS (SELECT * FROM vendas WHERE regiao = "Nordeste") SELECT COUNT(*) AS n FROM ne').first().n == 2
     assert spark.sql('SELECT DISTINCT regiao FROM vendas').count() == 3
+    assert [r.regiao for r in spark.sql('SELECT DISTINCT regiao FROM vendas ORDER BY regiao').collect()] == ['Nordeste', 'Norte', 'Sudeste']
     assert spark.table('vendas').count() == 4
     assert [t.name for t in spark.catalog.listTables()] == ['capitais', 'vendas']
     with pytest.raises(AnalysisException) as e:

@@ -543,12 +543,11 @@ class Parser:
         if not sem_ordem and self.aceitar('limit'):
             limite = self.primario().valor
         agregado = grupo is not None or having is not None or any(agregacoes_de(x) for x in itens)
+        # DISTINCT vem antes do ORDER BY (o shuffle do distinct desfaria a ordem)
         if agregado:
-            df = self._agregado(df, itens, grupo or [], having, ordens)
+            df = self._agregado(df, itens, grupo or [], having, ordens, distinto)
         else:
-            df = self._simples(df, itens, ordens)
-        if distinto:
-            df = df.distinct()
+            df = self._simples(df, itens, ordens, distinto)
         if limite is not None:
             df = df.limit(limite)
         return df
@@ -568,7 +567,7 @@ class Parser:
             return None
         return substituir(expr, troca)
 
-    def _agregado(self, df, itens, grupo, having, ordens):
+    def _agregado(self, df, itens, grupo, having, ordens, distinto=False):
         from .avancado import agregar
         aliases = self._aliases(itens)
         chaves = []
@@ -600,16 +599,23 @@ class Parser:
         df = df._novo(plano)
         if having is not None:
             df = df.filter(Column(Col('__having')))
+        if distinto:
+            df = df.select(*[Column(Ref(a)) for a in df._plano.saida[:len(expandidos)]]).distinct()
+            return df.orderBy(*[Column(o) for o in ordens_finais]) if ordens_finais else df
         if ordens_finais:
             df = df.orderBy(*[Column(o) for o in ordens_finais])
         if extras:
             df = df.select(*[Column(Ref(a)) for a in df._plano.saida[:len(expandidos)]])
         return df
 
-    def _simples(self, df, itens, ordens):
-        if not ordens:
-            return df.select(*[Column(x) for x in itens])
+    def _simples(self, df, itens, ordens, distinto=False):
         projetado = df.select(*[Column(x) for x in itens])
+        if distinto:
+            projetado = projetado.distinct()
+        if not ordens:
+            return projetado
+        if distinto:
+            return projetado.orderBy(*[Column(o) for o in ordens])
         try:
             return projetado.orderBy(*[Column(o) for o in ordens])
         except AnalysisException:

@@ -1,0 +1,98 @@
+[('produto', 'string'), ('regiao', 'string'), ('quantidade', 'bigint'), ('preco', 'double')]
+DataFrame[produto: string, regiao: string, quantidade: bigint, preco: double]
+root
+ |-- produto: string (nullable = true)
+ |-- regiao: string (nullable = true)
+ |-- quantidade: long (nullable = true)
+ |-- preco: double (nullable = true)
+
++--------+--------+----------+-----+
+| produto|  regiao|quantidade|preco|
++--------+--------+----------+-----+
+|   Arroz|Nordeste|         2| 24.9|
+|  Feijão| Sudeste|         3|  8.5|
+|    Café|Nordeste|         1| 19.9|
+|Rapadura|   Norte|        10|  2.5|
++--------+--------+----------+-----+
+
++-------+--------+----------+-----+
+|produto|  regiao|quantidade|preco|
++-------+--------+----------+-----+
+|  Arroz|Nordeste|         2| 24.9|
+| Feijão| Sudeste|         3|  8.5|
++-------+--------+----------+-----+
+only showing top 2 rows
+
++-------+
+|produto|
++-------+
+|Arroz  |
++-------+
+only showing top 1 row
+
++---+---+---+---+
+|pro|reg|qua|pre|
++---+---+---+---+
+|Arr|Nor|  2|24.|
+|Caf|Nor|  1|19.|
+|Fei|Sud|  3|8.5|
+|Rap|Nor| 10|2.5|
++---+---+---+---+
+
+['produto', 'regiao', 'quantidade', 'preco'] 4
+4
+Row(produto='Arroz', regiao='Nordeste', quantidade=2, preco=24.9)
+[Row(produto='Arroz', regiao='Nordeste', quantidade=2, preco=24.9), Row(produto='Café', regiao='Nordeste', quantidade=1, preco=19.9)]
+[('id', 'int'), ('nome', 'string'), ('nota', 'double')]
+root
+ |-- id: integer (nullable = true)
+ |-- nome: string (nullable = true)
+ |-- nota: double (nullable = true)
+
+[('nome', 'string'), ('idade', 'bigint')]
+['a', 'b']
++--------------------+----+------+----+----------+------+-------------------+-------+
+|               texto|nada|grande|  ok|       dia|  tags|               soma|pequeno|
++--------------------+----+------+----+----------+------+-------------------+-------+
+|um texto bem comp...|NULL| 1.0E7|true|2026-10-13|[a, b]|0.30000000000000004| 1.0E-4|
++--------------------+----+------+----+----------+------+-------------------+-------+
+
+root
+ |-- texto: string (nullable = true)
+ |-- nada: string (nullable = true)
+ |-- grande: double (nullable = true)
+ |-- ok: boolean (nullable = true)
+ |-- dia: date (nullable = true)
+ |-- tags: array (nullable = true)
+ |    |-- element: string (containsNull = true)
+ |-- soma: double (nullable = true)
+ |-- pequeno: double (nullable = true)
+
++----------------------------+----+------+----+----------+------+-------------------+-------+
+|texto                       |nada|grande|ok  |dia       |tags  |soma               |pequeno|
++----------------------------+----+------+----+----------+------+-------------------+-------+
+|um texto bem comprido demais|NULL|1.0E7 |true|2026-10-13|[a, b]|0.30000000000000004|1.0E-4 |
++----------------------------+----+------+----+----------+------+-------------------+-------+
+
+['(quantidade * preco)', '(preco > 10)', 'upper(regiao)', 'CASE WHEN (quantidade > 2) THEN muito ELSE pouco END', '(quantidade IN (1, 2))', 'quantidade', 'mais_um']
+['CAST(quantidade AS INT)', '(quantidade * 2)', 'p']
+['((quantidade >= 1) AND (quantidade <= 2))', '(regiao IS NULL)', '(NOT (preco > 1))']
++--------+-----+
+| produto|total|
++--------+-----+
+|   Arroz| 49.8|
+|    Café| 19.9|
+|  Feijão| 25.5|
+|Rapadura| 25.0|
++--------+-----+
+
+root
+ |-- produto: string (nullable = true)
+ |-- total: double (nullable = true)
+
+[49.8, 19.9, 25.5, 25.0]
+root
+ |-- um: integer (nullable = false)
+ |-- xis: string (nullable = false)
+ |-- nulo: void (nullable = true)
+

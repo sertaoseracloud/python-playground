@@ -1,0 +1,46 @@
++---------+------+------+---+------------+
+|     nome| faixa|cidade|tam|       chave|
++---------+------+------+---+------------+
+|Ana Maria| jovem|RECIFE|  9|ana maria-17|
+|      Bia|adulto|  NULL|  3|      bia-30|
+|     Caio| idoso| NATAL|  4|     caio-65|
++---------+------+------+---+------------+
+
++----------+----+---+---+----+----------+----------+
+|      data| ano|mes|dia|dias|   mais_10|        br|
++----------+----+---+---+----+----------+----------+
+|2000-01-15|2000|  1| 15|9551|2000-01-25|15/01/2000|
+|2025-12-31|2025| 12| 31|  69|2026-01-10|31/12/2025|
+|2026-03-05|2026|  3|  5|   5|2026-03-15|05/03/2026|
++----------+----+---+---+----+----------+----------+
+
++-------+--------------+----------+----+-----+----+----------+
+|ano_txt|partes        |barras    |pad |nota1|meio|cidade    |
++-------+--------------+----------+----+-----+----+----------+
+|2000   |[2000, 01, 15]|2000/01/15|0065|8.5  |3.0 |natal     |
+|2025   |[2025, 12, 31]|2025/12/31|0030|NULL |3.0 |sem cidade|
+|2026   |[2026, 03, 05]|2026/03/05|0017|7.3  |3.0 |Recife    |
++-------+--------------+----------+----+-----+----+----------+
+
+['substring(nascimento, 1, 4)', 'round(nota, 1)', 'coalesce(cidade, ?)', 'year(nascimento)', 'datediff(2026-01-01, nascimento)', 'split(nascimento, -, -1)']
++------------+-----+----------+-------------+----+
+|        nome|idade|nascimento|       cidade|nota|
++------------+-----+----------+-------------+----+
+|  ana maria |   17|2026-03-05|       Recife|7.25|
+|         BIA|   30|2025-12-31|Não informada| 0.0|
+|        caio|   65|2000-01-15|        natal| 8.5|
++------------+-----+----------+-------------+----+
+
+2 3 2
++------------+----+
+|        nome|nota|
++------------+----+
+|  ana maria |7.25|
+|         BIA| 0.0|
+|        caio| 8.5|
++------------+----+
+
+1 1
+ArithmeticException | [DIVIDE_BY_ZERO] Division by zero. Use `try_divide` to tolerate divisor being 0 and return NULL instead. If necessary set "spark.sql.ansi.enabled" to "false" to bypass this error. SQLSTATE: 22012
+NumberFormatException | [CAST_INVALID_INPUT] The value '  ana maria ' of the type "STRING" cannot be cast to "INT" because it is malformed. Correct the value as per the syntax, or change its target type. Use `try_cast` to tolerate malformed input and return NULL instead. SQLSTATE: 22018
+[Row(q=4.25), Row(q=7.5), Row(q=16.25)]
