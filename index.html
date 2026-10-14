@@ -112,7 +112,10 @@
               <button class="aba" data-saida="entrada" role="tab" aria-selected="false" title="Respostas para o input(), uma por linha">⌨️ Entrada</button>
             </div>
           </div>
-          <pre id="saida-terminal" class="terminal terminal-python" data-saida-painel="terminal" tabindex="0" aria-label="Saída do terminal" aria-busy="false"></pre>
+          <div id="terminal" class="terminal terminal-python" data-saida-painel="terminal" role="region" aria-label="Terminal" tabindex="-1">
+            <pre id="saida-terminal" class="saida-terminal" role="log" aria-live="polite" aria-busy="false"></pre>
+            <div class="linha-prompt"><span id="prompt-terminal" class="prompt-terminal"></span><input id="campo-terminal" class="campo-terminal" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando do terminal"></div>
+          </div>
           <div class="entrada-python" data-saida-painel="entrada" hidden>
             <label for="entrada">Respostas para o <code>input()</code>, uma por linha</label>
             <textarea id="entrada" rows="6" spellcheck="false"></textarea>

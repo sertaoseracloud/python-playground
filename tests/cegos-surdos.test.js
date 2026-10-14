@@ -79,11 +79,13 @@ describe('região de avisos (aria-live)', () => {
     expect(document.getElementById('anuncio').textContent).toBe('Aceito!');
   });
 
-  it('no index.html: um aviso falado e nenhuma região viva que leia o terminal ou o placar', () => {
+  it('no index.html: um aviso falado; o terminal é um log (só a saída nova é lida); o placar não é região viva', () => {
     const html = ler('index.html');
     expect(html).toContain('<div id="anuncio" class="sr" role="status" aria-live="polite"></div>');
     expect(html).not.toMatch(/id="status"[^>]*role="status"/);
-    expect(html).not.toMatch(/id="(saida-terminal|resumo-testes)"[^>]*aria-live/);
+    expect(html).not.toMatch(/id="resumo-testes"[^>]*aria-live/);
+    // O terminal só acrescenta texto (nunca é reescrito inteiro), então o log lê só o que chegou.
+    expect(html).toMatch(/id="saida-terminal"[^>]*role="log"/);
   });
 
   it('o editor descreve os atalhos para o leitor de tela', () => {

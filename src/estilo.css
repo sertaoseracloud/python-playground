@@ -564,9 +564,31 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.terminal-python:focus-visible { outline: 2px solid var(--roxo); outline-offset: -2px; }
-.terminal-python.com-erro { border-top: 2px solid var(--vermelho); }
-:root.a11y-sem-pressao .terminal-python.com-erro { border-top-color: var(--laranja); }
+.terminal-python:focus-visible, .terminal-python:focus-within { outline: 2px solid var(--roxo); outline-offset: -2px; }
+.terminal-python:has(.com-erro), .terminal-python.com-erro { border-top: 2px solid var(--vermelho); }
+:root.a11y-sem-pressao .terminal-python:has(.com-erro), :root.a11y-sem-pressao .terminal-python.com-erro { border-top-color: var(--laranja); }
+.saida-terminal { margin: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+.saida-terminal .erro { color: var(--vermelho); }
+.saida-terminal .aviso { color: var(--suave); }
+:root.a11y-sem-pressao .saida-terminal .erro { color: var(--laranja); }
+.linha-prompt { display: flex; align-items: baseline; }
+.prompt-terminal { white-space: pre; color: var(--verde, var(--texto)); }
+.campo-terminal {
+  flex: 1;
+  min-width: 4ch;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: var(--texto);
+  background: transparent;
+  caret-color: var(--texto);
+}
+.campo-terminal:focus { outline: none; } /* o contorno fica no terminal inteiro (:focus-within) */
+.campo-terminal:disabled { opacity: 0; }
+@keyframes piscar-cursor { 50% { caret-color: transparent; } }
+.campo-terminal:focus { animation: piscar-cursor 1s step-end infinite; }
+:root.a11y-sem-movimento .campo-terminal:focus { animation: none; }
+@media (prefers-reduced-motion: reduce) { .campo-terminal:focus { animation: none; } }
 .entrada-python { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
 .entrada-python[hidden] { display: none; }
 .entrada-python label { color: var(--suave); font-size: 0.85rem; }
