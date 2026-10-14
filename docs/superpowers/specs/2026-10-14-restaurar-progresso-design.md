@@ -40,7 +40,10 @@ Seja `salvo = lerNome().trim()` e `doCertificado = cert.nome.trim()`.
 1. **Sem nome salvo** (`salvo === ''`):
    - O bloco explica que o progresso só volta para quem salvou o nome exatamente como está no
      certificado.
-   - Ele tem um link para a página inicial, onde se grava o nome (o `pedirNome` que já existe).
+   - Ele tem um botão "✏️ Salvar o meu nome" que abre o diálogo de nome que já existe (`pedirNome`,
+     exportado de `src/ui/inicio.js`). O diálogo não vem preenchido com o nome do certificado.
+     Depois de salvar, o bloco é redesenhado na hora.
+   - No caso do nome diferente, o mesmo botão aparece como "✏️ Trocar o nome deste navegador".
    - Não há botão de restaurar.
 2. **Nome diferente** (`salvo !== doCertificado`):
    - O bloco mostra os dois nomes, o do certificado e o deste navegador.
@@ -126,7 +129,7 @@ export function restaurarItens(itens)
     tem o mesmo código.
 - Ainda em `tests/restaurar.test.js` (não existe `tests/progresso.test.js`):
   - `restaurarItens` não rebaixa nada, sobrescreve a data e não registra atividade.
-- `tests/validador.test.js` (já existe, happy-dom):
+- `tests/restaurar-ui.test.js` (novo, happy-dom, idêntico nos três repos):
   - Selo `nao-confere` não mostra o bloco.
   - Nome igual mostra o botão.
   - O clique restaura e anuncia.
