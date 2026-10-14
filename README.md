@@ -137,6 +137,10 @@ de erro seguem o Spark.
   certificado** e **✍️ assinatura Ed25519** com a chave pública em
   [`chave-publica-ed25519.txt`](https://sertaoseracloud.github.io/python-playground/chave-publica-ed25519.txt).
   Namespace do XML: `https://sertaoseracloud.github.io/python-playground/certificado/v1`.
+- **↩️ Restaurar o progresso pelo certificado**: ao validar um certificado válido pelo link ou código,
+  quem tem neste navegador o **mesmo nome** do certificado (acentos e maiúsculas contam) restaura o
+  módulo e os anteriores da cadeia, nas datas do certificado. O certificado emitido de novo é o mesmo;
+  nada do que já está no navegador é apagado (`src/restaurar.js`).
 
 ### Certificados: a palavra secreta
 
