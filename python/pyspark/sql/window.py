@@ -158,7 +158,7 @@ class Sobre(Expr):
             raise AnalysisException(
                 f'Window function {self.funcao.nome()} requires window to be ordered, please add ORDER BY clause. '
                 'For example SELECT row_number()(value_expr) OVER (PARTITION BY window_partition ORDER BY window_ordering) from table.',
-                'WINDOW_FUNCTION_WITHOUT_ORDER', {}, '42601')
+                None, {}, None)
         if not (isinstance(self.funcao, FuncaoDeJanela) or self.funcao.eh_agregacao):
             raise AnalysisException(f'Expression {self.funcao.nome()} is not supported as a window function.',
                                     'UNSUPPORTED_EXPR_FOR_WINDOW', {}, '42P20')

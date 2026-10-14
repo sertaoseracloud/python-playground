@@ -65,7 +65,7 @@ def _cortar(texto, truncate):
 def tabela(nomes, linhas, n, truncate, tem_mais):
     """O texto do show(), com a linha em branco do fim."""
     truncate = 20 if truncate is True else (0 if truncate is False else int(truncate))
-    celulas = [[_cortar(str(c), truncate) for c in nomes]] + [[_cortar(texto_do_valor(v), truncate) for v in linha] for linha in linhas]
+    celulas = [[str(c) for c in nomes]] + [[_cortar(texto_do_valor(v), truncate) for v in linha] for linha in linhas]
     larguras = [max(3, *(len(linha[i]) for linha in celulas)) for i in range(len(nomes))]
     borda = '+' + '+'.join('-' * w for w in larguras) + '+'
 
@@ -76,7 +76,7 @@ def tabela(nomes, linhas, n, truncate, tem_mais):
     saida = [borda, formatar(celulas[0]), borda, *(formatar(linha) for linha in celulas[1:]), borda]
     texto = '\n'.join(saida) + '\n'
     if tem_mais:
-        texto += f"only showing top {n} {'row' if n == 1 else 'rows'}\n"
+        texto += f"only showing top {n} {'row' if n == 1 else 'rows'}"
     return texto
 
 
@@ -94,7 +94,7 @@ def vertical(nomes, linhas, n, truncate, tem_mais):
         saida.append('(0 rows)')
     texto = '\n'.join(saida) + '\n'
     if tem_mais:
-        texto += f"only showing top {n} {'row' if n == 1 else 'rows'}\n"
+        texto += f"only showing top {n} {'row' if n == 1 else 'rows'}"
     return texto
 
 

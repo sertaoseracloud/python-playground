@@ -75,7 +75,7 @@ def agregar(plano, chaves, saidas, operacao='groupBy'):
                 raise
             nome = next((n.nome() for n in x.percorrer() if isinstance(n, (Col, Ref))), original.nome())
             raise AnalysisException(
-                f'The non-aggregating expression "{nome}" is based on columns which are not participating in the GROUP BY clause. '
+                f'The non-aggregating expression "{nome}" is based on columns which are not participating in the GROUP BY clause.\n'
                 f'Add the columns or the expression to the GROUP BY, aggregate the expression, or use "any_value({nome})" if you do not '
                 'care which of the values within a group is returned.', 'MISSING_AGGREGATION',
                 {'expression': f'"{nome}"'}, '42803') from None
@@ -288,7 +288,7 @@ def unir(planos):
             raise AnalysisException(
                 f'UNION can only be performed on inputs with the same number of columns, but the first input has '
                 f'{len(primeiro.saida)} columns and the second input has {len(p.saida)} columns.',
-                'NUM_COLUMNS_MISMATCH', {}, '42826')
+                'NUM_COLUMNS_MISMATCH', {}, '42826', plano="'Union false, false")
     tipos = []
     for i in range(len(primeiro.saida)):
         t = T.NullType()

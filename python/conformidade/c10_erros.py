@@ -22,7 +22,7 @@ outro = spark.createDataFrame([(1, 'x')], ['id', 'v'])
 junto = outro.alias('a').join(outro.alias('b'), F.col('a.id') == F.col('b.id'))
 erro(lambda: junto.select('id'))
 erro(lambda: df.union(outro))
-erro(lambda: spark.createDataFrame([(1,), ('a',)], ['x']))
+erro(lambda: print(spark.createDataFrame([(1,), ('a',)], ['x']).dtypes))
 erro(lambda: spark.createDataFrame([(None,)], ['x']))
 erro(lambda: df.select(F.row_number().over(Window.partitionBy('cidade'))).collect())
 

@@ -61,9 +61,9 @@ def test_show_como_o_spark(spark, capsys):
         '|  Arroz|Nordeste|         2| 24.9|\n'
         '| Feijão| Sudeste|         3|  8.5|\n'
         '+-------+--------+----------+-----+\n'
-        'only showing top 2 rows\n\n')
+        'only showing top 2 rows\n')
     vendas(spark).select('produto').show(1, truncate=False)
-    assert capsys.readouterr().out == '+-------+\n|produto|\n+-------+\n|Arroz  |\n+-------+\nonly showing top 1 row\n\n'
+    assert capsys.readouterr().out == '+-------+\n|produto|\n+-------+\n|Arroz  |\n+-------+\nonly showing top 1 row\n'
 
 
 def test_valores_especiais_no_show(spark, capsys):

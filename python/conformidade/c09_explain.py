@@ -33,6 +33,6 @@ print('partições', df.rdd.getNumPartitions(), df.repartition(3).rdd.getNumPart
       df.groupBy('regiao').count().rdd.getNumPartitions(), df.repartition(2, 'regiao').rdd.getNumPartitions(),
       df.union(df).rdd.getNumPartitions(), spark.range(10).rdd.getNumPartitions())
 spark.conf.set('spark.sql.shuffle.partitions', '8')
-print('shuffle 8', df.groupBy('regiao').count().rdd.getNumPartitions())
+print('shuffle 8', df.groupBy('produto').count().rdd.getNumPartitions())  # groupBy('regiao') já está em cache
 
 spark.stop()

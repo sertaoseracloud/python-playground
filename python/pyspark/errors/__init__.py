@@ -45,7 +45,10 @@ class AnalysisException(PySparkException):
 
 
 class ParseException(AnalysisException):
-    """SQL ou expressão que não dá para ler."""
+    """SQL ou expressão que não dá para ler (a mensagem do Spark começa com uma quebra de linha)."""
+
+    def _texto(self):
+        return '\n' + super()._texto()
 
 
 class PySparkValueError(PySparkException, ValueError):

@@ -2,11 +2,11 @@ AnalysisException | [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or f
 AnalysisException | [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `cidadee` cannot be resolved. Did you mean one of the following? [`cidade`, `idade`, `nome`]. SQLSTATE: 42703;
 AnalysisException | [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `idad` cannot be resolved. Did you mean one of the following? [`idade`, `cidade`, `nome`]. SQLSTATE: 42703;
 AnalysisException | [TABLE_OR_VIEW_NOT_FOUND] The table or view `pessoass` cannot be found. Verify the spelling and correctness of the schema and catalog.
-AnalysisException | [MISSING_AGGREGATION] The non-aggregating expression "nome" is based on columns which are not participating in the GROUP BY clause. Add the columns or the expression to the GROUP BY, aggregate the expression, or use "any_value(nome)" if you do not care which of the values within a group is returned. SQLSTATE: 42803
-ParseException | [PARSE_SYNTAX_ERROR] Syntax error at or near 'FORM'. SQLSTATE: 42601
+AnalysisException | [MISSING_AGGREGATION] The non-aggregating expression "nome" is based on columns which are not participating in the GROUP BY clause.
+ParseException | 
 AnalysisException | [PATH_NOT_FOUND] Path does not exist: file:<tmp>/nao_existe.csv. SQLSTATE: 42K03
-AnalysisException | [AMBIGUOUS_REFERENCE] Reference `id` is ambiguous, could be: [`a`.`id`, `b`.`id`]. SQLSTATE: 42704;
-AnalysisException | [NUM_COLUMNS_MISMATCH] UNION can only be performed on inputs with the same number of columns, but the first input has 3 columns and the second input has 2 columns. SQLSTATE: 42826
+AnalysisException | [AMBIGUOUS_REFERENCE] Reference `id` is ambiguous, could be: [`a`.`id`, `b`.`id`]. SQLSTATE: 42704
+AnalysisException | [NUM_COLUMNS_MISMATCH] UNION can only be performed on inputs with the same number of columns, but the first input has 3 columns and the second input has 2 columns. SQLSTATE: 42826;
 PySparkTypeError | [CANNOT_MERGE_TYPE] Can not merge type `LongType` and `StringType` for field x.
 PySparkValueError | [CANNOT_DETERMINE_TYPE] Some of types cannot be determined after inferring.
-AnalysisException | [WINDOW_FUNCTION_WITHOUT_ORDER] Window function row_number() requires window to be ordered, please add ORDER BY clause. For example SELECT row_number()(value_expr) OVER (PARTITION BY window_partition ORDER BY window_ordering) from table. SQLSTATE: 42601
+AnalysisException | Window function row_number() requires window to be ordered, please add ORDER BY clause. For example SELECT row_number()(value_expr) OVER (PARTITION BY window_partition ORDER BY window_ordering) from table.

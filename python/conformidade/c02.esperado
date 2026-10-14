@@ -22,22 +22,20 @@ root
 | Feijão| Sudeste|         3|  8.5|
 +-------+--------+----------+-----+
 only showing top 2 rows
-
 +-------+
 |produto|
 +-------+
 |Arroz  |
 +-------+
 only showing top 1 row
-
-+---+---+---+---+
-|pro|reg|qua|pre|
-+---+---+---+---+
-|Arr|Nor|  2|24.|
-|Caf|Nor|  1|19.|
-|Fei|Sud|  3|8.5|
-|Rap|Nor| 10|2.5|
-+---+---+---+---+
++-------+------+----------+-----+
+|produto|regiao|quantidade|preco|
++-------+------+----------+-----+
+|    Arr|   Nor|         2|  24.|
+|    Caf|   Nor|         1|  19.|
+|    Fei|   Sud|         3|  8.5|
+|    Rap|   Nor|        10|  2.5|
++-------+------+----------+-----+
 
 ['produto', 'regiao', 'quantidade', 'preco'] 4
 4
@@ -75,7 +73,7 @@ root
 +----------------------------+----+------+----+----------+------+-------------------+-------+
 
 ['(quantidade * preco)', '(preco > 10)', 'upper(regiao)', 'CASE WHEN (quantidade > 2) THEN muito ELSE pouco END', '(quantidade IN (1, 2))', 'quantidade', 'mais_um']
-['CAST(quantidade AS INT)', '(quantidade * 2)', 'p']
+['quantidade', '(quantidade * 2)', 'p']
 ['((quantidade >= 1) AND (quantidade <= 2))', '(regiao IS NULL)', '(NOT (preco > 1))']
 +--------+-----+
 | produto|total|

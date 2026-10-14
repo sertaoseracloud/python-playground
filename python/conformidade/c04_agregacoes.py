@@ -25,7 +25,7 @@ df.groupBy('regiao').agg(F.sum(F.col('quantidade') * F.col('preco')).alias('rece
 meses = spark.createDataFrame([('caju', 'jan', 3), ('caju', 'fev', 1), ('umbu', 'jan', 2), ('umbu', 'mar', 5)], ['fruta', 'mes', 'qtd'])
 meses.groupBy('fruta').pivot('mes').sum('qtd').orderBy('fruta').show()
 meses.groupBy('fruta').pivot('mes', ['jan', 'fev']).agg(F.sum('qtd')).orderBy('fruta').show()
-meses.groupBy('fruta').pivot('mes').agg(F.sum('qtd').alias('s'), F.count('*').alias('n')).orderBy('fruta').show()
+meses.groupBy('fruta').pivot('mes').agg(F.sum('qtd').alias('s'), F.count('qtd').alias('n')).orderBy('fruta').show()
 
 nulos = spark.createDataFrame([(1, None), (2, 5), (3, 1), (4, 5)], 'id bigint, v bigint')
 print([x.id for x in nulos.orderBy('v', 'id').collect()])
