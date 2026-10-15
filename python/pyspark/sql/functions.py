@@ -1,11 +1,12 @@
 """pyspark.sql.functions do DivergePython: as funções de coluna, com os nomes do Spark."""
+import builtins
 import datetime
 import math
 import re
 
 from . import types as T
 from .column import (
-    Caso, Cast, Col, Column, EhNulo, Func, Lit, arredondar, como_ordem, converter, literal_ou_coluna, para_expr,
+    Alias, Caso, Cast, Col, Column, EhNulo, Func, Lit, arredondar, como_ordem, converter, literal_ou_coluna, para_expr,
     texto_para_data, texto_para_data_hora,
 )
 from .column import Ordem  # noqa: F401  (usada por quem importa daqui)
@@ -442,12 +443,30 @@ def months_between(fim, inicio):
     return _f('months_between', [_c(fim), _c(inicio), Column(Lit(True))], lambda ansi, a, b, _r: meses(ansi, a, b), _fixo(T.DoubleType()), usa_ansi=True)
 
 
+class _Agora(Func):
+    """current_timestamp(), now() e current_date(): um valor só por consulta, lido ao montar o plano
+    (no processo principal). No streaming e no Delta, vem do relógio virtual."""
+
+    def com_filhos(self, filhos):
+        return self
+
+    def compilar(self, e):
+        from diverge_runtime import relogio
+        momento = relogio.momento_do_spark()
+        valor = momento.date() if self.nome_func == 'current_date' else momento
+        return lambda linha: valor
+
+
 def current_date():
-    return _f('current_date', [], lambda: datetime.date.today(), _fixo(T.DateType()), anulavel=False)
+    return Column(_Agora('current_date', [], None, _fixo(T.DateType()), anulavel=False))
 
 
 def current_timestamp():
-    return _f('current_timestamp', [], lambda: datetime.datetime.now().replace(microsecond=0), _fixo(T.TimestampType()), anulavel=False)
+    return Column(_Agora('current_timestamp', [], None, _fixo(T.TimestampType()), anulavel=False))
+
+
+def now():
+    return Column(_Agora('now', [], None, _fixo(T.TimestampType()), anulavel=False))
 
 # ---------- arrays ----------
 
@@ -531,6 +550,88 @@ def struct(*cols):
         return T._criar_row(nomes, valores)
     return _f('struct', exprs, montar, lambda tipos: T.StructType([T.StructField(n, t) for n, t in zip(nomes, tipos)]),
               propaga_nulo=False, anulavel=False)
+
+# ---------- janelas de tempo ----------
+
+_UNIDADES = {'microsecond': 1, 'millisecond': 1000, 'second': 10**6, 'minute': 60 * 10**6,
+             'hour': 3600 * 10**6, 'day': 86400 * 10**6, 'week': 7 * 86400 * 10**6}
+_DURACAO = re.compile(r'(\d+)\s*(microsecond|millisecond|second|minute|hour|day|week)s?', re.IGNORECASE)
+_EPOCA = datetime.datetime(1970, 1, 1)
+JANELA = T.StructType([T.StructField('start', T.TimestampType()), T.StructField('end', T.TimestampType())])
+
+
+def duracao_em_micros(texto):
+    """'10 minutes', '1 hour 30 minutes' ou 'interval 5 seconds' em microssegundos, como o Spark lê."""
+    limpo = str(texto).strip()
+    if limpo.lower().startswith('interval '):
+        limpo = limpo[9:]
+    partes = _DURACAO.findall(limpo)
+    if not partes or _DURACAO.sub('', limpo).strip():
+        from ..errors import IllegalArgumentException
+        raise IllegalArgumentException(f'The provided interval ({texto}) did not correspond to a valid interval string.')
+    return builtins.sum(int(n) * _UNIDADES[u.lower()] for n, u in partes)  # o sum daqui é o do Spark
+
+
+def _micros(ts):
+    return (ts - _EPOCA) // datetime.timedelta(microseconds=1)
+
+
+def _janela(inicio, duracao):
+    return T._criar_row(['start', 'end'], (_EPOCA + datetime.timedelta(microseconds=inicio),
+                                           _EPOCA + datetime.timedelta(microseconds=inicio + duracao)))
+
+
+class _UmaJanela:
+    def __init__(self, duracao, inicio):
+        self.duracao, self.inicio = duracao, inicio
+
+    def __call__(self, ts):
+        t = _micros(ts)
+        return _janela(t - (t - self.inicio) % self.duracao, self.duracao)
+
+
+class _VariasJanelas:
+    """As janelas deslizantes que contêm o momento (início <= ts < fim), da mais antiga à mais nova."""
+
+    def __init__(self, duracao, deslize, inicio):
+        self.duracao, self.deslize, self.inicio = duracao, deslize, inicio
+
+    def __call__(self, ts):
+        t = _micros(ts)
+        s = t - (t - self.inicio) % self.deslize
+        saida = []
+        while s > t - self.duracao:
+            saida.append(_janela(s, self.duracao))
+            s -= self.deslize
+        return saida[::-1]
+
+
+class _Janela(Func):
+    """window(coluna, duração, deslize, início): a janela fixa da linha (struct<start, end>). A
+    deslizante só existe dentro do groupBy, que põe a linha em cada janela (group.py)."""
+
+    def __init__(self, coluna, duracao, deslize, inicio):
+        self.duracao, self.deslize, self.inicio = duracao, deslize, inicio
+        super().__init__('window', [coluna], _UmaJanela(duracao, inicio), _fixo(JANELA), entradas=[T.TimestampType()],
+                         formato=lambda p: f'window({p[0]}, {duracao}, {deslize}, {inicio})')
+
+    def com_filhos(self, filhos):
+        return _Janela(filhos[0], self.duracao, self.deslize, self.inicio)
+
+    def compilar(self, e):
+        if self.deslize != self.duracao:
+            raise NotImplementedError('No DivergePython, a janela deslizante só funciona dentro do groupBy.')
+        return super().compilar(e)
+
+
+def window(timeColumn, windowDuration, slideDuration=None, startTime=None):
+    duracao = duracao_em_micros(windowDuration)
+    deslize = duracao_em_micros(slideDuration) if slideDuration else duracao
+    inicio = duracao_em_micros(startTime) if startTime else 0
+    if deslize > duracao:
+        from ..errors import IllegalArgumentException
+        raise IllegalArgumentException(f'The slide duration ({deslize}) must be less than or equal to the windowDuration ({duracao}).')
+    return Column(Alias(_Janela(para_expr(timeColumn), duracao, deslize, inicio), 'window'))
 
 # ---------- ordenação ----------
 

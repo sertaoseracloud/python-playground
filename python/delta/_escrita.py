@@ -77,6 +77,11 @@ def _commit(caminho, versao, operacao, parametros, metricas, acoes, leitura=None
 
 
 def gravar_delta(df, destino, modo, opcoes):
+    with relogio.virtual():  # o current_timestamp() do DataFrame gravado lê o relógio virtual
+        return _gravar_delta(df, destino, modo, opcoes)
+
+
+def _gravar_delta(df, destino, modo, opcoes):
     existe = _log.eh_delta(destino)
     if existe and modo == 'ignore':
         return None
@@ -105,6 +110,11 @@ def gravar_delta(df, destino, modo, opcoes):
 
 def reescrever(sessao, caminho, df, operacao, parametros, metricas, data_change=True):
     """Nova versão com o conteúdo inteiro de `df` (update, delete, merge, optimize)."""
+    with relogio.virtual():  # um update com current_timestamp() grava o tempo do commit
+        return _reescrever(sessao, caminho, df, operacao, parametros, metricas, data_change)
+
+
+def _reescrever(sessao, caminho, df, operacao, parametros, metricas, data_change):
     snap = _log.snapshot(caminho)
     linhas = df._linhas(operacao.lower())  # materializa antes de trocar os arquivos
     novo = sessao.createDataFrame(linhas, snap.schema) if linhas else sessao.createDataFrame([], snap.schema)

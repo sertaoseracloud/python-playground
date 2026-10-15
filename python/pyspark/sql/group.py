@@ -3,7 +3,7 @@ from ..errors import AnalysisException, PySparkTypeError
 from . import types as T
 from .agregacoes import Agg, contar_tudo
 from .avancado import agregar, filtro_de_pivo
-from .column import Alias, Col, Column, Entrada, para_expr, sem_alias
+from .column import Alias, Col, Column, Entrada, Estrela, Func, para_expr, sem_alias
 from .mostrar import texto_do_valor
 
 _FUNCOES_DO_DICIONARIO = {'avg': 'avg', 'mean': 'avg', 'sum': 'sum', 'min': 'min', 'max': 'max', 'count': 'count',
@@ -16,11 +16,24 @@ class GroupedData:
         self._df, self._chaves, self._pivo = df, chaves, pivo
 
     def _agregar(self, exprs):
-        df = self._df
+        df, chaves = self._expandir_janelas()
         if self._pivo is not None:
             exprs = self._expandir_pivo(exprs)
-        saidas = list(self._chaves) + list(exprs)
-        return df._novo(agregar(df._plano, list(self._chaves), saidas, 'groupBy'))
+        saidas = list(chaves) + list(exprs)
+        return df._novo(agregar(df._plano, list(chaves), saidas, 'groupBy'))
+
+    def _expandir_janelas(self):
+        """A janela deslizante põe a linha em várias janelas: como o Spark, uma linha por janela antes de agrupar."""
+        from .functions import JANELA, _Janela, _VariasJanelas, explode
+        df, chaves = self._df, list(self._chaves)
+        for i, c in enumerate(chaves):
+            base = sem_alias(c)
+            if isinstance(base, _Janela) and base.deslize != base.duracao:
+                lista = Func('window', [base.args[0]], _VariasJanelas(base.duracao, base.deslize, base.inicio),
+                             lambda _tipos: T.ArrayType(JANELA, False), entradas=[T.TimestampType()])
+                df = df.select(Column(Estrela()), explode(Column(lista)).alias('window'))
+                chaves[i] = Col('window')
+        return df, chaves
 
     def agg(self, *exprs):
         if len(exprs) == 1 and isinstance(exprs[0], dict):
