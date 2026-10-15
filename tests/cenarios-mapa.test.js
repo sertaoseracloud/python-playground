@@ -1,7 +1,7 @@
 // Mapa de tiles dos cenários: determinístico, com a estrada embaixo dos nós e espaço livre dos dois lados.
 import { describe, it, expect } from 'vitest';
 import { gerarMapa, colunasDaEstrada, sorteador, tileEm, TILE } from '../src/ui/cenarios/mapa.js';
-import { sprite, passo, LADO } from '../src/ui/cenarios/pixel.js';
+import { sprite, passo, misturar, LADO } from '../src/ui/cenarios/pixel.js';
 import { CENARIOS } from '../src/ui/cenarios/index.js';
 
 const mapaDe = (id, colunas = 40, linhas = 25, semente = 'basico') => gerarMapa({ colunas, linhas, cenario: CENARIOS[id], semente });
@@ -12,6 +12,12 @@ describe('pixel art', () => {
     expect(() => sprite({ a: '#000' }, Array(LADO).fill(linha).join('\n'))).not.toThrow();
     expect(() => sprite({ a: '#000' }, Array(15).fill(linha).join('\n'))).toThrow('16×16');
     expect(() => sprite({ a: '#000' }, [...Array(15).fill(linha), `b${'.'.repeat(15)}`].join('\n'))).toThrow('fora da paleta');
+  });
+
+  it('misturar: as variações do chão ficam perto da cor base (sem xadrez)', () => {
+    expect(misturar('#000000', '#ffffff', 0)).toBe('#000000');
+    expect(misturar('#000000', '#ffffff', 1)).toBe('#ffffff');
+    expect(misturar('#d9a066', '#e8bb80', 0.35)).toBe('#dea96f');
   });
 
   it('o 2º quadro da caminhada é diferente do 1º e continua 16×16', () => {
