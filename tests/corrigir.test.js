@@ -53,3 +53,22 @@ describe('corrigir', () => {
     expect(relatorio[1].cenario.dados).toEqual(['n.txt']);
   });
 });
+
+describe('corrigir com as regras do módulo além do batch', () => {
+  it('as regras modelo com métrica viram avaliacoes, e os blocos novos chegam às regras', async () => {
+    let opcoes;
+    const executarFalso = async (_arquivos, o) => {
+      opcoes = o;
+      return { saida: '', erro: null, variaveis: {}, streaming: null,
+        deltas: { t: { versao: 0, operacoes: ['WRITE'], colunas: ['a'], linhasPorVersao: [1] } },
+        modelos: { m: { tipo: 'LinearRegressionModel', metricas: { 'rmse@t.csv': 0.5 } } } };
+    };
+    const problema = { testes: [{ descricao: 'v', regras: [
+      { modelo: 'm', metrica: { nome: 'rmse', max: 1, dados: 't.csv', preparar: 'montador' } },
+      { delta: 't', versao: 0 },
+    ] }] };
+    const { aprovado } = await corrigir(problema, { 'main.py': '' }, executarFalso);
+    expect(opcoes.avaliacoes).toEqual([{ variavel: 'm', nome: 'rmse', dados: 't.csv', preparar: 'montador' }]);
+    expect(aprovado).toBe(true);
+  });
+});

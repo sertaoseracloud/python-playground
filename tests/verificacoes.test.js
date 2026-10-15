@@ -1,6 +1,6 @@
 // Regras de correção: cada tipo passa quando deve e falha com um motivo útil.
 import { describe, it, expect } from 'vitest';
-import { verificarRegra, detalharRegra, categoriaDe } from '../src/verificacoes.js';
+import { verificarRegra, detalharRegra, categoriaDe, descreverRegra } from '../src/verificacoes.js';
 
 const ctx = (extra = {}) => ({ saida: '', erro: null, variaveis: {}, retorno: undefined, codigo: '', ...extra });
 
@@ -108,5 +108,103 @@ describe('verificarRegra', () => {
 
   it('regra desconhecida é erro de quem escreveu o exercício', () => {
     expect(() => verificarRegra({ inventada: 1 }, ctx())).toThrow('Regra desconhecida');
+  });
+});
+
+describe('regra stream', () => {
+  const lote = (id, saida, marcaDagua = null, descartadas = 0) => ({ id, entrada: 2, arquivos: [], estado: 0, marcaDagua, saida, descartadas });
+  const streaming = { consultas: [{ nome: 'janelas', modo: 'update', formato: 'memory', lotes: [lote(0, 1), lote(1, 1), lote(2, 1, '2026-03-10T08:16:00.000Z', 1)] }] };
+  const ver = (regra) => verificarRegra(regra, { streaming });
+
+  it('passa quando lotes, saída, modo, marca d\'água e descartadas batem', () => {
+    const r = ver({ stream: 'janelas', modo: 'update', lotes: 3, saidaPorLote: [1, 1, 1], marcaDagua: '2026-03-10T08:16', descartadas: 1 });
+    expect(r.ok).toBe(true);
+    expect(r.obtido).toBe('3 lotes · saída por lote [1, 1, 1] · update');
+  });
+
+  it.each([
+    [{ stream: 'alertas' }, 'a consulta alertas não existe (use .queryName("alertas") e .start())'],
+    [{ stream: 'janelas', lotes: 1 }, 'esperado 1 lote, vieram 3'],
+    [{ stream: 'janelas', saidaPorLote: [1, 3, 1] }, 'o lote 1 devia emitir 3 linhas, emitiu 1'],
+    [{ stream: 'janelas', modo: 'complete' }, 'o modo devia ser complete, é update'],
+    [{ stream: 'janelas', marcaDagua: '2026-03-10T08:10' }, "a marca d'água final devia ser 08:10, foi 08:16"],
+    [{ stream: 'janelas', descartadas: 0 }, 'deviam ser descartadas 0 linhas atrasadas, foram 1'],
+  ])('%j falha com o motivo', (regra, detalhe) => {
+    expect(ver(regra)).toMatchObject({ ok: false, detalhe });
+  });
+
+  it('sem streaming nenhum (programa sem start): motivo, sem exceção', () => {
+    expect(verificarRegra({ stream: 'x' }, {})).toMatchObject({ ok: false });
+    expect(descreverRegra({ stream: 'x', lotes: 2 })).toBe('A consulta x rodou como pedido');
+  });
+});
+
+describe('regra modelo', () => {
+  const modelos = {
+    m: { tipo: 'LinearRegressionModel', coeficientes: [0.0100000001, 2, 1.5], intercepto: 3, metricas: { 'rmse@safra-teste.csv': 0.00002, 'r2@x.csv': { erro: { tipo: 'AnalysisException', mensagem: 'Path does not exist' } } } },
+    r: { tipo: 'LogisticRegressionModel', coeficientes: [-0.01, -3], intercepto: 4, metricas: { 'areaUnderROC@safra-teste.csv': 0.61 } },
+    est: { tipo: 'LogisticRegression', treinado: false, metricas: {} },
+    tubo: { tipo: 'PipelineModel', ultimo: 'LinearRegressionModel', coeficientes: [1], intercepto: 0, metricas: {} },
+    g: { tipo: 'KMeansModel', k: 3, metricas: {} },
+    a: { tipo: 'DecisionTreeClassificationModel', profundidade: 2, metricas: {} },
+  };
+  const ver = (regra, variaveis = {}) => verificarRegra(regra, { modelos, variaveis });
+
+  it('passa com tipo, coeficientes aproximados, k, profundidade e métrica', () => {
+    expect(ver({ modelo: 'm', tipo: 'LinearRegressionModel', coeficientes: [0.01, 2, 1.5], intercepto: 3 }).ok).toBe(true);
+    expect(ver({ modelo: 'm', metrica: { nome: 'rmse', max: 0.001, dados: 'safra-teste.csv' } }).ok).toBe(true);
+    expect(ver({ modelo: 'tubo', tipo: 'PipelineModel' }).ok).toBe(true);
+    expect(ver({ modelo: 'tubo', tipo: 'LinearRegressionModel' }).ok).toBe(true); // o último estágio do pipeline
+    expect(ver({ modelo: 'g', k: 3 }).ok).toBe(true);
+    expect(ver({ modelo: 'a', profundidade: 2 }).ok).toBe(true);
+  });
+
+  it.each([
+    [{ modelo: 'x' }, {}, 'a variável x não existe no fim do programa'],
+    [{ modelo: 'n' }, { n: 3 }, 'n não é um modelo treinado (fit)'],
+    [{ modelo: 'est' }, {}, 'est é um LogisticRegression sem treino: use est = LogisticRegression(...).fit(dados)'],
+    [{ modelo: 'm', tipo: 'LogisticRegressionModel' }, {}, 'esperado LogisticRegressionModel, veio LinearRegressionModel'],
+    [{ modelo: 'm', coeficientes: [0.02, 2, 1.5] }, {}, 'coeficientes esperados [0,02, 2, 1,5], vieram [0,01, 2, 1,5]'],
+    [{ modelo: 'm', intercepto: 1 }, {}, 'intercepto esperado 1, veio 3'],
+    [{ modelo: 'g', k: 2 }, {}, 'k esperado 2, veio 3'],
+    [{ modelo: 'a', profundidade: 3 }, {}, 'profundidade esperada 3, veio 2'],
+    [{ modelo: 'r', metrica: { nome: 'areaUnderROC', min: 0.8, dados: 'safra-teste.csv' } }, {}, 'areaUnderROC 0,61 em safra-teste.csv; o mínimo é 0,8'],
+    [{ modelo: 'm', metrica: { nome: 'r2', min: 0.9, dados: 'x.csv' } }, {}, 'calcular r2 em x.csv deu AnalysisException: Path does not exist'],
+    [{ modelo: 'm', metrica: { nome: 'mae', max: 1, dados: 'y.csv' } }, {}, 'não deu para calcular mae em y.csv'],
+  ])('%j falha com o motivo', (regra, variaveis, detalhe) => {
+    expect(ver(regra, variaveis)).toMatchObject({ ok: false, detalhe });
+  });
+
+  it('mensagens antes de rodar (contexto vazio)', () => {
+    expect(descreverRegra({ modelo: 'm', tipo: 'LinearRegressionModel' })).toBe('m é o modelo treinado pedido');
+    expect(descreverRegra({ modelo: 'r', metrica: { nome: 'areaUnderROC', min: 0.75, dados: 't.csv' } })).toBe('r tem areaUnderROC ≥ 0,75 em t.csv');
+  });
+});
+
+describe('regra delta', () => {
+  const deltas = { estoque: { versao: 2, operacoes: ['WRITE', 'MERGE', 'DELETE'], colunas: ['produto', 'qtd'], linhasPorVersao: [3, 4, 2] } };
+  const ver = (regra) => verificarRegra(regra, { deltas });
+
+  it('passa com versão, operações, colunas e linhas da versão', () => {
+    expect(ver({ delta: 'estoque', versao: 2, operacoes: ['WRITE', 'MERGE', 'DELETE'], colunas: ['produto', 'qtd'], linhasNaVersao: { versao: 1, linhas: 4 } }).ok).toBe(true);
+  });
+
+  it.each([
+    [{ delta: 'dados/estoque' }, 'não existe tabela Delta em dados/estoque'],
+    [{ delta: 'estoque', versao: 3 }, 'a versão atual devia ser 3, é 2'],
+    [{ delta: 'estoque', operacoes: ['WRITE', 'MERGE', 'DELETE', 'OPTIMIZE'] }, 'o histórico tem WRITE, MERGE, DELETE; faltou OPTIMIZE'],
+    [{ delta: 'estoque', operacoes: ['WRITE', 'MERGE'] }, 'o histórico tem WRITE, MERGE, DELETE; sobrou DELETE'],
+    [{ delta: 'estoque', operacoes: ['WRITE', 'UPDATE', 'DELETE'] }, 'a operação da versão 1 devia ser UPDATE, é MERGE'],
+    [{ delta: 'estoque', colunas: ['produto', 'qtd', 'preco'] }, 'colunas esperadas [produto, qtd, preco], vieram [produto, qtd]'],
+    [{ delta: 'estoque', linhasNaVersao: { versao: 0, linhas: 4 } }, 'a versão 0 devia ter 4 linhas, tem 3'],
+    [{ delta: 'estoque', linhasNaVersao: { versao: 7, linhas: 1 } }, 'a tabela não tem a versão 7'],
+  ])('%j falha com o motivo', (regra, detalhe) => {
+    expect(ver(regra)).toMatchObject({ ok: false, detalhe });
+  });
+
+  it('categorias novas', () => {
+    expect(categoriaDe({ stream: 'q' })).toBe('Streaming');
+    expect(categoriaDe({ modelo: 'm' })).toBe('Modelo');
+    expect(categoriaDe({ delta: 't' })).toBe('Delta');
   });
 });

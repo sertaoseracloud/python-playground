@@ -15,6 +15,13 @@
 //                                          são comparadas em qualquer ordem, como no Spark)
 //   { plano: 'df', shuffles?, broadcast?, cache?, particoes?, estagios? }
 //                                          o plano físico de df (o que o df.explain() mostra)
+//   { stream: 'q', modo?, lotes?, saidaPorLote?, marcaDagua?, descartadas? }
+//                                          a consulta de streaming q (queryName) e os seus micro-lotes
+//   { modelo: 'm', tipo?, coeficientes?, intercepto?, aprox?, k?, profundidade?, metrica? }
+//                                          o modelo do MLlib em m; `metrica: { nome, min | max, dados, preparar? }`
+//                                          é calculada pelo executor nos dados de teste
+//   { delta: 'caminho', versao?, operacoes?, colunas?, linhasNaVersao? }
+//                                          a tabela Delta gravada em caminho
 const json = (v) => JSON.stringify(v);
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 /** JSON com as chaves dos objetos em ordem: dois dicionários iguais em ordens diferentes são iguais (como no Python). */
@@ -122,7 +129,105 @@ function verificarPlano(regra, tabelas, variaveis) {
   return res(regra, mensagem, !detalhe, detalhe, obtido);
 }
 
-export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {}, paralelismo = null, tabelas = {} }) {
+/** 0.61 → "0,61": números como se escreve no Brasil (até 4 casas). */
+const decimal = (n) => String(Number(Number(n).toFixed(4))).replace('.', ',');
+const hora = (iso) => (iso ? iso.slice(11, 16) : 'nenhuma');
+
+function verificarStream(regra, streaming) {
+  const nome = regra.stream;
+  const mensagem = `A consulta ${nome} rodou como pedido`;
+  const consulta = streaming?.consultas?.find((c) => c.nome === nome);
+  if (!consulta) return res(regra, mensagem, false, `a consulta ${nome} não existe (use .queryName("${nome}") e .start())`);
+  const { lotes } = consulta;
+  const obtido = `${plural(lotes.length, 'lote', 'lotes')} · saída por lote [${lotes.map((l) => l.saida).join(', ')}] · ${consulta.modo}`;
+  const falha = (detalhe) => res(regra, mensagem, false, detalhe, obtido);
+  if (regra.modo && consulta.modo !== regra.modo) return falha(`o modo devia ser ${regra.modo}, é ${consulta.modo}`);
+  const total = regra.lotes ?? regra.saidaPorLote?.length;
+  if (total !== undefined && lotes.length !== total) {
+    return falha(`${total === 1 ? 'esperado 1 lote' : `esperados ${total} lotes`}, ${lotes.length === 1 ? 'veio 1' : `vieram ${lotes.length}`}`);
+  }
+  if (regra.saidaPorLote) {
+    const i = regra.saidaPorLote.findIndex((n, k) => lotes[k].saida !== n);
+    if (i >= 0) return falha(`o lote ${i} devia emitir ${plural(regra.saidaPorLote[i], 'linha', 'linhas')}, emitiu ${lotes[i].saida}`);
+  }
+  if (regra.descartadas !== undefined) {
+    const d = lotes.reduce((s, l) => s + (l.descartadas ?? 0), 0);
+    if (d !== regra.descartadas) return falha(`deviam ser descartadas ${plural(regra.descartadas, 'linha atrasada', 'linhas atrasadas')}, foram ${d}`);
+  }
+  if (regra.marcaDagua !== undefined) {
+    const m = lotes.at(-1)?.marcaDagua ?? null;
+    if (!(m ?? '').startsWith(regra.marcaDagua)) return falha(`a marca d'água final devia ser ${hora(regra.marcaDagua)}, foi ${hora(m)}`);
+  }
+  return res(regra, mensagem, true, undefined, obtido);
+}
+
+function verificarModelo(regra, modelos, variaveis) {
+  const nome = regra.modelo;
+  const met = regra.metrica;
+  const mensagem = met
+    ? `${nome} tem ${met.nome} ${met.min !== undefined ? `≥ ${decimal(met.min)}` : `≤ ${decimal(met.max)}`} em ${met.dados}`
+    : `${nome} é o modelo treinado pedido`;
+  const m = modelos[nome];
+  if (!m) return res(regra, mensagem, false, nome in variaveis ? `${nome} não é um modelo treinado (fit)` : `a variável ${nome} não existe no fim do programa`);
+  if (m.treinado === false) return res(regra, mensagem, false, `${nome} é um ${m.tipo} sem treino: use ${nome} = ${m.tipo}(...).fit(dados)`, m.tipo);
+  const lista = (v) => `[${v.map(decimal).join(', ')}]`;
+  const obtido = [
+    m.ultimo ? `${m.tipo} (${m.ultimo})` : m.tipo,
+    m.coeficientes && `coeficientes ${lista(m.coeficientes)}`,
+    m.intercepto !== undefined && `intercepto ${decimal(m.intercepto)}`,
+    m.k !== undefined && `k = ${m.k}`,
+    m.profundidade !== undefined && `profundidade ${m.profundidade}`,
+  ].filter(Boolean).join(' · ');
+  const falha = (detalhe) => res(regra, mensagem, false, detalhe, obtido);
+  const tolerancia = regra.aprox ?? 1e-6;
+  if (regra.tipo && m.tipo !== regra.tipo && m.ultimo !== regra.tipo) return falha(`esperado ${regra.tipo}, veio ${m.ultimo ? `${m.tipo} (${m.ultimo})` : m.tipo}`);
+  if (regra.coeficientes && !aproximado(m.coeficientes, regra.coeficientes, tolerancia)) {
+    return falha(`coeficientes esperados ${lista(regra.coeficientes)}, vieram ${m.coeficientes ? lista(m.coeficientes) : 'nenhum'}`);
+  }
+  if (regra.intercepto !== undefined && !aproximado(m.intercepto, regra.intercepto, tolerancia)) {
+    return falha(`intercepto esperado ${decimal(regra.intercepto)}, veio ${m.intercepto === undefined ? 'nenhum' : decimal(m.intercepto)}`);
+  }
+  if (regra.k !== undefined && m.k !== regra.k) return falha(`k esperado ${regra.k}, veio ${m.k ?? 'nenhum'}`);
+  if (regra.profundidade !== undefined && m.profundidade !== regra.profundidade) return falha(`profundidade esperada ${regra.profundidade}, veio ${m.profundidade ?? 'nenhuma'}`);
+  if (met) {
+    const v = m.metricas?.[`${met.nome}@${met.dados}`];
+    if (v === undefined) return falha(`não deu para calcular ${met.nome} em ${met.dados}`);
+    if (v.erro) return falha(`calcular ${met.nome} em ${met.dados} deu ${v.erro.tipo}: ${v.erro.mensagem}`);
+    if (met.min !== undefined && v < met.min) return falha(`${met.nome} ${decimal(v)} em ${met.dados}; o mínimo é ${decimal(met.min)}`);
+    if (met.max !== undefined && v > met.max) return falha(`${met.nome} ${decimal(v)} em ${met.dados}; o máximo é ${decimal(met.max)}`);
+  }
+  return res(regra, mensagem, true, undefined, obtido);
+}
+
+function verificarDelta(regra, deltas) {
+  const caminho = regra.delta;
+  const mensagem = `A tabela Delta ${caminho} está como pedido`;
+  const t = deltas[caminho];
+  if (!t) return res(regra, mensagem, false, `não existe tabela Delta em ${caminho}`);
+  const obtido = `versão ${t.versao} · ${t.operacoes.join(', ')} · [${t.colunas.join(', ')}]`;
+  const falha = (detalhe) => res(regra, mensagem, false, detalhe, obtido);
+  if (regra.versao !== undefined && t.versao !== regra.versao) return falha(`a versão atual devia ser ${regra.versao}, é ${t.versao}`);
+  if (regra.operacoes && !iguais(t.operacoes, regra.operacoes)) {
+    const tem = `o histórico tem ${t.operacoes.join(', ')}`;
+    const i = regra.operacoes.findIndex((op, k) => t.operacoes[k] !== op);
+    if (i < 0) return falha(`${tem}; sobrou ${t.operacoes.slice(regra.operacoes.length).join(', ')}`);
+    if (i >= t.operacoes.length) return falha(`${tem}; faltou ${regra.operacoes.slice(i).join(', ')}`);
+    return falha(`a operação da versão ${i} devia ser ${regra.operacoes[i]}, é ${t.operacoes[i]}`);
+  }
+  if (regra.colunas && !iguais(t.colunas, regra.colunas)) return falha(`colunas esperadas [${regra.colunas.join(', ')}], vieram [${t.colunas.join(', ')}]`);
+  if (regra.linhasNaVersao) {
+    const { versao, linhas: n } = regra.linhasNaVersao;
+    const tem = t.linhasPorVersao?.[versao];
+    if (tem === undefined) return falha(`a tabela não tem a versão ${versao}`);
+    if (tem !== n) return falha(`a versão ${versao} devia ter ${plural(n, 'linha', 'linhas')}, tem ${tem}`);
+  }
+  return res(regra, mensagem, true, undefined, obtido);
+}
+
+export function verificarRegra(regra, { saida = '', erro = null, variaveis = {}, retorno, codigo = '', arquivos = {}, paralelismo = null, tabelas = {}, streaming = null, deltas = {}, modelos = {} }) {
+  if ('stream' in regra) return verificarStream(regra, streaming);
+  if ('modelo' in regra) return verificarModelo(regra, modelos, variaveis);
+  if ('delta' in regra) return verificarDelta(regra, deltas);
   if ('dataframe' in regra) return verificarDataFrame(regra, tabelas, variaveis);
   if ('plano' in regra) return verificarPlano(regra, tabelas, variaveis);
   if ('saidaIgual' in regra) {
@@ -197,6 +302,7 @@ export function verificarRegra(regra, { saida = '', erro = null, variaveis = {},
 }
 
 const CATEGORIAS = [
+  ['stream', 'Streaming'], ['modelo', 'Modelo'], ['delta', 'Delta'],
   ['saidaIgual', 'Saída'], ['saida', 'Saída'], ['arquivo', 'Arquivo'], ['paralelo', 'Paralelismo'],
   ['dataframe', 'DataFrame'], ['plano', 'Plano'], ['funcao', 'Função'], ['variavel', 'Variável'],
   ['erro', 'Execução'], ['semErros', 'Execução'], ['codigo', 'Código'], ['semCodigo', 'Código'],
@@ -222,6 +328,9 @@ const DICAS = {
   Arquivo: 'Confira o nome do arquivo, o cabeçalho e cada linha. Para ver o que foi gravado, use print(open(nome).read()).',
   DataFrame: 'Confira as colunas (nomes e alias), os tipos e as linhas. Use df.show() e df.printSchema() para ver o que o seu DataFrame tem.',
   Plano: 'Use df.explain() para ver o plano: cada Exchange é um shuffle, e BroadcastHashJoin é o join com broadcast.',
+  Streaming: 'Confira o queryName, o outputMode e o gatilho. A aba ⚡ Execução mostra cada micro-lote: o que entrou, o estado e o que saiu.',
+  Modelo: 'Confira se você chamou fit, as colunas de features e de rótulo (labelCol) e os parâmetros. Imprima coefficients e intercept para ver o que o modelo aprendeu.',
+  Delta: 'Use DeltaTable.forPath(spark, caminho).history().show() para ver as versões e as operações, e confira o caminho da tabela.',
 };
 
 /** verificarRegra + categoria e dica, para a aba Testes. */
