@@ -63,9 +63,135 @@ class DeltaTable:
         _escrita.reescrever(self._sessao, self._caminho, df.select(*novas), 'UPDATE', {'predicate': _predicado(condition)},
                             {'numUpdatedRows': n, 'numCopiedRows': df.count() - n})
 
+    def merge(self, source, condition):
+        return DeltaMergeBuilder(self, source, condition)
+
     def delete(self, condition=None):
         df = self.toDF()
         alvo = F.lit(True) if condition is None else F.coalesce(_coluna(condition), F.lit(False))
         n = df.filter(alvo).count()
         _escrita.reescrever(self._sessao, self._caminho, df.filter(~alvo), 'DELETE',
                             {'predicate': _predicado(condition)}, {'numDeletedRows': n})
+
+
+# ---------- merge ----------
+
+def _apelido(df, padrao):
+    """O apelido dado com df.alias(...) (o nó Apelido mais de cima), ou o padrão."""
+    from pyspark.sql.plano import Apelido
+    plano = df._plano
+    while True:
+        if isinstance(plano, Apelido):
+            return plano.nome
+        if not plano.filhos or not plano.transparente():
+            return padrao
+        plano = plano.filhos[0]
+
+
+def _com_indice(sessao, df, nome):
+    """O DataFrame com uma coluna de índice (a posição de cada linha), para a montagem do merge."""
+    from pyspark.sql import types as T
+    linhas = [tuple(r) + (i,) for i, r in enumerate(df.collect())]
+    schema = T.StructType(list(df.schema.fields) + [T.StructField(nome, T.LongType())])
+    return sessao.createDataFrame(linhas, schema)
+
+
+class DeltaMergeBuilder:
+    """merge(fonte, condição) com as cláusulas whenMatched*/whenNotMatched* e o execute()."""
+
+    def __init__(self, tabela, fonte, condicao):
+        self._t, self._fonte, self._cond = tabela, fonte, condicao
+        self._casadas, self._nao_casadas = [], []
+
+    def whenMatchedUpdate(self, condition=None, set=None):  # noqa: A002 — o nome é o da API do Delta
+        self._casadas.append(('update', condition, set))
+        return self
+
+    def whenMatchedUpdateAll(self, condition=None):
+        self._casadas.append(('update', condition, None))
+        return self
+
+    def whenMatchedDelete(self, condition=None):
+        self._casadas.append(('delete', condition, None))
+        return self
+
+    def whenNotMatchedInsert(self, condition=None, values=None):
+        self._nao_casadas.append(('insert', condition, values))
+        return self
+
+    def whenNotMatchedInsertAll(self, condition=None):
+        self._nao_casadas.append(('insert', condition, None))
+        return self
+
+    def execute(self):
+        from pyspark.errors import SparkRuntimeException
+        t, sessao = self._t, self._t._sessao
+        alvo = sessao.read.format('delta').load(t._caminho)
+        schema, colunas = alvo.schema, alvo.columns
+        ap_alvo, ap_fonte = t._apelido or 'target', _apelido(self._fonte, 'source')
+        a = _com_indice(sessao, alvo, '__alvo_i').alias(ap_alvo)
+        f = _com_indice(sessao, self._fonte, '__fonte_i').alias(ap_fonte)
+        j = a.join(f, _coluna(self._cond), 'full_outer')
+
+        # Uma coluna por condição de cláusula e uma por valor que a cláusula grava.
+        extras = [F.col(f'{ap_alvo}.__alvo_i').alias('__a'), F.col(f'{ap_fonte}.__fonte_i').alias('__f')]
+        for grupo, sigla in ((self._casadas, 'm'), (self._nao_casadas, 'n')):
+            for k, (acao, condicao, valores) in enumerate(grupo):
+                extras.append((F.coalesce(_coluna(condicao), F.lit(False)) if condicao is not None else F.lit(True)).alias(f'__{sigla}c{k}'))
+                if acao == 'delete':
+                    continue
+                for i, campo in enumerate(schema.fields):
+                    if valores is None:
+                        valor = F.col(f'{ap_fonte}.{campo.name}')
+                    elif campo.name in valores:
+                        valor = _coluna(valores[campo.name])
+                    else:
+                        valor = F.col(f'{ap_alvo}.{campo.name}') if sigla == 'm' else F.lit(None)
+                    extras.append(valor.cast(campo.dataType.simpleString()).alias(f'__{sigla}v{k}_{i}'))
+        resultado = j.select(*extras).collect()
+
+        linhas_alvo = [tuple(r) for r in alvo.collect()]
+        casadas = {}
+        inseridas, atualizadas, apagadas = [], 0, 0
+        for r in resultado:
+            d = r.asDict()
+            if d['__a'] is not None and d['__f'] is not None:
+                if d['__a'] in casadas and self._casadas:
+                    raise SparkRuntimeException(
+                        '[DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE] Cannot perform Merge as multiple source rows matched and '
+                        'attempted to modify the same target row in the Delta table in possibly conflicting ways.',
+                        'DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE', {}, '21506')
+                casadas[d['__a']] = d
+            elif d['__f'] is not None:
+                for k, (acao, _, _) in enumerate(self._nao_casadas):
+                    if d[f'__nc{k}']:
+                        inseridas.append(tuple(d[f'__nv{k}_{i}'] for i in range(len(colunas))))
+                        break
+
+        novas = []
+        for indice, linha in enumerate(linhas_alvo):
+            d = casadas.get(indice)
+            if d is None:
+                novas.append(linha)
+                continue
+            for k, (acao, _, _) in enumerate(self._casadas):
+                if not d[f'__mc{k}']:
+                    continue
+                if acao == 'delete':
+                    apagadas += 1
+                else:
+                    novas.append(tuple(d[f'__mv{k}_{i}'] for i in range(len(colunas))))
+                    atualizadas += 1
+                break
+            else:
+                novas.append(linha)  # casou, mas nenhuma cláusula valeu: fica como estava
+        novas += inseridas
+
+        df_novo = sessao.createDataFrame(novas, schema)
+        parametros = {'predicate': _predicado(self._cond),
+                      'matchedPredicates': str([{'actionType': acao} for acao, _, _ in self._casadas]),
+                      'notMatchedPredicates': str([{'actionType': acao} for acao, _, _ in self._nao_casadas])}
+        metricas = {'numSourceRows': self._fonte.count(), 'numTargetRowsUpdated': atualizadas,
+                    'numTargetRowsDeleted': apagadas, 'numTargetRowsInserted': len(inseridas)}
+        _escrita.reescrever(sessao, t._caminho, df_novo, 'MERGE', parametros, metricas)
+

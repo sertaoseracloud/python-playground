@@ -163,3 +163,35 @@ def test_delete_de_tudo_deixa_a_tabela_vazia(spark):
     df = t.toDF()
     assert df.count() == 0 and df.columns == ['produto', 'qtd', 'preco']
     df.show()
+
+
+def test_merge_upsert_do_estoque(spark):
+    t = tabela(spark)
+    dia = spark.createDataFrame([('cafe', 9, 21.0), ('milho', 3, 5.0)], ['produto', 'qtd', 'preco'])
+    (t.alias('e').merge(dia.alias('d'), 'e.produto = d.produto')
+      .whenMatchedUpdate(set={'qtd': 'e.qtd + d.qtd', 'preco': 'd.preco'})
+      .whenNotMatchedInsertAll()
+      .execute())
+    assert tuplas(t.toDF(), 'produto') == [('arroz', 10, 24.9), ('cafe', 16, 21.0), ('feijao', 4, 8.5), ('milho', 3, 5.0)]
+    h = t.history(1).first()
+    assert h.operation == 'MERGE'
+    assert h.operationMetrics['numTargetRowsUpdated'] == '1' and h.operationMetrics['numTargetRowsInserted'] == '1'
+
+
+def test_merge_com_condicao_delete_e_insert_seletivo(spark):
+    t = tabela(spark)
+    dia = spark.createDataFrame([('feijao', 0, 8.5), ('arroz', 2, 25.0), ('sal', 0, 2.0)], ['produto', 'qtd', 'preco'])
+    (t.alias('e').merge(dia.alias('d'), 'e.produto = d.produto')
+      .whenMatchedDelete(condition='d.qtd = 0')
+      .whenMatchedUpdateAll()
+      .whenNotMatchedInsert(condition='d.qtd > 0', values={'produto': 'd.produto', 'qtd': 'd.qtd', 'preco': 'd.preco'})
+      .execute())
+    assert tuplas(t.toDF(), 'produto') == [('arroz', 2, 25.0), ('cafe', 7, 19.9)]
+
+
+def test_merge_com_duas_linhas_da_fonte_para_o_mesmo_alvo_e_erro(spark):
+    t = tabela(spark)
+    dia = spark.createDataFrame([('cafe', 1, 1.0), ('cafe', 2, 2.0)], ['produto', 'qtd', 'preco'])
+    with pytest.raises(Exception, match='DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE'):
+        t.alias('e').merge(dia.alias('d'), 'e.produto = d.produto').whenMatchedUpdateAll().execute()
+    assert t.history(1).first().operation == 'WRITE'  # nada foi gravado
