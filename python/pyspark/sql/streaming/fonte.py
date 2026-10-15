@@ -16,6 +16,13 @@ SEM_SCHEMA = ('Schema must be specified when creating a streaming source DataFra
               "with 'spark.read.load(directory)' and infer schema from it.")
 
 
+def modo_nao_suportado(modo, operacao):
+    """O erro do Spark 4 para um modo de saída que a consulta não aceita."""
+    return AnalysisException(f'Invalid streaming output mode: {modo}. This output mode is not supported for {operacao} on '
+                             'streaming DataFrames/DataSets.', 'STREAMING_OUTPUT_MODE.UNSUPPORTED_OPERATION',
+                             {'outputMode': modo, 'operation': operacao}, '42KDE')
+
+
 class FonteStream(No):
     """A tabela sem fim: só tem linhas enquanto um micro-lote roda (o executor põe as partições em `lote`)."""
 
@@ -64,11 +71,13 @@ class FonteArquivos:
         self.descricao = f'FileStreamSource[file:{pasta}]'
 
     def listar(self):
-        """Os arquivos de dados da pasta, em ordem de nome (sem os que começam com _ ou ., e sem subpastas)."""
+        """Os arquivos de dados da pasta, como o Spark: pela data de modificação e, no empate, pelo nome
+        (sem os que começam com _ ou ., e sem subpastas)."""
         if not os.path.isdir(self.pasta):
             return []
-        return sorted(n for n in os.listdir(self.pasta)
-                      if not n.startswith(('_', '.')) and os.path.isfile(os.path.join(self.pasta, n)))
+        nomes = [n for n in os.listdir(self.pasta)
+                 if not n.startswith(('_', '.')) and os.path.isfile(os.path.join(self.pasta, n))]
+        return sorted(nomes, key=lambda n: (os.path.getmtime(os.path.join(self.pasta, n)), n))
 
     def ler(self, nome):
         return self.formato.ler(os.path.join(self.pasta, nome), self.schema)

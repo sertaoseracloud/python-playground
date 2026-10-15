@@ -231,7 +231,7 @@ class DataFrame:
     @property
     def writeStream(self):
         if not self.isStreaming:
-            raise AnalysisException("'writeStream' can be called only on streaming Dataset/DataFrame.",
+            raise AnalysisException("`writeStream` can be called only on streaming Dataset/DataFrame.",
                                     'WRITE_STREAM_NOT_ALLOWED', {}, '42601')
         from .streaming import DataStreamWriter
         return DataStreamWriter(self)

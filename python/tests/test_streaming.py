@@ -240,7 +240,7 @@ def test_rate_gera_linhas_pelo_relogio(spark):
 
 def test_erros_do_spark_no_start(spark, pasta):
     df = leituras(spark)
-    with pytest.raises(AnalysisException, match='Complete output mode not supported'):
+    with pytest.raises(AnalysisException, match=r'Invalid streaming output mode: complete\. This output mode is not supported for no streaming aggregations'):
         df.writeStream.format('memory').queryName('a').outputMode('complete').start()
     with pytest.raises(AnalysisException, match='Sorting is not supported'):
         df.orderBy('estacao').writeStream.format('memory').queryName('b').start()
@@ -250,7 +250,7 @@ def test_erros_do_spark_no_start(spark, pasta):
         df.writeStream.outputMode('tudo')
     with pytest.raises(ValueError, match='Only allow single trigger'):
         df.writeStream.trigger(once=True, availableNow=True)
-    with pytest.raises(AnalysisException, match='WRITE_STREAM_NOT_ALLOWED'):
+    with pytest.raises(AnalysisException, match='WRITE_STREAM_NOT_ALLOWED. `writeStream` can be called only'):
         spark.range(1).writeStream  # noqa: B018
     df.writeStream.format('memory').queryName('c').start()
     with pytest.raises(IllegalArgumentException, match='already active'):
@@ -285,34 +285,67 @@ def test_update_emite_so_as_chaves_do_lote(spark, pasta):
     assert tabela(spark, 'maximas') == [('Crato', 33.0)] * 3 + [('Petrolina', 35.0)] + [('Sobral', 29.0)] * 2
 
 
-def test_append_com_janela_e_marca_dagua(spark, pasta):
+def em_ordem(*nomes):
+    """Os arquivos ficam com a data de modificação nesta ordem (o Spark lê pela data, não pelo nome)."""
+    for i, nome in enumerate(nomes):
+        os.utime(os.path.join('leituras', nome), (1_700_000_000 + i, 1_700_000_000 + i))
+
+
+@pytest.fixture
+def fora_de_ordem(spark):
+    """Os lotes do c13 (o 2 com uma linha repetida do 1), lidos na ordem 3, 1, 2: o que o PySpark 4.0.1 real deu no CI."""
+    for nome, linhas in LOTES.items():
+        gravar(nome, linhas + (['Crato,2026-01-01 00:12:00,33.0'] if nome == 'lote-02.csv' else []))
+    em_ordem('lote-03.csv', 'lote-01.csv', 'lote-02.csv')
+
+
+def test_arquivos_em_ordem_de_modificacao(spark, pasta):
+    em_ordem('lote-02.csv', 'lote-01.csv', 'lote-03.csv')
+    q = correr(leituras(spark), 'ordem')
+    assert [lote['arquivos'] for lote in q._lotes] == [['lote-02.csv'], ['lote-01.csv'], ['lote-03.csv']]
+
+
+def test_append_com_janela_e_as_duas_marcas_dagua(spark, fora_de_ordem):
     por_janela = leituras(spark).withWatermark('momento', '10 minutes').groupBy(F.window('momento', '10 minutes')).count()
     q = correr(por_janela, 'janelas')
     progresso = q.recentProgress
-    assert [p['numInputRows'] for p in progresso] == [3, 2, 2, 0]  # o último é o lote sem dados
+    assert [p['numInputRows'] for p in progresso] == [2, 3, 3]
     assert [p['eventTime']['watermark'] for p in progresso] == [
-        '1970-01-01T00:00:00.000Z', '2026-01-01T00:02:00.000Z', '2026-01-01T00:15:00.000Z', '2026-01-01T00:31:00.000Z']
-    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in progresso] == [0, 0, 1, 0]
-    assert [lote['marcaDagua'] for lote in q._lotes] == [
-        '2026-01-01T00:02:00.000Z', '2026-01-01T00:15:00.000Z', '2026-01-01T00:31:00.000Z', '2026-01-01T00:31:00.000Z']
-    assert janelas(spark.table('janelas')) == [(m(0), m(10), 3), (m(10), m(20), 1), (m(20), m(30), 1)]
+        '1970-01-01T00:00:00.000Z', '2026-01-01T00:31:00.000Z', '2026-01-01T00:31:00.000Z']
+    # o lote 1 só descarta pela marca do lote anterior (1970): as linhas antigas entram e a janela fecha;
+    # o lote 2 já descarta pela de 00:31
+    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in progresso] == [0, 0, 3]
+    assert janelas(spark.table('janelas')) == [(m(0), m(10), 3), (m(10), m(20), 1)]
+
+
+def test_update_com_marca_dagua_como_o_spark(spark, fora_de_ordem):
+    por_janela = leituras(spark).withWatermark('momento', '10 minutes').groupBy(F.window('momento', '10 minutes')).count()
+    q = correr(por_janela, 'janelas_update', 'update')
+    assert [p['stateOperators'][0]['numRowsTotal'] for p in q.recentProgress] == [2, 1, 1]
+    assert janelas(spark.table('janelas_update')) == [(m(0), m(10), 1), (m(0), m(10), 3), (m(10), m(20), 1), (m(40), m(50), 1)]
+
+
+def test_complete_nao_descarta_pela_marca_dagua(spark, fora_de_ordem):
+    por_janela = leituras(spark).withWatermark('momento', '10 minutes').groupBy(F.window('momento', '10 minutes')).count()
+    q = correr(por_janela, 'tudo', 'complete')
+    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in q.recentProgress] == [0, 0, 0]
+    assert janelas(spark.table('tudo')) == [(m(0), m(10), 4), (m(10), m(20), 2), (m(20), m(30), 1), (m(40), m(50), 1)]
 
 
 def test_erros_do_spark_com_estado(spark, pasta):
-    with pytest.raises(AnalysisException, match='Append output mode not supported'):
+    with pytest.raises(AnalysisException, match='STREAMING_OUTPUT_MODE.UNSUPPORTED_OPERATION'):
         leituras(spark).groupBy('estacao').count().writeStream.format('memory').queryName('x').start()
     with pytest.raises(AnalysisException, match='Multiple streaming aggregations'):
         leituras(spark).groupBy('estacao').count().groupBy('count').count() \
             .writeStream.format('memory').queryName('y').outputMode('complete').start()
 
 
-def test_drop_duplicates_com_marca_dagua(spark, pasta):
-    gravar('lote-02.csv', LOTES['lote-02.csv'] + ['Crato,2026-01-01 00:12:00,33.0'])  # repetida do lote 1
+def test_drop_duplicates_com_marca_dagua(spark, fora_de_ordem):
     unicas = leituras(spark).withWatermark('momento', '10 minutes').dropDuplicates(['estacao', 'momento'])
     q = correr(unicas, 'unicas')
-    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in q.recentProgress] == [0, 0, 1, 0]
+    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in q.recentProgress] == [0, 0, 3]
     assert q.recentProgress[0]['stateOperators'][0]['operatorName'] == 'dedupe'
-    assert len(spark.table('unicas').collect()) == 6
+    assert len(spark.table('unicas').collect()) == 5
 
 
 def test_drop_duplicates_sem_marca_dagua_guarda_tudo(spark, pasta):

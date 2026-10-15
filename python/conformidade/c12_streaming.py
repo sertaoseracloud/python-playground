@@ -2,7 +2,7 @@
 import os
 import sys
 
-from _comum import erro, sessao, tmp
+from _comum import erro, primeira_linha, sessao, tmp
 from pyspark.sql import functions as F
 
 sys.stdout.reconfigure(line_buffering=True)  # o console do streaming (no Spark real, a JVM) sai na ordem dos print
@@ -14,9 +14,10 @@ LOTES = {
     'lote-02.csv': ['Petrolina,2026-01-01 00:25:00,35.0', 'Crato,2026-01-01 00:03:00,30.0'],
     'lote-03.csv': ['Sobral,2026-01-01 00:41:00,28.0', 'Crato,2026-01-01 00:05:00,32.0'],
 }
-for nome, linhas in LOTES.items():
+for i, (nome, linhas) in enumerate(LOTES.items()):
     with open(os.path.join(pasta, nome), 'w', encoding='utf-8') as f:
         f.write('estacao,momento,temperatura\n' + ''.join(x + '\n' for x in linhas))
+    os.utime(os.path.join(pasta, nome), (1_700_000_000 + i, 1_700_000_000 + i))  # o Spark lê pela data de modificação
 SCHEMA = 'estacao STRING, momento TIMESTAMP, temperatura DOUBLE'
 
 
@@ -38,7 +39,7 @@ def recusa(df, modo):
     try:
         df.writeStream.format('memory').queryName('recusada').outputMode(modo).start()
     except Exception as e:  # noqa: BLE001
-        print(modo, type(e).__name__, 'output mode not supported' in str(e))
+        print(modo, type(e).__name__, '|', primeira_linha(e))
 
 
 erro(lambda: spark.readStream.csv(pasta, header=True))
@@ -52,7 +53,7 @@ recusa(leituras(), 'complete')
 recusa(leituras().groupBy('estacao').count(), 'append')
 
 q = rodar(leituras().filter(F.col('temperatura') > 30).select('estacao', 'temperatura'), 'quentes', 'append')
-print(q.isActive, [p['numInputRows'] for p in q.recentProgress])
+print(q.isActive, len(q.recentProgress))  # o numInputRows do Spark conta depois do filtro empurrado ao CSV
 print(tabela('quentes'))
 
 q = rodar(leituras().groupBy('estacao').count(), 'contagem', 'complete')

@@ -17,6 +17,9 @@ LOTES = {
 for nome, linhas in LOTES.items():
     with open(os.path.join(pasta, nome), 'w', encoding='utf-8') as f:
         f.write('estacao,momento,temperatura\n' + ''.join(x + '\n' for x in linhas))
+# O Spark lê pela data de modificação: a ordem 3, 1, 2 faz o lote 2 chegar todo atrasado.
+for i, nome in enumerate(('lote-03.csv', 'lote-01.csv', 'lote-02.csv')):
+    os.utime(os.path.join(pasta, nome), (1_700_000_000 + i, 1_700_000_000 + i))
 SCHEMA = 'estacao STRING, momento TIMESTAMP, temperatura DOUBLE'
 
 
@@ -57,5 +60,5 @@ print([p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in q.recentProg
 rodar(leituras().groupBy(F.window('momento', '10 minutes', '5 minutes')).count(), 'deslizante', 'complete')
 print(janelas('deslizante'))
 
-rodar(por_janela(), 'console_janelas', 'append', 'console')
+rodar(por_janela().orderBy('window'), 'console_janelas', 'complete', 'console')
 spark.stop()

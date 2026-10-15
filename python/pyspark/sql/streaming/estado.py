@@ -6,9 +6,9 @@ da agregação parcial, os mesmos do HashAggregate do lote. Cada lote roda a par
 só com as linhas novas, junta o resultado ao estado e emite as linhas do modo de saída.
 
 A marca d'água é o maior tempo de evento já visto menos o atraso, recalculada no fim de cada lote. A
-chave cujo tempo (o fim da janela, ou a própria coluna) não passa da marca d'água está vencida: o lote
-a descarta e conta, e o estado a esquece. Como no Spark, o descarte conta as linhas depois da agregação
-parcial."""
+chave cujo tempo (o fim da janela, ou a própria coluna) não passa da marca d'água está vencida. Como no
+Spark 4, há duas marcas em cada lote: a do lote anterior descarta as linhas atrasadas (e conta, depois
+da agregação parcial), e a atual fecha as janelas e limpa o estado."""
 import copy
 import datetime as dt
 
@@ -19,7 +19,7 @@ from .. import plano as P
 from .. import types as T
 from ..column import Col, Entrada, Ref
 from ..plano_largo import AgregarFinal, HashAggregate
-from .fonte import MarcaDagua
+from .fonte import MarcaDagua, modo_nao_suportado
 
 DEDUPLICAR = ('dropDuplicates', 'distinct')
 
@@ -93,8 +93,7 @@ def analisar(plano, modo):
         return None, marca
     fin = finais[0]
     if fin.operacao not in DEDUPLICAR and modo == 'append' and not temporais(fin, marca):
-        raise AnalysisException('Append output mode not supported when there are streaming aggregations on streaming '
-                                'DataFrames/DataSets without watermark;')
+        raise modo_nao_suportado('append', 'streaming aggregations without watermark')
     return fin, marca
 
 
@@ -123,10 +122,11 @@ class ComEstado:
     def lote(self, acao):
         from ..dataframe import DataFrame
         fin, marca, modo = self.fin, self.marca, self.consulta._modo
+        atraso = self.marca_do_ultimo  # a marca do lote anterior: só ela descarta as linhas atrasadas
         pares = [par for p in fin.filhos[0].rdd()._executar(acao) for par in p]  # a agregação parcial, com o shuffle
         descartadas, novas, atualizadas = 0, [], {}
         for chave, accs in pares:
-            if self._vencida(chave, marca):
+            if modo != 'complete' and self._vencida(chave, atraso):  # o complete guarda tudo, como no Spark
                 descartadas += 1
                 continue
             atual = self.estado.get(chave)

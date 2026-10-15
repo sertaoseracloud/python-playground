@@ -15,7 +15,7 @@ from .. import mostrar
 from .. import plano as P
 from .. import types as T
 from ..plano_largo import HashAggregate, Sort
-from .fonte import FonteRate, FonteStream, MarcaDagua
+from .fonte import FonteRate, FonteStream, MarcaDagua, modo_nao_suportado
 
 MODOS = ('append', 'complete', 'update')
 FORMATOS = ('console', 'memory')
@@ -33,8 +33,7 @@ def _analisar(plano, modo):
         raise NotImplementedError('O DivergePython roda uma fonte de streaming por consulta (sem join entre streams).')
     agregacoes = [n for n in nos if isinstance(n, HashAggregate) and n.final and n.operacao not in ('dropDuplicates', 'distinct')]
     if modo == 'complete' and not agregacoes:
-        raise AnalysisException('Complete output mode not supported when there are no streaming aggregations on '
-                                'streaming DataFrames/Datasets;')
+        raise modo_nao_suportado('complete', 'no streaming aggregations')
     if any(isinstance(n, Sort) and n.global_ for n in nos) and not (modo == 'complete' and agregacoes):
         raise AnalysisException('Sorting is not supported on streaming DataFrames/Datasets, unless it is on aggregated '
                                 'DataFrame/Dataset in Complete output mode;')
