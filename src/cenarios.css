@@ -1,0 +1,68 @@
+/* Cenários da trilha (src/ui/cenarios): decoração atrás do caminho de cada módulo. Nunca
+   recebe clique nem foco, e o caminho, os nós e os rótulos mantêm as cores de sempre. */
+.com-cenario { position: relative; isolation: isolate; padding-bottom: 18px; }
+.cenario {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: 14px;
+  pointer-events: none;
+}
+.cenario-fundo, .cenario-fundo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cenario-fundo { opacity: .45; }
+/* Véu atrás do texto: o cabeçalho do módulo e a legenda de cada nó ficam legíveis sobre o desenho. */
+.com-cenario .unidade { background: color-mix(in srgb, var(--cor) 10%, var(--fundo)); }
+.com-cenario .legenda { background: color-mix(in srgb, var(--fundo) 88%, transparent); border-radius: 6px; padding: 0 6px; }
+
+/* Personagens: três faixas fora da coluna do caminho; cada um vai e volta devagar. */
+.personagem { position: absolute; width: 48px; height: 48px; will-change: transform; }
+.personagem svg { width: 100%; height: 100%; display: block; }
+.personagem-1 { left: 3%; top: 30%; --faixa: 18vw; animation: cen-andar 28s linear infinite alternate; }
+.personagem-2 { right: 3%; top: 58%; --faixa: -16vw; animation: cen-andar 34s linear infinite alternate; animation-delay: -9s; }
+.personagem-3 { left: 6%; top: 82%; --faixa: 14vw; animation: cen-andar 24s linear infinite alternate; animation-delay: -4s; }
+.personagem .corpo { display: block; width: 100%; height: 100%; animation: cen-passo .6s ease-in-out infinite alternate; }
+.mov-voar { top: 12%; }
+.mov-voar .corpo { animation: cen-voo 3s ease-in-out infinite alternate; }
+.mov-nadar .corpo { animation: cen-boia 2.4s ease-in-out infinite alternate; }
+.mov-saltar .corpo { animation: cen-salto 2s ease-in-out infinite; }
+@media (min-width: 900px) {
+  .personagem-1 { --faixa: 120px; }
+  .personagem-2 { --faixa: -110px; }
+  .personagem-3 { --faixa: 100px; }
+}
+@keyframes cen-andar { from { transform: translateX(0); } to { transform: translateX(var(--faixa)); } }
+@keyframes cen-passo { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+@keyframes cen-voo { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-10px) rotate(3deg); } }
+@keyframes cen-boia { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(3px) rotate(2deg); } }
+@keyframes cen-salto { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-18px) rotate(-20deg); } }
+
+@media (max-width: 599px) {
+  .personagem-2, .personagem-3 { display: none; }
+  .personagem-1 { --faixa: 10vw; width: 40px; height: 40px; }
+}
+
+/* Módulo bloqueado: cenário desbotado e personagens parados. */
+.bloqueada .cenario { filter: grayscale(1); opacity: .2; }
+.bloqueada .personagem, .bloqueada .personagem .corpo { animation: none; }
+
+/* Menos movimento: tudo parado (o painel ♿ também zera tudo em estilo.css). */
+@media (prefers-reduced-motion: reduce) {
+  .personagem, .personagem .corpo { animation: none; }
+}
+
+/* Temas. */
+[data-tema="suave"] .cenario { filter: saturate(.5) brightness(.9); }
+[data-tema="alto-contraste"] .personagem, [data-tema="alto-contraste"] .personagem .corpo { animation: none; }
+[data-tema="alto-contraste"] .cenario-fundo { opacity: 1; }
+[data-tema="alto-contraste"] .cenario-fundo svg *,
+[data-tema="alto-contraste"] .personagem svg * { fill: none !important; stroke: var(--suave) !important; stroke-width: 1px; }
+
+/* Paleta de cada cenário (céu, distante, meio, chão, detalhe; e personagens). */
+.cenario-sertao { --cen-1: #f6c56b; --cen-2: #c8794a; --cen-3: #8a9a4b; --cen-4: #d9a066; --cen-5: #3f7d3a; --per-1: #6b4226; --per-2: #b5562d; --per-3: #3d2a1c; }
+.cenario-vale { --cen-1: #a8d8ea; --cen-2: #6fa86a; --cen-3: #8fc46a; --cen-4: #7a5c3a; --cen-5: #3d8bd9; --per-1: #f2c14e; --per-2: #8a8a8a; --per-3: #2f4f2f; }
+.cenario-gelo { --cen-1: #cfe8f5; --cen-2: #9cc3dc; --cen-3: #e8f4fa; --cen-4: #ffffff; --cen-5: #7fb3d5; --per-1: #1d2b3a; --per-2: #f4f4f4; --per-3: #f2a03d; }
+.cenario-fogo { --cen-1: #3b1a1a; --cen-2: #6b2a1f; --cen-3: #a0391e; --cen-4: #2a1410; --cen-5: #ff8c1a; --per-1: #ff6b35; --per-2: #8c4a2f; --per-3: #ffd23f; }
+.cenario-rio { --cen-1: #9fd3e6; --cen-2: #5c8f5a; --cen-3: #3b8fc2; --cen-4: #6a8f4f; --cen-5: #e8f6ff; --per-1: #c9a66b; --per-2: #e86a33; --per-3: #f4f4f4; }
+.cenario-cidade { --cen-1: #1b1f3a; --cen-2: #2d3358; --cen-3: #3e4675; --cen-4: #222640; --cen-5: #ffd166; --per-1: #f28c28; --per-2: #9aa5b1; --per-3: #3a3a3a; }
+.cenario-jardim { --cen-1: #f2e6f7; --cen-2: #a6d49f; --cen-3: #e98fb5; --cen-4: #7fae6e; --cen-5: #f5c542; --per-1: #8e5bd1; --per-2: #ff8fab; --per-3: #2ec4b6; }
