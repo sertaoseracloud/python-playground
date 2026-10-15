@@ -34,7 +34,7 @@ com outros dados e os mesmos nomes de arquivo.
 
 | Projeto | Dados | Etapas |
 |---|---|---|
-| 📚 Contagem de palavras em livros | trechos de cordel e de *Vidas Secas* em domínio público reescritos (`livros/*.txt`) | ler os textos; normalizar (minúsculas, sem pontuação); contar palavras; tirar as palavras vazias; as 10 mais frequentes por livro |
+| 📚 Contagem de palavras em livros | versos curtos escritos por nós, no estilo do cordel (`livros/*.txt`) | ler os textos; normalizar (minúsculas, sem pontuação); contar palavras; tirar as palavras vazias; as 10 mais frequentes por livro |
 | 🛒 Vendas por região | `vendas.csv`, `produtos.csv` | ler com schema; receita por venda; juntar com produtos; receita por região e categoria; ranking com a participação de cada região |
 | 📜 Análise de logs | `logs/acesso-*.log` (formato de servidor web) | quebrar as linhas com regex; status por hora; erros 5xx por rota; as rotas mais lentas (percentil 95); sessões por IP |
 | 🧺 Funil de e-commerce | `eventos.csv` (visita, carrinho, compra) | ler e tipar; eventos por etapa do funil; conversão entre etapas; funil por canal; quem abandonou o carrinho |
