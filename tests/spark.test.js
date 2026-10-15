@@ -68,6 +68,19 @@ describe('PySpark no navegador', () => {
     expect(r.spark.jobs.map((j) => j.acao)).toContain('lote 0 de contagem');
   }, 120_000);
 
+  it('o MLlib treina no Pyodide, com o fit como job da aba Execução', async () => {
+    const r = await rodar(`${INICIO}from pyspark.ml.feature import VectorAssembler\nfrom pyspark.ml.regression import LinearRegression\n`
+      + 'df = spark.createDataFrame([(float(x), 2.0 + 3.0 * x) for x in range(8)], ["x", "label"])\n'
+      + 'treino = VectorAssembler(inputCols=["x"], outputCol="features").transform(df)\n'
+      + 'm = LinearRegression().fit(treino)\n'
+      + 'coef = [round(c, 6) for c in m.coefficients]\nb = round(m.intercept, 6)\n');
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.coef).toEqual([3]);
+    expect(r.variaveis.b).toBe(2);
+    expect(r.spark.jobs.map((j) => j.acao)).toContain('fit LinearRegression');
+    expect(r.tabelas.treino.colunas.at(-1)).toEqual({ nome: 'features', tipo: 'vector' });
+  }, 120_000);
+
   it('um DataFrame que só falha ao calcular vira erro na tabela, sem derrubar a execução', async () => {
     const r = await rodar(`${INICIO}df = spark.range(3).select(F.udf(lambda x: 1 // 0, "int")("id"))\n`);
     expect(r.erro).toBeNull();
