@@ -116,3 +116,50 @@ def test_delta_vazio_e_configure(spark):
     spark.createDataFrame([], 'produto STRING, qtd BIGINT').write.format('delta').save('vazio')
     df = spark.read.format('delta').load('vazio')
     assert df.count() == 0 and df.columns == ['produto', 'qtd']
+
+
+def tabela(spark):
+    from delta.tables import DeltaTable
+    estoque(spark).write.format('delta').save('estoque')
+    return DeltaTable.forPath(spark, 'estoque')
+
+
+def test_for_path_de_pasta_que_nao_e_delta(spark):
+    from delta.tables import DeltaTable
+    estoque(spark).write.csv('csv')
+    with pytest.raises(AnalysisException, match='is not a Delta table'):
+        DeltaTable.forPath(spark, 'csv')
+    assert DeltaTable.isDeltaTable(spark, 'csv') is False
+
+
+def test_history_colunas_ordem_e_operacoes(spark):
+    t = tabela(spark)
+    estoque(spark, [('sal', 1, 2.0)]).write.format('delta').mode('append').save('estoque')
+    h = t.history()
+    assert h.columns == ['version', 'timestamp', 'userId', 'userName', 'operation', 'operationParameters', 'job', 'notebook',
+                         'clusterId', 'readVersion', 'isolationLevel', 'isBlindAppend', 'operationMetrics', 'userMetadata', 'engineInfo']
+    linhas = h.select('version', 'operation', 'operationParameters').collect()
+    assert [(r.version, r.operation, r.operationParameters['mode']) for r in linhas] == [(1, 'WRITE', 'Append'), (0, 'WRITE', 'ErrorIfExists')]
+    assert t.history(1).count() == 1
+    assert h.first().timestamp == dt.datetime(2026, 1, 1, 0, 0, 1)
+
+
+def test_update_e_delete(spark):
+    t = tabela(spark)
+    t.update('produto = "cafe"', {'preco': 'preco * 2'})
+    t.update(F.col('qtd') < 5, {'qtd': F.lit(5)})
+    t.delete('produto = "arroz"')
+    assert tuplas(t.toDF(), 'produto') == [('cafe', 7, 39.8), ('feijao', 5, 8.5)]
+    ops = [r.operation for r in t.history().collect()]
+    assert ops == ['DELETE', 'UPDATE', 'UPDATE', 'WRITE']
+    assert t.history().filter('version = 3').first().operationMetrics['numDeletedRows'] == '1'
+    # o passado continua lá
+    assert spark.read.format('delta').option('versionAsOf', 0).load('estoque').count() == 3
+
+
+def test_delete_de_tudo_deixa_a_tabela_vazia(spark):
+    t = tabela(spark)
+    t.delete()
+    df = t.toDF()
+    assert df.count() == 0 and df.columns == ['produto', 'qtd', 'preco']
+    df.show()
