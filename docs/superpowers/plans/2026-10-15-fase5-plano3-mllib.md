@@ -1931,7 +1931,6 @@ def test_kmeans_grupos_separados(spark):
     m = KMeans(k=2, seed=1).fit(df)
     centros = sorted(c.toArray() for c in m.clusterCenters())
     assert centros == [pytest.approx([1 / 3, 1 / 3]), pytest.approx([31 / 3, 31 / 3])]
-    assert m.summary.trainingCost == pytest.approx(4 * (2 / 9 + 5 / 9) - 4 * 2 / 9 + 0, rel=1e-9) or True
     assert m.summary.trainingCost == pytest.approx(2 * (1 / 9 + 1 / 9 + 4 / 9 + 1 / 9 + 4 / 9 + 1 / 9))
     assert sorted(m.summary.clusterSizes) == [3, 3]
     previsoes = [r.prediction for r in m.transform(df).collect()]
@@ -1947,10 +1946,8 @@ def test_silhouette_como_o_spark(spark):
     assert ClusteringEvaluator().evaluate(df) == pytest.approx(esperado)
 ```
 
-> O primeiro `assert` sobre o `trainingCost` acima (com o `or True`) é um rascunho. O executor
-> **apaga essa linha**; vale só a segunda. A conta da segunda: cada grupo tem distâncias ao
-> quadrado de 1/9 + 1/9 = 2/9, 4/9 + 1/9 = 5/9 e 1/9 + 4/9 = 5/9 do centro, somando 12/9 por grupo e
-> 24/9 no total. É o que `2 * (1/9 + 1/9 + 4/9 + 1/9 + 4/9 + 1/9)` dá.
+A conta do `trainingCost`: cada grupo tem distâncias ao quadrado de 2/9, 5/9 e 5/9 até o centro,
+ou seja, 12/9 por grupo e 24/9 no total. É o que `2 * (1/9 + 1/9 + 4/9 + 1/9 + 4/9 + 1/9)` dá.
 
 - [ ] **Step 2:** rodar e ver falhar.
 
