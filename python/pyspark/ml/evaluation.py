@@ -110,3 +110,39 @@ class MulticlassClassificationEvaluator(Evaluator):
         pares = df.select(self.getOrDefault('predictionCol'), self.getOrDefault('labelCol'))._linhas(
             'evaluate MulticlassClassificationEvaluator')
         return metricas_de_classes(pares)[self.getOrDefault('metricName')]
+
+
+def silhouette(pontos):
+    """pontos: [(vetor, grupo)]. O silhouette do Spark, com a distância euclidiana ao quadrado: a é a
+    média até os outros pontos do grupo, b a menor média até outro grupo; s = 1 − a/b (ou b/a − 1)."""
+    grupos = {}
+    for v, g in pontos:
+        grupos.setdefault(g, []).append(v.toArray())
+    if len(grupos) < 2:
+        from ..errors import IllegalArgumentException
+        raise IllegalArgumentException('Number of clusters must be greater than one.')
+
+    def media(x, outros, menos_um):
+        soma = sum(sum((a - b) ** 2 for a, b in zip(x, y)) for y in outros)
+        return soma / (len(outros) - 1 if menos_um else len(outros))
+    total = 0.0
+    for g, membros in grupos.items():
+        for x in membros:
+            if len(membros) == 1:
+                continue  # sozinho no grupo: 0, como no Spark
+            a = media(x, membros, True)
+            b = min(media(x, outros, False) for h, outros in grupos.items() if h != g)
+            total += 1 - a / b if a < b else (b / a - 1 if a > b else 0.0)
+    return total / len(pontos)
+
+
+class ClusteringEvaluator(Evaluator):
+    _padroes = {'featuresCol': 'features', 'predictionCol': 'prediction', 'metricName': 'silhouette',
+                'distanceMeasure': 'squaredEuclidean', 'weightCol': None}
+
+    def _avaliar(self, df):
+        if self.getOrDefault('distanceMeasure') != 'squaredEuclidean':
+            raise NotImplementedError('O DivergePython calcula o silhouette só com a distância euclidiana ao quadrado.')
+        linhas = df.select(self.getOrDefault('featuresCol'), self.getOrDefault('predictionCol'))._linhas(
+            'evaluate ClusteringEvaluator')
+        return silhouette(linhas)

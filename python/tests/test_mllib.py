@@ -9,7 +9,10 @@ from pyspark.errors import IllegalArgumentException, SparkRuntimeException
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import OneHotEncoder, StandardScaler, StringIndexer, VectorAssembler
 from pyspark.ml.classification import DecisionTreeClassifier, LogisticRegression
-from pyspark.ml.evaluation import BinaryClassificationEvaluator, MulticlassClassificationEvaluator, RegressionEvaluator
+from pyspark.ml.clustering import KMeans
+from pyspark.ml.evaluation import (
+    BinaryClassificationEvaluator, ClusteringEvaluator, MulticlassClassificationEvaluator, RegressionEvaluator,
+)
 from pyspark.ml.linalg import DenseVector, SparseVector, Vectors
 from pyspark.ml.regression import LinearRegression
 
@@ -258,3 +261,28 @@ def test_arvore_escolhe_a_feature_que_separa(spark):
     pontos = [(a, b, 1 if b > 5 else 0) for a in range(4) for b in (1, 2, 8, 9)]
     m = DecisionTreeClassifier(maxDepth=3).fit(treino_linear(spark, pontos))
     assert m.depth == 1 and str(m.featureImportances) == '(2,[1],[1.0])'
+
+
+def pontos(spark, lista):
+    return spark.createDataFrame([(Vectors.dense(p),) for p in lista], ['features'])
+
+
+def test_kmeans_grupos_separados(spark):
+    grupos = [(0, 0), (0, 1), (1, 0), (10, 10), (10, 11), (11, 10)]
+    df = pontos(spark, grupos)
+    m = KMeans(k=2, seed=1).fit(df)
+    centros = sorted(c.toArray() for c in m.clusterCenters())
+    assert centros == [pytest.approx([1 / 3, 1 / 3]), pytest.approx([31 / 3, 31 / 3])]
+    assert m.summary.trainingCost == pytest.approx(2 * (1 / 9 + 1 / 9 + 4 / 9 + 1 / 9 + 4 / 9 + 1 / 9))
+    assert sorted(m.summary.clusterSizes) == [3, 3]
+    previsoes = [r.prediction for r in m.transform(df).collect()]
+    assert len(set(previsoes[:3])) == 1 and len(set(previsoes[3:])) == 1 and previsoes[0] != previsoes[3]
+    assert m.transform(df).dtypes[-1] == ('prediction', 'int')
+    assert 'fit KMeans (iteração 1)' in acoes()
+    assert [c.toArray() for c in KMeans(k=2, seed=1).fit(df).clusterCenters()] == [c.toArray() for c in m.clusterCenters()]
+
+
+def test_silhouette_como_o_spark(spark):
+    df = spark.createDataFrame([(Vectors.dense([x]), g) for x, g in ((0, 0), (1, 0), (10, 1), (11, 1))], ['features', 'prediction'])
+    esperado = ((1 - 1 / 110.5) + (1 - 1 / 90.5)) / 2
+    assert ClusteringEvaluator().evaluate(df) == pytest.approx(esperado)
