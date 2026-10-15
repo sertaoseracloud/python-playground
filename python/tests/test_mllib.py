@@ -8,7 +8,9 @@ from diverge_runtime import estagios
 from pyspark.errors import IllegalArgumentException, SparkRuntimeException
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import OneHotEncoder, StandardScaler, StringIndexer, VectorAssembler
+from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.linalg import DenseVector, SparseVector, Vectors
+from pyspark.ml.regression import LinearRegression
 
 
 @pytest.fixture
@@ -141,3 +143,51 @@ def test_pipeline_treina_e_passa_adiante(spark):
     assert [str(r.features) for r in modelo.transform(df).collect()] == ['[1.0,1.0]', '[2.0,0.0]', '[3.0,1.0]']
     with pytest.raises(TypeError, match='Cannot recognize a pipeline stage'):
         Pipeline(stages=['x']).fit(df)
+
+
+def treino_linear(spark, pontos):
+    """pontos: [(x1, x2, ..., y)] → DataFrame com features e label."""
+    nomes = [f'x{i}' for i in range(len(pontos[0]) - 1)]
+    df = spark.createDataFrame([tuple(float(v) for v in p) for p in pontos], nomes + ['label'])
+    return VectorAssembler(inputCols=nomes, outputCol='features').transform(df)
+
+
+def test_linear_exata_e_resumo(spark):
+    treino = treino_linear(spark, [(a, b, 1 + 2 * a - b) for a in range(4) for b in range(3)])
+    m = LinearRegression().fit(treino)
+    assert m.coefficients.toArray() == pytest.approx([2.0, -1.0]) and m.intercept == pytest.approx(1.0)
+    assert m.summary.rootMeanSquaredError == pytest.approx(0.0, abs=1e-9) and m.summary.r2 == pytest.approx(1.0)
+    assert m.numFeatures == 2 and m.predict(Vectors.dense([1.0, 1.0])) == pytest.approx(2.0)
+    assert 'fit LinearRegression' in acoes()
+
+
+def test_linear_com_reg_param_como_o_spark(spark):
+    treino = treino_linear(spark, [(x, 1 + 2 * x) for x in range(4)])
+    m = LinearRegression(regParam=0.1).fit(treino)
+    # λ / σy · σx² na diagonal, com os desvios da população: w = 2 / (1 + 0,1 / √5)
+    w = 2 / (1 + 0.1 / math.sqrt(5))
+    assert m.coefficients[0] == pytest.approx(w) and m.intercept == pytest.approx(4 - 1.5 * w)
+
+
+def test_features_precisam_ser_vetor(spark):
+    df = spark.createDataFrame([(1.0, 2.0)], ['chuva_mm', 'label'])
+    with pytest.raises(IllegalArgumentException, match='Column chuva_mm must be of type'):
+        LinearRegression(featuresCol='chuva_mm').fit(df)
+    with pytest.raises(NotImplementedError, match='L2'):
+        LinearRegression(elasticNetParam=0.5).fit(treino_linear(spark, [(1, 2), (2, 3)]))
+
+
+def test_features_colineares_nao_quebram(spark):
+    treino = treino_linear(spark, [(x, x, 3 * x + 1) for x in range(5)])
+    m = LinearRegression().fit(treino)
+    assert m.summary.rootMeanSquaredError == pytest.approx(0.0, abs=1e-9)
+    assert sum(m.coefficients.toArray()) == pytest.approx(3.0)
+
+
+def test_regression_evaluator(spark):
+    df = spark.createDataFrame([(1.0, 1.5), (2.0, 2.0), (3.0, 2.5)], ['label', 'prediction'])
+    av = RegressionEvaluator()
+    assert av.evaluate(df) == pytest.approx(math.sqrt(0.5 / 3))
+    assert RegressionEvaluator(metricName='mae').evaluate(df) == pytest.approx(1 / 3)
+    assert RegressionEvaluator(metricName='r2').evaluate(df) == pytest.approx(1 - 0.5 / 2)
+    assert not av.isLargerBetter() and RegressionEvaluator(metricName='r2').isLargerBetter()
