@@ -8,7 +8,8 @@ from diverge_runtime import estagios
 from pyspark.errors import IllegalArgumentException, SparkRuntimeException
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import OneHotEncoder, StandardScaler, StringIndexer, VectorAssembler
-from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.evaluation import BinaryClassificationEvaluator, MulticlassClassificationEvaluator, RegressionEvaluator
 from pyspark.ml.linalg import DenseVector, SparseVector, Vectors
 from pyspark.ml.regression import LinearRegression
 
@@ -191,3 +192,38 @@ def test_regression_evaluator(spark):
     assert RegressionEvaluator(metricName='mae').evaluate(df) == pytest.approx(1 / 3)
     assert RegressionEvaluator(metricName='r2').evaluate(df) == pytest.approx(1 - 0.5 / 2)
     assert not av.isLargerBetter() and RegressionEvaluator(metricName='r2').isLargerBetter()
+
+
+def test_logistica_no_otimo(spark):
+    xs, ys = [0, 1, 2, 3, 4, 5], [0, 0, 1, 0, 1, 1]
+    treino = treino_linear(spark, list(zip(xs, ys)))
+    m = LogisticRegression().fit(treino)
+    w, b = m.coefficients[0], m.intercept
+    p = [1 / (1 + math.exp(-(w * x + b))) for x in xs]
+    # no ótimo (sem regParam), o gradiente é zero: Σ(p − y) = 0 e Σ x(p − y) = 0
+    assert sum(pi - y for pi, y in zip(p, ys)) == pytest.approx(0, abs=1e-9)
+    assert sum(x * (pi - y) for x, pi, y in zip(xs, p, ys)) == pytest.approx(0, abs=1e-9)
+    linha = m.transform(treino).collect()[5]
+    assert linha.probability[1] == pytest.approx(p[5]) and sum(linha.probability) == pytest.approx(1.0)
+    assert linha.prediction == 1.0 and linha.rawPrediction[1] == pytest.approx(w * 5 + b)
+    assert 'fit LogisticRegression (iteração 1)' in acoes()
+    forte = LogisticRegression(regParam=1.0).fit(treino)
+    assert 0 < forte.coefficients[0] < w  # a penalidade encolhe o coeficiente
+
+
+def test_logistica_so_binaria(spark):
+    with pytest.raises(NotImplementedError, match='binária'):
+        LogisticRegression().fit(treino_linear(spark, [(0, 0), (1, 1), (2, 2)]))
+
+
+def test_auc_e_area_pr(spark):
+    df = spark.createDataFrame([(0.9, 1.0), (0.8, 0.0), (0.7, 1.0), (0.6, 0.0)], ['rawPrediction', 'label'])
+    assert BinaryClassificationEvaluator().evaluate(df) == pytest.approx(0.75)
+    pr = BinaryClassificationEvaluator(metricName='areaUnderPR').evaluate(df)
+    assert pr == pytest.approx(0.5 + 0.5 * (0.5 + 2 / 3) / 2)  # começa em (0, precisão do primeiro limiar)
+
+
+def test_multiclasse_acuracia_e_f1_ponderado(spark):
+    df = spark.createDataFrame([(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 1.0), (2.0, 2.0)], ['label', 'prediction'])
+    assert MulticlassClassificationEvaluator(metricName='accuracy').evaluate(df) == pytest.approx(0.8)
+    assert MulticlassClassificationEvaluator().evaluate(df) == pytest.approx(0.4 * 2 / 3 + 0.4 * 0.8 + 0.2 * 1.0)
