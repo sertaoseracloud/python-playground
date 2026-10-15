@@ -63,6 +63,41 @@ class DeltaTable:
         _escrita.reescrever(self._sessao, self._caminho, df.select(*novas), 'UPDATE', {'predicate': _predicado(condition)},
                             {'numUpdatedRows': n, 'numCopiedRows': df.count() - n})
 
+    def vacuum(self, retentionHours=None):
+        """Apaga do disco os arquivos que saíram da tabela há mais tempo que a retenção (no relógio virtual)."""
+        from diverge_runtime import relogio
+        from pyspark.errors import IllegalArgumentException
+        horas = 168 if retentionHours is None else retentionHours
+        conferir = str(self._sessao.conf.get('spark.databricks.delta.retentionDurationCheck.enabled', 'true')).lower() != 'false'
+        if horas < 168 and conferir:
+            raise IllegalArgumentException(
+                'requirement failed: Are you sure you would like to vacuum files with such a low retention period? If you have\n'
+                'writers that are currently writing to this table, there is a risk that you may corrupt the\n'
+                'state of your Delta table.\n\nIf you are certain that there are no operations being performed on this table, such as\n'
+                'insert/upsert/delete/optimize, then you may turn off this check by setting:\n'
+                'spark.databricks.delta.retentionDurationCheck.enabled = false', 'DELTA_VACUUM_RETENTION_PERIOD_TOO_SMALL', {}, None)
+        snap = _log.snapshot(self._caminho)
+        removidos = {}
+        for versao in _log.versoes(self._caminho):
+            for acao in _log.ler_commit(self._caminho, versao):
+                if 'remove' in acao:
+                    caminho = acao['remove']['path']
+                    removidos[caminho] = max(removidos.get(caminho, 0), acao['remove'].get('deletionTimestamp', 0))
+        limite = relogio.em_ms() - int(horas * 3600 * 1000)
+        candidatos = [n for n in sorted(os.listdir(self._caminho))
+                      if n.endswith('.parquet') and n not in snap.arquivos and removidos.get(n, 0) <= limite]
+        parametros = {'retentionCheckEnabled': str(conferir).lower(), 'defaultRetentionMillis': 604800000,
+                      'specifiedRetentionMillis': int(horas * 3600 * 1000)}
+        _escrita._commit(self._caminho, snap.versao + 1, 'VACUUM START', parametros, {'numFilesToDelete': len(candidatos)}, [], snap.versao)
+        for nome in candidatos:
+            os.remove(os.path.join(self._caminho, nome))
+        _escrita._commit(self._caminho, snap.versao + 2, 'VACUUM END', {'status': 'COMPLETED'},
+                         {'numDeletedFiles': len(candidatos)}, [], snap.versao + 1)
+        return self._sessao.createDataFrame([], 'path STRING')
+
+    def optimize(self):
+        return DeltaOptimizeBuilder(self)
+
     def merge(self, source, condition):
         return DeltaMergeBuilder(self, source, condition)
 
@@ -195,3 +230,21 @@ class DeltaMergeBuilder:
                     'numTargetRowsDeleted': apagadas, 'numTargetRowsInserted': len(inseridas)}
         _escrita.reescrever(sessao, t._caminho, df_novo, 'MERGE', parametros, metricas)
 
+
+
+class DeltaOptimizeBuilder:
+    """optimize().executeCompaction(): junta os arquivos pequenos da tabela num só."""
+
+    def __init__(self, tabela):
+        self._t = tabela
+
+    def executeCompaction(self):
+        t = self._t
+        n = len(_log.snapshot(t._caminho).arquivos)
+        if n > 1:
+            df = t._sessao.read.format('delta').load(t._caminho)
+            _escrita.reescrever(t._sessao, t._caminho, df, 'OPTIMIZE',
+                                {'predicate': '[]', 'auto': 'false', 'clusterBy': '[]', 'zOrderBy': '[]'},
+                                {'numAddedFiles': 1, 'numRemovedFiles': n}, data_change=False)
+        adicionados, removidos = (1, n) if n > 1 else (0, 0)
+        return t._sessao.createDataFrame([(t._caminho, adicionados, removidos)], 'path STRING, numFilesAdded BIGINT, numFilesRemoved BIGINT')

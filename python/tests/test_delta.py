@@ -195,3 +195,43 @@ def test_merge_com_duas_linhas_da_fonte_para_o_mesmo_alvo_e_erro(spark):
     with pytest.raises(Exception, match='DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE'):
         t.alias('e').merge(dia.alias('d'), 'e.produto = d.produto').whenMatchedUpdateAll().execute()
     assert t.history(1).first().operation == 'WRITE'  # nada foi gravado
+
+
+def arquivos_de_dados(caminho):
+    return sorted(n for n in os.listdir(caminho) if n.endswith('.parquet'))
+
+
+def test_vacuum_recusa_retencao_curta_e_apaga_so_os_removidos(spark):
+    t = tabela(spark)
+    estoque(spark, [('sal', 1, 2.0)]).write.format('delta').mode('overwrite').save('estoque')
+    antes = arquivos_de_dados('estoque')
+    with pytest.raises(IllegalArgumentException, match='retention'):
+        t.vacuum(0)
+    spark.conf.set('spark.databricks.delta.retentionDurationCheck.enabled', 'false')
+    t.vacuum(1)  # removidos há menos de 1 h no relógio virtual: ficam
+    assert arquivos_de_dados('estoque') == antes
+    relogio.avancar(2 * 3600)
+    t.vacuum(1)
+    depois = arquivos_de_dados('estoque')
+    assert len(depois) == len(_snapshot_arquivos('estoque')) < len(antes)
+    assert t.toDF().count() == 1
+    assert [r.operation for r in t.history(2).collect()] == ['VACUUM END', 'VACUUM START']
+
+
+def _snapshot_arquivos(caminho):
+    from delta import _log
+    return _log.snapshot(os.path.abspath(caminho)).arquivos
+
+
+def test_optimize_junta_arquivos_pequenos(spark):
+    t = tabela(spark)
+    for i in range(3):
+        estoque(spark, [(f'p{i}', i, 1.0)]).write.format('delta').mode('append').save('estoque')
+    assert len(_snapshot_arquivos('estoque')) > 1
+    r = t.optimize().executeCompaction()
+    assert r.first().numFilesAdded == 1
+    assert len(_snapshot_arquivos('estoque')) == 1
+    assert t.toDF().count() == 6
+    h = t.history(1).first()
+    assert h.operation == 'OPTIMIZE'
+    assert spark.read.format('delta').option('versionAsOf', h.version - 1).load('estoque').count() == 6
