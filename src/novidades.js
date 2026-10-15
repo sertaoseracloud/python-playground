@@ -10,6 +10,16 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.4.2',
+    data: '2026-10-15',
+    titulo: 'A trilha virou um mapa',
+    resumo: 'Cada módulo da trilha tem agora o seu cenário em pixel art, do tamanho do módulo inteiro, com personagens andando por ele de quadradinho em quadradinho.',
+    grupos: [
+      { titulo: '🗺️ Cenários', itens: ['Básico no sertão, Dados num vale verde, Paralelismo no gelo, PySpark no fogo e Projetos na cidade à noite.', 'O mapa é feito de tiles em pixel art, como nos RPGs clássicos, cobre o módulo de cima a baixo e rola junto com a página.', 'Personagens andam pelo mapa um passo de cada vez, sem entrar na água nem pisar no caminho: vaqueiro, jumento, pinguim, salamandra, robozinho e outros. Há sempre alguns à vista, em qualquer parte do módulo.'] },
+      { titulo: '♿ Acessibilidade', itens: ['Os cenários são só decoração: o leitor de tela não os lê e o caminho mantém as cores e o contraste.', 'Com "reduzir movimento" (no sistema ou no painel ♿), os personagens ficam parados. No alto contraste, o mapa vira contorno.'] },
+    ],
+  },
+  {
     versao: '0.4.1',
     data: '2026-10-14',
     titulo: 'O certificado traz o progresso de volta',
