@@ -10,7 +10,7 @@ import {
 } from '../progresso.js';
 import { criarTerminal } from './terminal.js';
 import { criarShell } from './shell.js';
-import { htmlDaExecucao, falaDaExecucao } from './execucao.js';
+import { htmlDaExecucao, falaDaExecucao, falaDoStreaming } from './execucao.js';
 import { EditorArquivos } from './editor.js';
 import { iniciarLeitura } from './acessibilidade.js';
 import { aplicarChecklist } from './neuro.js';
@@ -300,7 +300,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   /** Depois de cada programa (pelo ▶ Executar ou digitado no terminal): avisos, status e progresso. */
   function aoTerminarPrograma(r) {
     el.terminal.classList.toggle('com-erro', Boolean(r.erro));
-    mostrarExecucao(r.spark);
+    mostrarExecucao(r);
     if (r.erro?.tipo === 'EOFError') terminal.escrever('💡 O programa pediu um input() e recebeu Ctrl+D (fim da entrada).\n', 'aviso');
     const aviso = avisoSemParalelismo(r.paralelismo);
     if (aviso) terminal.escrever(`ℹ️ ${aviso}\n`, 'aviso');
@@ -313,12 +313,12 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     }
   }
 
-  /** A aba ⚡ Execução só existe quando o programa rodou algum job do Spark. */
-  function mostrarExecucao(spark) {
-    const tem = Boolean(spark?.jobs?.length);
+  /** A aba ⚡ Execução só existe quando o programa rodou algum job do Spark ou algum micro-lote. */
+  function mostrarExecucao(r) {
+    const tem = Boolean(r?.spark?.jobs?.length || r?.streaming?.consultas?.length);
     const estavaAberta = !$('saida-execucao').hidden;
     $('aba-execucao').hidden = !tem;
-    $('saida-execucao').innerHTML = tem ? htmlDaExecucao(spark) : '';
+    $('saida-execucao').innerHTML = tem ? htmlDaExecucao(r.spark, r.streaming) : '';
     if (!tem && estavaAberta) mostrarSaida('terminal');
   }
 
@@ -349,7 +349,8 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   function falaDoPython(r) {
     const paralelo = textoDoParalelismo(r.paralelismo);
     const spark = r.spark?.jobs?.length ? `No Spark: ${falaDaExecucao(r.spark)}` : '';
-    const extra = [paralelo && !spark && `Rodou ${paralelo}.`, spark, avisoSemParalelismo(r.paralelismo)].filter(Boolean).join(' ');
+    const stream = r.streaming?.consultas?.length ? `No streaming: ${falaDoStreaming(r.streaming)}.` : '';
+    const extra = [paralelo && !spark && `Rodou ${paralelo}.`, spark, stream, avisoSemParalelismo(r.paralelismo)].filter(Boolean).join(' ');
     const texto = falaDoResultado(r);
     return extra ? `${texto} ${extra}` : texto;
   }

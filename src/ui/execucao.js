@@ -18,6 +18,53 @@ function resumo(spark) {
 export const textoDaExecucao = (spark) => `${resumo(spark)} · ${numero(spark.ms)} ms`;
 export const falaDaExecucao = (spark) => `${resumo(spark)}.`;
 
+/** "00:10" (ou "00:10:30", quando há segundos), do momento ISO do Spark. */
+const hora = (iso) => {
+  const [, h, m, s] = /T(\d\d):(\d\d):(\d\d)/.exec(iso ?? '') ?? [];
+  return h ? `${h}:${m}${s === '00' ? '' : `:${s}`}` : '';
+};
+const nomeDaConsulta = (c, i) => `consulta ${c.nome ?? i + 1}`;
+
+/** "1 consulta, 4 micro-lotes, 12 linhas lidas, 2 descartadas, marca d'água em 00:10". */
+export function falaDoStreaming(streaming) {
+  const lotes = streaming.consultas.flatMap((c) => c.lotes);
+  const lidas = lotes.reduce((soma, l) => soma + l.entrada, 0);
+  const descartadas = lotes.reduce((soma, l) => soma + l.descartadas, 0);
+  const marcas = streaming.consultas.map((c) => c.lotes.at(-1)?.marcaDagua).filter(Boolean);
+  const partes = [plural(streaming.consultas.length, 'consulta', 'consultas'), plural(lotes.length, 'micro-lote', 'micro-lotes'),
+    plural(lidas, 'linha lida', 'linhas lidas')];
+  if (descartadas) partes.push(plural(descartadas, 'descartada', 'descartadas'));
+  if (marcas.length) partes.push(`marca d'água em ${hora(marcas.at(-1))}`);
+  return partes.join(', ');
+}
+
+function linhaDosLotes(c) {
+  const blocos = c.lotes.map((l) => `<li class="lote-bloco"><span class="lote-id">Lote ${l.id}</span>`
+    + `<span>⬇ ${l.entrada}</span><span>🗃 ${l.estado}</span>${l.marcaDagua ? `<span>⏱ ${hora(l.marcaDagua)}</span>` : ''}`
+    + `<span>⬆ ${l.saida}</span>${l.descartadas ? `<span class="descartadas">✕ ${l.descartadas}</span>` : ''}</li>`).join('');
+  return `<ol class="linha-dos-lotes" aria-hidden="true">${blocos}</ol>`;
+}
+
+function tabelaDosLotes(c, i) {
+  const corpo = c.lotes.map((l) => `<tr><td>${l.id}</td><td class="arquivos">${esc(l.arquivos.join(', ') || '—')}</td>`
+    + `<td>${l.entrada}</td><td>${l.estado}</td><td>${l.marcaDagua ? hora(l.marcaDagua) : '—'}</td><td>${l.saida}</td>`
+    + `<td>${l.descartadas}</td></tr>`).join('');
+  return `<table class="tabela-execucao tabela-lotes"><caption>Micro-lotes da ${esc(nomeDaConsulta(c, i))}</caption>
+    <thead><tr><th scope="col">Lote</th><th scope="col">Arquivos</th><th scope="col">Linhas lidas</th><th scope="col">Estado</th><th scope="col">Marca d'água</th><th scope="col">Linhas emitidas</th><th scope="col">Descartadas</th></tr></thead>
+    <tbody>${corpo}</tbody></table>`;
+}
+
+/** A parte 🌊 Micro-lotes: o resumo e, por consulta, a linha dos lotes (visual) e a tabela. */
+export function htmlDosMicroLotes(streaming) {
+  const consultas = streaming.consultas.map((c, i) => {
+    const id = `consulta-${i + 1}-titulo`;
+    const titulo = `Consulta ${c.nome ?? i + 1} · ${c.modo} · ${c.formato}`;
+    return `<section class="consulta-stream" aria-labelledby="${id}"><h4 id="${id}">${esc(titulo)}</h4>${linhaDosLotes(c)}${tabelaDosLotes(c, i)}</section>`;
+  }).join('');
+  return `<section class="micro-lotes" aria-labelledby="micro-lotes-titulo"><h3 id="micro-lotes-titulo">🌊 Micro-lotes</h3>`
+    + `<p class="resumo-streaming">${esc(falaDoStreaming(streaming))}</p>${consultas}</section>`;
+}
+
 const tituloDoJob = (job) => `Job ${job.id} · ${/^\w+$/.test(job.acao) ? `${job.acao}()` : job.acao}`;
 
 function descricaoDoEstagio(e) {
@@ -56,13 +103,15 @@ function tabela(job) {
     <tbody>${corpo}</tbody></table>`;
 }
 
-/** O conteúdo da aba: o resumo, um bloco por job (linha do tempo + tabela) e a nota. */
-export function htmlDaExecucao(spark) {
+/** O conteúdo da aba: os micro-lotes (com streaming), o resumo, um bloco por job e a nota. */
+export function htmlDaExecucao(spark, streaming = null) {
+  const lotes = streaming?.consultas?.length ? htmlDosMicroLotes(streaming) : '';
+  if (!spark?.jobs?.length) return lotes;
   const jobs = spark.jobs.map((job) => {
     const id = `job-${job.id}-titulo`;
     return `<section class="job" aria-labelledby="${id}"><h3 id="${id}">${esc(tituloDoJob(job))}</h3>${linhaDoTempo(job)}${tabela(job)}</section>`;
   }).join('');
-  return `<p class="resumo-execucao">${esc(textoDaExecucao(spark))}</p>${jobs}
+  return `${lotes}<p class="resumo-execucao">${esc(textoDaExecucao(spark))}</p>${jobs}
     <p class="nota-execucao">No Spark de verdade, um shuffle usa 200 partições por padrão; aqui são 4, para caber no navegador.
       O tempo varia de um computador para outro (por isso a correção nunca confere tempo).</p>`;
 }

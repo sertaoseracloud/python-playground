@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Aba ⚡ Execução: estágios, tarefas e linha do tempo, com a tabela equivalente para o leitor de tela.
 import { describe, it, expect } from 'vitest';
-import { htmlDaExecucao, falaDaExecucao, textoDaExecucao } from '../src/ui/execucao.js';
+import { htmlDaExecucao, falaDaExecucao, falaDoStreaming, textoDaExecucao } from '../src/ui/execucao.js';
 
 const tarefa = (particao, worker, inicio, fim) => ({ particao, worker, linhas: 2, inicio, fim });
 const SPARK = {
@@ -55,5 +55,45 @@ describe('aba ⚡ Execução', () => {
   it('job sem tarefas não quebra a linha do tempo', () => {
     const vazio = { jobs: [{ id: 1, acao: 'count', estagios: [] }], estagios: 0, shuffles: 0, tarefas: 0, workers: 0, ms: 0 };
     expect(() => htmlDaExecucao(vazio)).not.toThrow();
+  });
+});
+
+const lote = (id, entrada, arquivos, estado, marca, saida, descartadas) => ({
+  id, entrada, arquivos, estado, marcaDagua: marca && `2026-01-01T00:${marca}:00.000Z`, saida, descartadas,
+});
+const STREAM = {
+  consultas: [{
+    nome: 'janelas', modo: 'append', formato: 'memory',
+    lotes: [lote(0, 3, ['lote-01.csv'], 2, '02', 0, 0), lote(1, 2, ['lote-02.csv'], 3, '15', 0, 0),
+      lote(2, 2, ['lote-03.csv'], 3, '31', 1, 1), lote(3, 0, [], 1, '31', 2, 0)],
+  }],
+};
+
+describe('aba ⚡ Execução: 🌊 Micro-lotes', () => {
+  it('fala o resumo dos micro-lotes', () => {
+    expect(falaDoStreaming(STREAM)).toBe("1 consulta, 4 micro-lotes, 7 linhas lidas, 1 descartada, marca d'água em 00:31");
+    const simples = { consultas: [{ nome: null, modo: 'append', formato: 'console', lotes: [lote(0, 1, ['a.csv'], 0, null, 1, 0)] }] };
+    expect(falaDoStreaming(simples)).toBe('1 consulta, 1 micro-lote, 1 linha lida');
+  });
+
+  it('mostra a linha dos lotes escondida do leitor e a tabela equivalente', () => {
+    document.body.innerHTML = htmlDaExecucao(SPARK, STREAM);
+    expect(document.querySelector('.micro-lotes h3').textContent).toBe('🌊 Micro-lotes');
+    expect(document.querySelector('.micro-lotes h4').textContent).toBe('Consulta janelas · append · memory');
+    expect(document.querySelector('.linha-dos-lotes').getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelectorAll('.linha-dos-lotes .lote-bloco')).toHaveLength(4);
+    expect(document.querySelector('.tabela-lotes caption').textContent).toBe('Micro-lotes da consulta janelas');
+    const colunas = [...document.querySelectorAll('.tabela-lotes thead th')].map((th) => th.textContent);
+    expect(colunas).toEqual(['Lote', 'Arquivos', 'Linhas lidas', 'Estado', "Marca d'água", 'Linhas emitidas', 'Descartadas']);
+    const ultima = [...document.querySelectorAll('.tabela-lotes tbody tr')].at(-1);
+    expect([...ultima.children].map((td) => td.textContent)).toEqual(['3', '—', '0', '1', '00:31', '2', '0']);
+    expect(document.querySelector('h3 + p.resumo-streaming')).not.toBeNull();
+    expect(document.querySelector('.job')).not.toBeNull(); // os jobs continuam embaixo
+  });
+
+  it('sem jobs do Spark, mostra só os micro-lotes', () => {
+    document.body.innerHTML = htmlDaExecucao(null, STREAM);
+    expect(document.querySelector('.micro-lotes')).not.toBeNull();
+    expect(document.querySelector('.resumo-execucao')).toBeNull();
   });
 });

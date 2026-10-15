@@ -95,6 +95,19 @@ describe('tela do exercício (Python)', () => {
     expect(document.getElementById('terminal').hidden).toBe(false);
   });
 
+  it('com streaming e sem jobs, a aba ⚡ Execução aparece com os micro-lotes e o resumo é falado', async () => {
+    const streaming = { consultas: [{ nome: 'q', modo: 'append', formato: 'console', lotes: [{ id: 0, entrada: 2, arquivos: ['a.csv'], estado: 0, marcaDagua: null, saida: 2, descartadas: 0 }] }] };
+    const motor = { executar: async () => ({ ms: 1, retornos: [], variaveis: {}, saida: '', erro: null, spark: null, streaming }), interromper() {} };
+    const { tela } = montarCom(motor);
+    tela.abrir('livre');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.getElementById('aba-execucao').hidden).toBe(false);
+    expect(document.getElementById('saida-execucao').textContent).toContain('🌊 Micro-lotes');
+    document.getElementById('btn-executar').click();
+    await new Promise((r) => setTimeout(r, 150));
+    expect(document.getElementById('anuncio').textContent).toContain('No streaming: 1 consulta, 1 micro-lote, 2 linhas lidas.');
+  });
+
   it('o input() do programa é respondido no terminal', async () => {
     const motor = {
       executar: async (a, o, g) => {
