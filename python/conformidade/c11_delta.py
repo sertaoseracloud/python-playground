@@ -25,7 +25,7 @@ dia = spark.createDataFrame([('cafe', 9, 21.0), ('sal', 2, 2.0)], ['produto', 'q
 (t.alias('e').merge(dia.alias('d'), 'e.produto = d.produto')
   .whenMatchedUpdate(set={'qtd': 'e.qtd + d.qtd', 'preco': 'd.preco'})
   .whenNotMatchedInsertAll().execute())
-print(linhas(t.toDF()))
+print(linhas(DeltaTable.forPath(spark, caminho).toDF()))  # o merge foi pela t.alias(...): a t pode ainda não ter a versão nova
 
 novo = spark.createDataFrame([('sal', 1, 2.0, 'Crato')], ['produto', 'qtd', 'preco', 'cidade'])
 try:
