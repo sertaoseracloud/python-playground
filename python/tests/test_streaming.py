@@ -270,3 +270,65 @@ def test_erro_no_lote_derruba_a_consulta(spark, pasta):
 def test_cada_lote_e_um_job_na_aba_execucao(spark, pasta):
     correr(leituras(spark), 'jobs')
     assert [j['acao'] for j in estagios.resumo()['jobs']] == ['lote 0 de jobs', 'lote 1 de jobs', 'lote 2 de jobs']
+
+
+def test_complete_guarda_o_estado_entre_os_lotes(spark, pasta):
+    q = correr(leituras(spark).groupBy('estacao').count(), 'contagem', 'complete')
+    assert [p['stateOperators'][0]['numRowsTotal'] for p in q.recentProgress] == [2, 3, 3]
+    assert [lote['estado'] for lote in q._lotes] == [2, 3, 3]
+    assert tabela(spark, 'contagem') == [('Crato', 4), ('Petrolina', 1), ('Sobral', 2)]
+
+
+def test_update_emite_so_as_chaves_do_lote(spark, pasta):
+    q = correr(leituras(spark).groupBy('estacao').agg(F.max('temperatura').alias('maxima')), 'maximas', 'update')
+    assert [p['sink']['numOutputRows'] for p in q.recentProgress] == [2, 2, 2]
+    assert tabela(spark, 'maximas') == [('Crato', 33.0)] * 3 + [('Petrolina', 35.0)] + [('Sobral', 29.0)] * 2
+
+
+def test_append_com_janela_e_marca_dagua(spark, pasta):
+    por_janela = leituras(spark).withWatermark('momento', '10 minutes').groupBy(F.window('momento', '10 minutes')).count()
+    q = correr(por_janela, 'janelas')
+    progresso = q.recentProgress
+    assert [p['numInputRows'] for p in progresso] == [3, 2, 2, 0]  # o último é o lote sem dados
+    assert [p['eventTime']['watermark'] for p in progresso] == [
+        '1970-01-01T00:00:00.000Z', '2026-01-01T00:02:00.000Z', '2026-01-01T00:15:00.000Z', '2026-01-01T00:31:00.000Z']
+    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in progresso] == [0, 0, 1, 0]
+    assert [lote['marcaDagua'] for lote in q._lotes] == [
+        '2026-01-01T00:02:00.000Z', '2026-01-01T00:15:00.000Z', '2026-01-01T00:31:00.000Z', '2026-01-01T00:31:00.000Z']
+    assert janelas(spark.table('janelas')) == [(m(0), m(10), 3), (m(10), m(20), 1), (m(20), m(30), 1)]
+
+
+def test_erros_do_spark_com_estado(spark, pasta):
+    with pytest.raises(AnalysisException, match='Append output mode not supported'):
+        leituras(spark).groupBy('estacao').count().writeStream.format('memory').queryName('x').start()
+    with pytest.raises(AnalysisException, match='Multiple streaming aggregations'):
+        leituras(spark).groupBy('estacao').count().groupBy('count').count() \
+            .writeStream.format('memory').queryName('y').outputMode('complete').start()
+
+
+def test_drop_duplicates_com_marca_dagua(spark, pasta):
+    gravar('lote-02.csv', LOTES['lote-02.csv'] + ['Crato,2026-01-01 00:12:00,33.0'])  # repetida do lote 1
+    unicas = leituras(spark).withWatermark('momento', '10 minutes').dropDuplicates(['estacao', 'momento'])
+    q = correr(unicas, 'unicas')
+    assert [p['stateOperators'][0]['numRowsDroppedByWatermark'] for p in q.recentProgress] == [0, 0, 1, 0]
+    assert q.recentProgress[0]['stateOperators'][0]['operatorName'] == 'dedupe'
+    assert len(spark.table('unicas').collect()) == 6
+
+
+def test_drop_duplicates_sem_marca_dagua_guarda_tudo(spark, pasta):
+    q = correr(leituras(spark).dropDuplicates(['estacao']), 'estacoes')
+    assert [p['stateOperators'][0]['numRowsTotal'] for p in q.recentProgress] == [2, 3, 3]
+    assert sorted(r.estacao for r in spark.table('estacoes').collect()) == ['Crato', 'Petrolina', 'Sobral']
+
+
+def test_janela_deslizante_no_complete(spark, pasta):
+    correr(leituras(spark).groupBy(F.window('momento', '10 minutes', '5 minutes')).count(), 'deslizante', 'complete')
+    assert janelas(spark.table('deslizante')) == [
+        (m(-5), m(5), 3), (m(0), m(10), 4), (m(5), m(15), 2), (m(10), m(20), 1),
+        (m(20), m(30), 1), (m(25), m(35), 1), (m(35), m(45), 1), (m(40), m(50), 1)]
+
+
+def test_complete_com_order_by_depois_da_agregacao(spark, pasta, capsys):
+    correr(leituras(spark).groupBy('estacao').count().orderBy('estacao'), modo='complete', formato='console',
+           gatilho={'once': True})
+    assert '|    Crato|    4|\n|Petrolina|    1|\n|   Sobral|    2|' in capsys.readouterr().out

@@ -163,7 +163,9 @@ class StreamingQuery:
             self._publicar()
 
     def _escolher_operador(self):
-        return _SemEstado(self)
+        from .estado import ComEstado, analisar
+        fin, marca = analisar(self._plano, self._modo)
+        return _SemEstado(self) if fin is None else ComEstado(self, fin, marca)
 
     # ---------- a API do Spark ----------
     @property
