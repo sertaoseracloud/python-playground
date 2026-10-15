@@ -1,6 +1,7 @@
 // 🌱 Vale verde: grama, água, árvores e cerca do roçado.
 import { sprite, passo } from './pixel.js';
 import { pessoa } from './comuns.js';
+import { sitio as casaSitio } from './casas.js';
 
 const arvore = sprite({ v: '#3f8a3a', e: '#2c6a28', m: '#7a5232' }, `
 .....vvvvvv.....
@@ -81,9 +82,10 @@ export const vale = {
   estrada: { cores: ['#9b7650', '#86633f', '#ad8a62'], padrao: 'terra' },
   bloqueio: { cor: '#3d8bd9', borda: '#2a64a0', brilho: '#a8d8ea' },
   objetos: [arvore, cerca],
+  casa: casaSitio,
   personagens: [
-    { id: 'agricultora', movimento: 'andar', quadros: pessoa({ chapeu: '#e9c46a', pele: '#a8714a', roupa: '#c0392b', calca: '#2f4f2f' }) },
-    { id: 'jumento', movimento: 'andar', quadros: [jumento, passo(jumento, 'andar')] },
-    { id: 'asa-branca', movimento: 'voar', quadros: [asaBranca, passo(asaBranca, 'voar')] },
+    { id: 'agricultora', movimento: 'andar', tipo: 'pessoa', quadros: pessoa({ chapeu: '#e9c46a', pele: '#a8714a', roupa: '#c0392b', calca: '#2f4f2f' }) },
+    { id: 'jumento', movimento: 'andar', tipo: 'animal', quadros: [jumento, passo(jumento, 'andar')] },
+    { id: 'asa-branca', movimento: 'voar', tipo: 'animal', quadros: [asaBranca, passo(asaBranca, 'voar')] },
   ],
 };

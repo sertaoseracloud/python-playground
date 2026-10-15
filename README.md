@@ -146,8 +146,10 @@ de erro seguem o Spark.
   quem tem neste navegador o **mesmo nome** do certificado (acentos e maiúsculas contam) restaura o
   módulo e os anteriores da cadeia, nas datas do certificado. O certificado emitido de novo é o mesmo;
   nada do que já está no navegador é apagado (`src/restaurar.js`).
-- **🗺️ Cenários da trilha**: cada módulo tem um mapa em tiles de pixel art (como nos RPGs clássicos) que cobre
-  o módulo inteiro e rola junto com a página, com personagens andando de tile em tile, sem pisar na água nem no
+- **🗺️ Cenários da trilha**: cada módulo tem um mapa em tiles de pixel art (como nos RPGs clássicos) que ocupa a
+  tela toda e rola junto com a página, com uma estrada que faz curvas pelos exercícios e uma vila que cresce a
+  cada exercício resolvido (casas, filhos e filhotes, calculados do progresso, sem nada a mais no navegador), com
+  personagens andando de tile em tile, sem pisar na água nem no
   caminho (`src/ui/cenarios/`). É só decoração: o leitor de tela não lê, e os personagens param com "reduzir
   movimento" e no alto contraste.
 

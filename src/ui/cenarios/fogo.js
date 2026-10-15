@@ -1,6 +1,7 @@
 // 🔥 Fogo: rocha vulcânica, poças de lava e braseiros ("spark" quer dizer faísca).
 import { sprite, passo } from './pixel.js';
 import { pessoa, pedra } from './comuns.js';
+import { rocha as casaRocha } from './casas.js';
 
 const braseiro = sprite({ k: '#2b2b2b', e: '#4a4a4a', l: '#ff8c1a', r: '#e0521b', y: '#ffd23f' }, `
 ................
@@ -63,9 +64,10 @@ export const fogo = {
   estrada: { cores: ['#2e2a2a', '#1f1c1c', '#3d3838'], padrao: 'pedras' },
   bloqueio: { cor: '#e0521b', borda: '#7a1f0e', brilho: '#ffd23f' },
   objetos: [pedra('#6b5a55', '#4d3f3b', '#2e2523'), braseiro],
+  casa: casaRocha,
   personagens: [
-    { id: 'salamandra', movimento: 'andar', quadros: [salamandra, passo(salamandra, 'andar')] },
-    { id: 'ferreiro', movimento: 'andar', quadros: pessoa({ cabeca: 'justo', chapeu: '#2b1d14', pele: '#b97a4e', roupa: '#6b4a35', calca: '#3b2a20' }) },
-    { id: 'fenix', movimento: 'voar', quadros: [fenix, passo(fenix, 'voar')] },
+    { id: 'salamandra', movimento: 'andar', tipo: 'animal', quadros: [salamandra, passo(salamandra, 'andar')] },
+    { id: 'ferreiro', movimento: 'andar', tipo: 'pessoa', quadros: pessoa({ cabeca: 'justo', chapeu: '#2b1d14', pele: '#b97a4e', roupa: '#6b4a35', calca: '#3b2a20' }) },
+    { id: 'fenix', movimento: 'voar', tipo: 'animal', quadros: [fenix, passo(fenix, 'voar')] },
   ],
 };
