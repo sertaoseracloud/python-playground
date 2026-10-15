@@ -1,0 +1,42 @@
+IllegalArgumentException | Schema must be specified when creating a streaming source DataFrame. If some files already exist in the directory, then depending on the file format you may be able to create a static DataFrame on that directory with 'spark.read.load(directory)' and infer schema from it.
+AnalysisException | [WRITE_STREAM_NOT_ALLOWED] 'writeStream' can be called only on streaming Dataset/DataFrame. SQLSTATE: 42601
+True False
+AnalysisException True
+complete AnalysisException True
+append AnalysisException True
+False [3, 2, 2]
+[('Crato', 31.5), ('Crato', 32.0), ('Crato', 33.0), ('Petrolina', 35.0)]
+[2, 3, 3] [('Crato', 4), ('Petrolina', 1), ('Sobral', 2)]
+[('Crato', 33.0), ('Crato', 33.0), ('Crato', 33.0), ('Petrolina', 35.0), ('Sobral', 29.0), ('Sobral', 29.0)]
+-------------------------------------------
+Batch: 0
+-------------------------------------------
++-------+-----+
+|estacao|count|
++-------+-----+
+|  Crato|    2|
+| Sobral|    1|
++-------+-----+
+
+-------------------------------------------
+Batch: 1
+-------------------------------------------
++---------+-----+
+|  estacao|count|
++---------+-----+
+|    Crato|    3|
+|Petrolina|    1|
+|   Sobral|    1|
++---------+-----+
+
+-------------------------------------------
+Batch: 2
+-------------------------------------------
++---------+-----+
+|  estacao|count|
++---------+-----+
+|    Crato|    4|
+|Petrolina|    1|
+|   Sobral|    2|
++---------+-----+
+
