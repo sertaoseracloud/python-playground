@@ -38,6 +38,24 @@ class DataFrame:
     def printSchema(self, level=None):
         print(mostrar.arvore_do_schema(self.schema))
 
+    @property
+    def isStreaming(self):
+        from .streaming.fonte import FonteStream
+        return any(isinstance(n, FonteStream) for n in P.nos(self._plano))
+
+    def withWatermark(self, eventTime, delayThreshold):
+        from .functions import duracao_em_micros
+        from .streaming.fonte import MarcaDagua
+        e = self._entrada()
+        atributo = e.atributos[e.achar(eventTime)]
+        if not isinstance(atributo.tipo, T.TimestampType):
+            raise AnalysisException(f'The event time `{eventTime}` has the invalid type "{atributo.tipo.simpleString().upper()}", '
+                                    'but expected "TIMESTAMP".', 'EVENT_TIME_IS_NOT_ON_TIMESTAMP_TYPE', {}, '42K09')
+        atraso = duracao_em_micros(delayThreshold)
+        if not self.isStreaming:
+            return self  # como no Spark: num DataFrame de lote, a marca d'água não faz nada
+        return self._novo(MarcaDagua(self._plano, atributo, atraso))
+
     def __repr__(self):
         return f"DataFrame[{', '.join(f'{n}: {t}' for n, t in self.dtypes)}]"
 
