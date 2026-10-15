@@ -8,7 +8,7 @@ from diverge_runtime import estagios
 from pyspark.errors import IllegalArgumentException, SparkRuntimeException
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import OneHotEncoder, StandardScaler, StringIndexer, VectorAssembler
-from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.classification import DecisionTreeClassifier, LogisticRegression
 from pyspark.ml.evaluation import BinaryClassificationEvaluator, MulticlassClassificationEvaluator, RegressionEvaluator
 from pyspark.ml.linalg import DenseVector, SparseVector, Vectors
 from pyspark.ml.regression import LinearRegression
@@ -227,3 +227,34 @@ def test_multiclasse_acuracia_e_f1_ponderado(spark):
     df = spark.createDataFrame([(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 1.0), (2.0, 2.0)], ['label', 'prediction'])
     assert MulticlassClassificationEvaluator(metricName='accuracy').evaluate(df) == pytest.approx(0.8)
     assert MulticlassClassificationEvaluator().evaluate(df) == pytest.approx(0.4 * 2 / 3 + 0.4 * 0.8 + 0.2 * 1.0)
+
+
+def test_cortes_continuos_como_o_spark():
+    from pyspark.ml._arvore import cortes_continuos
+    assert cortes_continuos([(1.0, 1), (3.0, 2), (10.0, 1)], 31) == [2.0, 6.5]  # poucos valores: os pontos médios
+    contagens = [(float(v), 1) for v in range(10)]
+    assert cortes_continuos(contagens, 3) == [2.5, 4.5, 7.5]  # muitos: pelo passo n / (cortes + 1), como o Spark
+
+
+def test_arvore_um_corte(spark):
+    treino = treino_linear(spark, [(1, 0), (2, 0), (3, 0), (10, 1), (11, 1), (12, 1)])
+    m = DecisionTreeClassifier().fit(treino)
+    assert (m.depth, m.numNodes, m.numClasses, m.numFeatures) == (1, 3, 2, 1)
+    assert str(m.featureImportances) == '(1,[0],[1.0])'
+    assert m.toDebugString.splitlines()[1:] == ['  If (feature 0 <= 6.5)', '   Predict: 0.0', '  Else (feature 0 > 6.5)', '   Predict: 1.0']
+    r = m.transform(treino).collect()
+    assert [x.prediction for x in r] == [0.0] * 3 + [1.0] * 3 and r[0].probability == DenseVector([1.0, 0.0])
+    assert 'fit DecisionTreeClassifier (nível 1)' in acoes()
+
+
+def test_arvore_poda_os_irmaos_iguais(spark):
+    ys = [0, 0, 1, 0, 0, 1, 1, 1]  # x = 1..8: a raiz corta em 5,5; o lado esquerdo cortaria em 2,5 com as duas folhas prevendo 0
+    m = DecisionTreeClassifier(maxDepth=2).fit(treino_linear(spark, [(x + 1, y) for x, y in enumerate(ys)]))
+    assert (m.depth, m.numNodes) == (1, 3)
+    assert m.toDebugString.splitlines()[1] == '  If (feature 0 <= 5.5)'
+
+
+def test_arvore_escolhe_a_feature_que_separa(spark):
+    pontos = [(a, b, 1 if b > 5 else 0) for a in range(4) for b in (1, 2, 8, 9)]
+    m = DecisionTreeClassifier(maxDepth=3).fit(treino_linear(spark, pontos))
+    assert m.depth == 1 and str(m.featureImportances) == '(2,[1],[1.0])'

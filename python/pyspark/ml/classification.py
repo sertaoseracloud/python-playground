@@ -172,3 +172,80 @@ class BinaryLogisticRegressionSummary:
     @property
     def accuracy(self):
         return metricas_de_classes([(p, y) for _, p, y in self._dados()])['accuracy']
+
+
+# ---------- árvore de decisão ----------
+
+class DecisionTreeClassifier(Estimator):
+    _padroes = {'featuresCol': 'features', 'labelCol': 'label', 'predictionCol': 'prediction',
+                'probabilityCol': 'probability', 'rawPredictionCol': 'rawPrediction', 'maxDepth': 5, 'maxBins': 32,
+                'minInstancesPerNode': 1, 'minInfoGain': 0.0, 'impurity': 'gini', 'seed': None, 'weightCol': None}
+
+    def _fit(self, df):
+        from . import _arvore
+        if self.getOrDefault('impurity') != 'gini':
+            raise NotImplementedError('O DivergePython treina a árvore só com gini.')
+        f, rotulo = self.getOrDefault('featuresCol'), self.getOrDefault('labelCol')
+        exigir_vetor(df, f)
+        raiz, num_classes, num_features = _arvore.treinar(
+            df.select(f, rotulo), self.getOrDefault('maxDepth'), self.getOrDefault('maxBins'),
+            self.getOrDefault('minInstancesPerNode'), 'DecisionTreeClassifier')
+        return DecisionTreeClassificationModel(raiz, num_classes, num_features, self)
+
+
+class _Folha:
+    def __init__(self, raiz, parte):
+        self.raiz, self.parte = raiz, parte
+
+    def __call__(self, v):
+        from ._arvore import folha_de
+        if v is None:
+            return None
+        folha = folha_de(self.raiz, v.toArray())
+        if self.parte == 'pred':
+            return folha.previsao
+        contagem = [float(c) for c in folha.contagem]
+        if self.parte == 'raw':
+            return DenseVector(contagem)
+        total = sum(contagem)
+        return DenseVector([c / total for c in contagem])
+
+
+class DecisionTreeClassificationModel(Model):
+    _padroes = DecisionTreeClassifier._padroes
+
+    def __init__(self, raiz, num_classes, num_features, estimador):
+        super().__init__(**estimador._valores)
+        self._raiz, self.numClasses, self.numFeatures = raiz, num_classes, num_features
+
+    @property
+    def depth(self):
+        from ._arvore import profundidade
+        return profundidade(self._raiz)
+
+    @property
+    def numNodes(self):
+        from ._arvore import contar
+        return contar(self._raiz)
+
+    @property
+    def featureImportances(self):
+        from ._arvore import importancias
+        from .linalg import SparseVector
+        valores = importancias(self._raiz, self.numFeatures)
+        return SparseVector(self.numFeatures, [(i, v) for i, v in enumerate(valores) if v])
+
+    @property
+    def toDebugString(self):
+        from ._arvore import texto
+        return (f'DecisionTreeClassificationModel: uid={self.uid}, depth={self.depth}, numNodes={self.numNodes}, '
+                f'numClasses={self.numClasses}, numFeatures={self.numFeatures}\n' + texto(self._raiz, 2))
+
+    def predict(self, value):
+        return _Folha(self._raiz, 'pred')(value)
+
+    def _transform(self, df):
+        f = [self.getOrDefault('featuresCol')]
+        df = coluna_nova(df, self.getOrDefault('rawPredictionCol'), _Folha(self._raiz, 'raw'), f, _VETOR)
+        df = coluna_nova(df, self.getOrDefault('probabilityCol'), _Folha(self._raiz, 'prob'), f, _VETOR)
+        return coluna_nova(df, self.getOrDefault('predictionCol'), _Folha(self._raiz, 'pred'), f, T.DoubleType())
