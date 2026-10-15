@@ -7,13 +7,14 @@ import { PoolPython } from '../src/python/pool.js';
 import { workerNode } from './pool-node.js';
 import { exerciciosDelta, licoesDelta } from '../src/conteudo/alem-delta.js';
 import { exerciciosStreaming, licoesStreaming } from '../src/conteudo/alem-streaming.js';
+import { exerciciosMllib, licoesMllib } from '../src/conteudo/alem-mllib.js';
 
 const pool = new PoolPython({ criarWorker: workerNode, maximo: 4 });
 afterAll(() => pool.fechar());
 let executar;
 beforeAll(async () => { const { sessao } = await iniciarPython({ pool }); executar = (a, o) => sessao.executar(a, o); }, 120_000);
 
-const AREAS = [['delta', exerciciosDelta, licoesDelta], ['streaming', exerciciosStreaming, licoesStreaming]];
+const AREAS = [['delta', exerciciosDelta, licoesDelta], ['streaming', exerciciosStreaming, licoesStreaming], ['mllib', exerciciosMllib, licoesMllib]];
 
 describe.each(AREAS)('%s', (_area, exercicios, licoes) => {
   it('12 exercícios: 3 fáceis, 6 médios e 3 difíceis', () => {
