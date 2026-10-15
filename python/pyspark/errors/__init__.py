@@ -87,6 +87,10 @@ class SparkRuntimeException(PySparkException, RuntimeError):
     pass
 
 
+class StreamingQueryException(PySparkException):
+    """A consulta de streaming parou porque um micro-lote falhou (a causa vem na mensagem)."""
+
+
 def divisao_por_zero():
     return ArithmeticException(
         'Division by zero. Use `try_divide` to tolerate divisor being 0 and return NULL instead. '
@@ -113,5 +117,5 @@ def caminho_nao_existe(caminho):
 __all__ = [
     'PySparkException', 'AnalysisException', 'ParseException', 'PySparkValueError', 'PySparkTypeError',
     'PySparkRuntimeError', 'PySparkNotImplementedError', 'ArithmeticException', 'NumberFormatException',
-    'DateTimeException', 'SparkRuntimeException',
+    'DateTimeException', 'SparkRuntimeException', 'StreamingQueryException',
 ]

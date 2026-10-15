@@ -6,7 +6,7 @@ import os
 import pytest
 
 from diverge_runtime import estagios, relogio
-from pyspark.errors import AnalysisException, IllegalArgumentException
+from pyspark.errors import AnalysisException, IllegalArgumentException, StreamingQueryException
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
@@ -142,3 +142,131 @@ def test_with_watermark(spark, pasta):
         leituras(spark).withWatermark('estacao', '10 minutes')
     marcado = leituras(spark).withWatermark('momento', '10 minutes')
     assert marcado.isStreaming and 'EventTimeWatermark momento' in '\n'.join(marcado._arvore())
+
+
+def correr(df, nome='q', modo='append', formato='memory', gatilho=None, **opcoes):
+    escritor = df.writeStream.format(formato).queryName(nome).outputMode(modo).options(**opcoes)
+    q = escritor.trigger(**(gatilho or {'availableNow': True})).start()
+    q.awaitTermination()
+    return q
+
+
+def tabela(spark, nome):
+    return sorted((tuple(r) for r in spark.table(nome).collect()), key=str)
+
+
+def test_append_sem_estado_um_lote_por_arquivo(spark, pasta):
+    q = correr(leituras(spark).filter(F.col('temperatura') > 30).select('estacao', 'temperatura'), 'quentes')
+    assert not q.isActive and q.name == 'quentes'
+    assert [p['numInputRows'] for p in q.recentProgress] == [3, 2, 2]
+    assert [p.batchId for p in q.recentProgress] == [0, 1, 2]
+    assert q.lastProgress['sources'][0]['numInputRows'] == 2
+    assert tabela(spark, 'quentes') == [('Crato', 31.5), ('Crato', 32.0), ('Crato', 33.0), ('Petrolina', 35.0)]
+    assert spark.sql('select count(*) from quentes').first()[0] == 4
+
+
+def test_console_imprime_como_o_spark(spark, pasta, capsys):
+    correr(leituras(spark, maximo=None).filter(F.col('estacao') == 'Petrolina').select('estacao', 'temperatura'),
+           formato='console')
+    assert capsys.readouterr().out == (
+        '-------------------------------------------\nBatch: 0\n-------------------------------------------\n'
+        '+---------+-----------+\n|  estacao|temperatura|\n+---------+-----------+\n'
+        '|Petrolina|       35.0|\n+---------+-----------+\n\n')
+
+
+def test_console_sem_truncar(spark, capsys):
+    gravar('a.csv', ['Estação Meteorológica de Petrolina,2026-01-01 00:01:00,30.0'])
+    correr(spark.readStream.schema(SCHEMA).csv('leituras', header=True).select('estacao'), formato='console', truncate=False)
+    assert '|Estação Meteorológica de Petrolina|' in capsys.readouterr().out
+
+
+def test_await_any_termination(spark, pasta):
+    q = leituras(spark).writeStream.format('memory').queryName('a').start()
+    assert spark.streams.awaitAnyTermination(5) is False
+    assert len(q.recentProgress) == 3 and q.isActive
+    assert relogio.agora_local() == T0 + dt.timedelta(seconds=5)  # o resto do prazo passa sem dados
+    assert spark.streams.awaitAnyTermination() is None and not q.isActive
+
+
+def test_relogio_anda_por_lote(spark, pasta):
+    q = correr(leituras(spark), gatilho={'processingTime': '10 seconds'})
+    assert [p['timestamp'] for p in q.recentProgress] == [
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:10.000Z', '2026-01-01T00:00:20.000Z']
+    assert relogio.agora_local() == T0 + dt.timedelta(seconds=30)
+
+
+def test_arquivo_novo_entra_no_lote_seguinte(spark, pasta):
+    q = leituras(spark).writeStream.format('memory').queryName('todas').start()
+    assert spark.table('todas').count() == 0  # a tabela existe desde o start
+    q.processAllAvailable()
+    assert q.isActive and len(q.recentProgress) == 3
+    gravar('lote-04.csv', ['Mossoró,2026-01-01 00:50:00,36.0'])
+    gravar('_temporario.csv', ['X,2026-01-01 00:50:00,1.0'])  # _ e . ficam de fora, como no Spark
+    os.makedirs('leituras/sub', exist_ok=True)
+    q.processAllAvailable()
+    assert [p['numInputRows'] for p in q.recentProgress] == [3, 2, 2, 1]
+    assert spark.table('todas').count() == 8
+    assert spark.streams.active == [q]
+    q.stop()
+    assert not q.isActive and spark.streams.active == []
+
+
+def test_once_le_tudo_num_lote_so(spark, pasta):
+    q = correr(leituras(spark), gatilho={'once': True})
+    assert [p['numInputRows'] for p in q.recentProgress] == [7] and not q.isActive
+
+
+def test_available_now_fica_com_os_arquivos_do_start(spark, pasta):
+    q = leituras(spark).writeStream.format('memory').queryName('fixas').trigger(availableNow=True).start()
+    gravar('lote-04.csv', ['Mossoró,2026-01-01 00:50:00,36.0'])
+    q.awaitTermination()
+    assert [p['numInputRows'] for p in q.recentProgress] == [3, 2, 2]
+
+
+def test_csv_com_linha_ruim_vira_null(spark):
+    gravar('a.csv', ['Crato,2026-01-01 00:01:00,quente', 'Sobral'])
+    correr(spark.readStream.schema(SCHEMA).csv('leituras', header=True), 'ruins')
+    assert tabela(spark, 'ruins') == [('Crato', m(1), None), ('Sobral', None, None)]
+
+
+def test_rate_gera_linhas_pelo_relogio(spark):
+    q = spark.readStream.format('rate').option('rowsPerSecond', 2).load().writeStream.format('memory').queryName('taxa').start()
+    assert q.awaitTermination(3) is False and q.isActive
+    assert [p['numInputRows'] for p in q.recentProgress] == [0, 2, 2]
+    assert tabela(spark, 'taxa') == [(T0 + dt.timedelta(seconds=v / 2), v) for v in range(4)]
+    q.awaitTermination()  # sem prazo, o Spark esperaria para sempre: aqui roda um lote e acaba
+    assert not q.isActive and len(q.recentProgress) == 4
+
+
+def test_erros_do_spark_no_start(spark, pasta):
+    df = leituras(spark)
+    with pytest.raises(AnalysisException, match='Complete output mode not supported'):
+        df.writeStream.format('memory').queryName('a').outputMode('complete').start()
+    with pytest.raises(AnalysisException, match='Sorting is not supported'):
+        df.orderBy('estacao').writeStream.format('memory').queryName('b').start()
+    with pytest.raises(AnalysisException, match='queryName must be specified for memory sink'):
+        df.writeStream.format('memory').start()
+    with pytest.raises(IllegalArgumentException, match='Unknown output mode'):
+        df.writeStream.outputMode('tudo')
+    with pytest.raises(ValueError, match='Only allow single trigger'):
+        df.writeStream.trigger(once=True, availableNow=True)
+    with pytest.raises(AnalysisException, match='WRITE_STREAM_NOT_ALLOWED'):
+        spark.range(1).writeStream  # noqa: B018
+    df.writeStream.format('memory').queryName('c').start()
+    with pytest.raises(IllegalArgumentException, match='already active'):
+        df.writeStream.format('memory').queryName('c').start()
+    with pytest.raises(NotImplementedError, match='console e memory'):
+        df.writeStream.format('parquet').start('saida')
+
+
+def test_erro_no_lote_derruba_a_consulta(spark, pasta):
+    quebra = F.udf(lambda t: 1 // 0, 'int')
+    q = leituras(spark).select(quebra('temperatura')).writeStream.format('memory').queryName('quebrada').start()
+    with pytest.raises(StreamingQueryException, match=r'STREAM_FAILED.*division'):
+        q.processAllAvailable()
+    assert not q.isActive and isinstance(q.exception(), StreamingQueryException)
+
+
+def test_cada_lote_e_um_job_na_aba_execucao(spark, pasta):
+    correr(leituras(spark), 'jobs')
+    assert [j['acao'] for j in estagios.resumo()['jobs']] == ['lote 0 de jobs', 'lote 1 de jobs', 'lote 2 de jobs']

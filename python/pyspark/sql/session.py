@@ -152,6 +152,11 @@ class SparkSession:
         from .streaming import DataStreamReader
         return DataStreamReader(self)
 
+    @property
+    def streams(self):
+        from .streaming import StreamingQueryManager
+        return StreamingQueryManager(self)
+
     def sql(self, sqlQuery, args=None, **kwargs):
         from .sql import executar
         return executar(self, sqlQuery)
