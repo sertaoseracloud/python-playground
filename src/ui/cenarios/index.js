@@ -18,5 +18,6 @@ export function htmlDoCenario(id) {
   if (!c) return '';
   const personagens = c.personagens.map((p, i) => `
     <span class="personagem personagem-${i + 1} mov-${p.movimento}"><span class="corpo">${p.svg}</span></span>`).join('');
-  return `<div class="cenario cenario-${c.id}" aria-hidden="true"><div class="cenario-fundo">${c.fundo}</div>${personagens}</div>`;
+  // O palco tem a altura da tela e acompanha a rolagem: o módulo tem milhares de pixels.
+  return `<div class="cenario cenario-${c.id}" aria-hidden="true"><div class="cenario-palco"><div class="cenario-fundo">${c.fundo}</div>${personagens}</div></div>`;
 }

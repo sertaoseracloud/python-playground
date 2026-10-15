@@ -26,6 +26,8 @@ describe('cenários', () => {
     expect(el.textContent.trim()).toBe('');
     expect(el.querySelector('a, button, input, [tabindex], title, text, [id]')).toBeNull();
     expect(el.querySelectorAll('.personagem')).toHaveLength(3);
+    // Fundo e personagens ficam juntos no palco (o pedaço que acompanha a rolagem).
+    expect(el.querySelectorAll('.cenario-palco > .cenario-fundo, .cenario-palco > .personagem')).toHaveLength(4);
   });
 
   it.each(IDS)('%s: no máximo 12 KB', (id) => {

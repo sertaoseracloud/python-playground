@@ -46,6 +46,9 @@ describe('cenários na trilha', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.personagem[^{]*\{[^}]*animation:\s*none/);
     expect(css).toMatch(/\[data-tema="alto-contraste"\][^{]*\.personagem[^{]*\{[^}]*animation:\s*none/);
     expect(css).toMatch(/\.com-cenario \.legenda[^{]*\{[^}]*background/);
+    // O módulo tem milhares de pixels: o cenário é um palco da altura da tela que acompanha a rolagem.
+    expect(css).toMatch(/\.cenario-palco\s*\{[^}]*position:\s*sticky[^}]*height:\s*100vh/);
+    expect(css).toMatch(/\.cenario\s*\{[^}]*overflow:\s*clip/);
     expect(estilo).toMatch(/:root\.a11y-sem-movimento \*[\s\S]*animation:\s*none !important/);
   });
 });

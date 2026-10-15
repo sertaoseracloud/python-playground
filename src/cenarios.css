@@ -5,10 +5,14 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  overflow: hidden;
+  /* clip (e não hidden): hidden viraria contêiner de rolagem e o palco não acompanharia a tela */
+  overflow: clip;
   border-radius: 14px;
   pointer-events: none;
 }
+/* O módulo tem milhares de pixels: o palco (fundo + personagens) tem a altura da tela e fica
+   preso no topo enquanto o aluno percorre o módulo; no módulo seguinte, entra o próximo cenário. */
+.cenario-palco { position: sticky; top: 0; height: 100vh; }
 .cenario-fundo, .cenario-fundo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .cenario-fundo { opacity: .45; }
 /* Véu atrás do texto: o cabeçalho do módulo e a legenda de cada nó ficam legíveis sobre o desenho. */
