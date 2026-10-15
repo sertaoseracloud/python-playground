@@ -405,6 +405,9 @@ class DataFrameReader:
 
     def _ler(self, caminho):
         from .dataframe import DataFrame
+        if self._formato.lower() == 'delta':
+            from delta._escrita import ler_delta
+            return ler_delta(self._sessao, os.path.abspath(caminho), self._opcoes)
         caminhos = caminho if isinstance(caminho, (list, tuple)) else [caminho]
         arquivos = []
         for c in caminhos:
@@ -499,6 +502,9 @@ class DataFrameWriter:
         if partitionBy:
             self.partitionBy(partitionBy)
         self.options(**{k: v for k, v in opcoes.items() if v is not None})
+        if self._formato.lower() == 'delta':
+            from delta._escrita import gravar_delta
+            return gravar_delta(self._df, os.path.abspath(path), self._modo, self._opcoes)
         formato = _formato(self._formato, self._opcoes)
         destino = os.path.abspath(path)
         if os.path.exists(destino):

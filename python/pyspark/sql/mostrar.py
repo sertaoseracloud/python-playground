@@ -34,6 +34,8 @@ def texto_do_valor(valor, aninhado=False):
     """O valor como o show() mostra (e como o CSV grava, sem o NULL)."""
     if valor is None:
         return 'NULL'
+    if hasattr(valor, '_texto_do_spark'):  # os vetores do pyspark.ml: o toString do Scala
+        return valor._texto_do_spark()
     if isinstance(valor, bool):
         return 'true' if valor else 'false'
     if isinstance(valor, float):

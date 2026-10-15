@@ -66,3 +66,20 @@ def erro(funcao):
         print(type(e).__name__, '|', primeira_linha(e))
     else:
         print('sem erro')
+
+
+def sessao_delta():
+    """Sessão com o Delta: no PySpark real, as extensões e os jars do delta-spark; aqui, a mesma sessão."""
+    from delta import configure_spark_with_delta_pip
+    from pyspark.sql import SparkSession
+    construtor = (SparkSession.builder.master('local[4]').appName('conformidade')
+                  .config('spark.sql.extensions', 'io.delta.sql.DeltaSparkSessionExtension')
+                  .config('spark.sql.catalog.spark_catalog', 'org.apache.spark.sql.delta.catalog.DeltaCatalog')
+                  .config('spark.sql.shuffle.partitions', '4')
+                  .config('spark.default.parallelism', '4')
+                  .config('spark.sql.adaptive.enabled', 'false')
+                  .config('spark.sql.session.timeZone', 'UTC')
+                  .config('spark.ui.enabled', 'false'))
+    spark = configure_spark_with_delta_pip(construtor).getOrCreate()
+    spark.sparkContext.setLogLevel('ERROR')
+    return spark

@@ -1,6 +1,7 @@
 // 💧 Rio: a água corrente que não para (como o streaming), a ponte de madeira, pedras e juncos.
 import { sprite, passo } from './pixel.js';
 import { pedra } from './comuns.js';
+import { palafita as casaPalafita } from './casas.js';
 
 const junco = sprite({ v: '#4f8a3a', m: '#7a5232' }, `
 ....m.....m.....
@@ -81,9 +82,10 @@ export const rio = {
   estrada: { cores: ['#a0703f', '#80552c', '#b8875a'], padrao: 'tabuas' },
   bloqueio: { cor: '#2f7fbf', borda: '#1f5a8a', brilho: '#cfeeff' },
   objetos: [pedra('#b8b2a6', '#8f887b', '#6a6458'), junco],
+  casa: casaPalafita,
   personagens: [
-    { id: 'jangadeiro', movimento: 'nadar', quadros: [jangadeiro, passo(jangadeiro, 'nadar')] },
-    { id: 'peixe', movimento: 'saltar', quadros: [peixe, passo(peixe, 'saltar')] },
-    { id: 'garca', movimento: 'andar', quadros: [garca, passo(garca, 'andar')] },
+    { id: 'jangadeiro', movimento: 'nadar', tipo: 'pessoa', quadros: [jangadeiro, passo(jangadeiro, 'nadar')] },
+    { id: 'peixe', movimento: 'saltar', tipo: 'animal', quadros: [peixe, passo(peixe, 'saltar')] },
+    { id: 'garca', movimento: 'andar', tipo: 'animal', quadros: [garca, passo(garca, 'andar')] },
   ],
 };

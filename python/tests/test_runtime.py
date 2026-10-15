@@ -215,3 +215,94 @@ def test_repl_com_o_escopo_do_programa():
 def test_chamadas_usam_as_respostas_que_sobraram_na_fila():
     r = execucao.executar({'main.py': 'a = input()\ndef f():\n    return input()\n'}, entrada=['1', '2'], chamadas=[{'funcao': 'f', 'args': []}])
     assert r['retornos'][0]['valor'] == '2'
+
+
+def test_deltas_no_resultado():
+    codigo = ('from pyspark.sql import SparkSession\nfrom delta.tables import DeltaTable\n'
+              'spark = SparkSession.builder.getOrCreate()\n'
+              'spark.createDataFrame([("a", 1)], ["p", "q"]).write.format("delta").save("dados/estoque")\n'
+              'DeltaTable.forPath(spark, "dados/estoque").delete("q = 1")\n')
+    r = rodar(codigo)
+    assert r['erro'] is None
+    assert r['deltas'] == {'dados/estoque': {'versao': 1, 'operacoes': ['WRITE', 'DELETE'], 'colunas': ['p', 'q'], 'linhasPorVersao': [1, 0]}}
+    assert rodar('x = 1\n')['deltas'] == {}  # cada execução começa sem tabelas registradas
+
+
+def test_streaming_no_resultado():
+    codigo = ('from pyspark.sql import SparkSession\nspark = SparkSession.builder.getOrCreate()\n'
+              'leituras = spark.readStream.schema("estacao STRING, temperatura DOUBLE").csv("leituras", header=True)\n'
+              'leituras.writeStream.format("console").queryName("q").start()\n')
+    r = execucao.executar({'main.py': codigo, 'leituras/a.csv': 'estacao,temperatura\nCrato,31.5\nSobral,29.0\n'})
+    assert r['erro'] is None
+    assert 'Batch: 0' in r['saida'] and '|  Crato|' in r['saida']  # o start() sem espera roda no fim do programa
+    assert r['streaming'] == {'consultas': [{'nome': 'q', 'modo': 'append', 'formato': 'console', 'lotes': [
+        {'id': 0, 'entrada': 2, 'arquivos': ['a.csv'], 'estado': 0, 'marcaDagua': None, 'saida': 2, 'descartadas': 0}]}]}
+    assert 'leituras' not in r['tabelas']  # o DataFrame de streaming não tem linhas fora do writeStream
+    assert rodar('x = 1\n')['streaming'] is None
+
+
+def test_erro_do_streaming_no_fim_do_programa_vira_erro_do_aluno():
+    codigo = ('from pyspark.sql import SparkSession, functions as F\nspark = SparkSession.builder.getOrCreate()\n'
+              'quebra = F.udf(lambda t: 1 // 0, "int")\n'
+              'spark.readStream.schema("t DOUBLE").csv("leituras").select(quebra("t")).writeStream.format("console").start()\n')
+    r = execucao.executar({'main.py': codigo, 'leituras/a.csv': '1.0\n'})
+    assert r['erro']['tipo'] == 'StreamingQueryException'
+
+
+executar = execucao.executar
+SAFRA = ('chuva,area,irrigado,producao\n'
+         '300,5,1,17.5\n350,4,1,16.0\n800,3,0,17.0\n400,2,0,11.0\n250,6,1,19.0\n700,2,0,14.0\n')
+TREINO_LINEAR = '''
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml import Pipeline
+spark = SparkSession.builder.getOrCreate()
+treino = spark.read.csv("safra.csv", header=True, inferSchema=True)
+montador = VectorAssembler(inputCols=["chuva", "area", "irrigado"], outputCol="features")
+modelo = LinearRegression(labelCol="producao").fit(montador.transform(treino))
+sem_fit = LinearRegression(labelCol="producao")
+tubo = Pipeline(stages=[montador, LinearRegression(labelCol="producao")]).fit(treino)
+'''
+
+
+def test_modelos_descreve_modelos_e_estimadores():
+    r = executar({'main.py': TREINO_LINEAR, 'safra.csv': SAFRA})
+    assert r['erro'] is None
+    m = r['modelos']
+    assert m['modelo']['tipo'] == 'LinearRegressionModel'
+    assert [round(c, 6) for c in m['modelo']['coeficientes']] == [0.01, 2.0, 1.5]
+    assert round(m['modelo']['intercepto'], 6) == 3.0
+    assert m['sem_fit'] == {'tipo': 'LinearRegression', 'treinado': False, 'metricas': {}}
+    assert m['tubo']['tipo'] == 'PipelineModel' and m['tubo']['ultimo'] == 'LinearRegressionModel'
+    assert 'montador' not in m  # o VectorAssembler é transformador, não modelo
+
+
+def test_modelos_calcula_a_metrica_pedida_e_o_erro_vira_resultado():
+    pedidos = [
+        {'variavel': 'modelo', 'nome': 'rmse', 'dados': 'safra.csv', 'preparar': 'montador'},
+        {'variavel': 'tubo', 'nome': 'r2', 'dados': 'safra.csv'},
+        {'variavel': 'modelo', 'nome': 'rmse', 'dados': 'nao-existe.csv', 'preparar': 'montador'},
+    ]
+    r = executar({'main.py': TREINO_LINEAR, 'safra.csv': SAFRA}, avaliacoes=pedidos)
+    metricas = r['modelos']['modelo']['metricas']
+    assert metricas['rmse@safra.csv'] < 1e-9
+    assert abs(r['modelos']['tubo']['metricas']['r2@safra.csv'] - 1.0) < 1e-9
+    assert metricas['rmse@nao-existe.csv']['erro']['tipo'] == 'AnalysisException'
+    acoes = [j['acao'] for j in (r['spark'] or {'jobs': []})['jobs']]
+    assert not any('evaluate' in a or 'avalia' in a for a in acoes)  # a métrica da correção fica fora da aba ⚡ Execução
+
+
+def test_sem_pyspark_ml_o_bloco_modelos_fica_vazio():
+    assert executar({'main.py': 'x = 1\n'})['modelos'] == {}
+
+
+def test_deltas_tem_as_linhas_de_cada_versao():
+    codigo = '''
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.getOrCreate()
+df = spark.createDataFrame([("mel", 10), ("farinha", 40)], ["produto", "qtd"])
+df.write.format("delta").save("estoque")
+df.limit(1).write.format("delta").mode("append").save("estoque")
+'''
+    assert executar({'main.py': codigo})['deltas']['estoque']['linhasPorVersao'] == [2, 3]

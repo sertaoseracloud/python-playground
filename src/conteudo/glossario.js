@@ -392,6 +392,103 @@ export const GLOSSARIO = [
     analogia: 'Uma resposta em branco no questionário: não dá para dizer se é sim ou não.',
     exemplo: 'df.filter(df.nota.isNull()).show()\ndf.na.fill({"nota": 0.0})',
   },
+  // ---------- Spark além do batch ----------
+  {
+    id: 'micro-lote', termo: 'Micro-lote', padroes: ['micro-?lotes?'],
+    definicao: 'Um pedaço dos dados que chegaram no streaming, processado de uma vez. O Structured Streaming roda um micro-lote atrás do outro.',
+    analogia: 'A passada no pluviômetro: a cada visita você anota só o que choveu desde a última.',
+    exemplo: 'q = df.writeStream.format("console").start()\nq.processAllAvailable()  # Batch: 0, Batch: 1...',
+  },
+  {
+    id: 'estado-streaming', termo: 'Estado', padroes: ['estado'],
+    definicao: 'O que uma consulta de streaming guarda entre um micro-lote e outro, como a contagem de cada chave até agora.',
+    analogia: 'O caderno do apurador: a cada urna nova, ele soma aos totais que já anotou.',
+    exemplo: 'contagem = leituras.groupBy("estacao").count()  # a contagem é o estado',
+  },
+  {
+    id: 'marca-dagua', termo: "Marca d'água", padroes: ["marca d['’]água", 'watermark'],
+    definicao: 'Até onde o streaming espera dados atrasados: o maior tempo de evento já visto menos o atraso aceito. O que chega antes dela é descartado.',
+    analogia: 'O fim da feira: depois de certa hora, quem chega com mercadoria não monta mais a banca.',
+    exemplo: 'df.withWatermark("momento", "5 minutes")',
+  },
+  {
+    id: 'gatilho', termo: 'Gatilho', padroes: ['gatilhos?', 'trigger'],
+    definicao: 'Quando a consulta de streaming roda um micro-lote: a cada intervalo, uma vez só, ou até acabar o que já chegou.',
+    analogia: 'O despertador do vigia: ele faz a ronda a cada hora, ou uma vez antes de fechar.',
+    exemplo: 'df.writeStream.trigger(availableNow=True).start()',
+  },
+  {
+    id: 'modo-saida', termo: 'Modo de saída', padroes: ['modos? de saída', 'outputMode'],
+    definicao: 'O que sai em cada micro-lote: append (só as linhas novas), complete (a tabela inteira) ou update (só o que mudou).',
+    analogia: 'O boletim da chuva: só as cidades novas, a lista inteira de novo, ou só quem mudou desde o último.',
+    exemplo: 'df.writeStream.outputMode("update")',
+  },
+  {
+    id: 'tempo-evento', termo: 'Tempo do evento', padroes: ['tempo do evento'],
+    definicao: 'A hora em que a coisa aconteceu (a leitura da estação), e não a hora em que o dado chegou ao Spark.',
+    analogia: 'A data da carta é a do dia em que foi escrita, não a do dia em que o carteiro entregou.',
+    exemplo: 'F.window("momento", "10 minutes")  # momento é o tempo do evento',
+  },
+  {
+    id: 'feature', termo: 'Feature', padroes: ['features?'],
+    definicao: 'Uma característica usada pelo modelo para prever: chuva, área, irrigação.',
+    analogia: 'Os dados da ficha do agricultor que o agrônomo olha antes de dar o palpite da safra.',
+    exemplo: 'VectorAssembler(inputCols=["chuva_mm", "area_ha"], outputCol="features")',
+  },
+  {
+    id: 'vetor', termo: 'Vetor', padroes: ['vetor(es)?', 'DenseVector', 'SparseVector'],
+    definicao: 'Uma lista de números numa coluna só. No MLlib, as features de cada linha vão juntas num vetor.',
+    analogia: 'O cartão com todos os números da roça, em vez de folhas soltas.',
+    exemplo: 'from pyspark.ml.linalg import Vectors\nVectors.dense([300.0, 5.0, 1.0])',
+  },
+  {
+    id: 'estimador', termo: 'Estimador', padroes: ['estimador(es)?', 'Estimator'],
+    definicao: 'Algo que aprende com os dados (fit) e devolve um modelo, como o LinearRegression ou o StringIndexer.',
+    analogia: 'O aprendiz que observa a colheita e, depois, sabe dar o palpite sozinho.',
+    exemplo: 'modelo = LinearRegression(labelCol="producao_t").fit(dados)',
+  },
+  {
+    id: 'transformador', termo: 'Transformador', padroes: ['transformador(es)?', 'Transformer'],
+    definicao: 'Algo que muda um DataFrame com transform: o VectorAssembler e todo modelo treinado.',
+    analogia: 'A máquina de beneficiar: entra o grão, sai o grão limpo.',
+    exemplo: 'com_features = montador.transform(treino)',
+  },
+  {
+    id: 'pipeline', termo: 'Pipeline', padroes: ['pipelines?'],
+    definicao: 'As etapas de preparo e o modelo em ordem: o fit treina tudo, e o modelo do pipeline faz tudo de uma vez nos dados novos.',
+    analogia: 'A linha da casa de farinha: descascar, ralar, prensar e torrar, sempre na mesma ordem.',
+    exemplo: 'Pipeline(stages=[indexador, montador, regressao]).fit(treino)',
+  },
+  {
+    id: 'overfitting', termo: 'Overfitting', padroes: ['overfitting', 'sobreajuste'],
+    definicao: 'Quando o modelo decora o treino em vez de aprender: vai muito bem nele e mal em dados que nunca viu.',
+    analogia: 'O aluno que decorou as respostas da prova do ano passado e não sabe resolver a deste ano.',
+    exemplo: 'treino, teste = df.randomSplit([0.8, 0.2], seed=1)',
+  },
+  {
+    id: 'log-transacoes', termo: 'Log de transações', padroes: ['log de transaç(ão|ões)', '_delta_log'],
+    definicao: 'A pasta _delta_log de uma tabela Delta: um arquivo por versão, dizendo o que entrou e o que saiu.',
+    analogia: 'O livro-caixa da cooperativa: cada lançamento numa página nova, nada é apagado.',
+    exemplo: 'os.listdir("estoque/_delta_log")',
+  },
+  {
+    id: 'time-travel', termo: 'Time travel', padroes: ['time travel', 'versionAsOf', 'timestampAsOf'],
+    definicao: 'Ler uma tabela Delta como ela era numa versão (ou numa hora) do passado.',
+    analogia: 'Folhear o livro-caixa até a página de ontem.',
+    exemplo: 'spark.read.format("delta").option("versionAsOf", 0).load("estoque")',
+  },
+  {
+    id: 'upsert', termo: 'Upsert', padroes: ['upsert'],
+    definicao: 'Atualizar o que já existe e inserir o que é novo, numa operação só (o merge do Delta).',
+    analogia: 'Na chegada da mercadoria, o que já tem na prateleira soma, e o produto novo ganha prateleira.',
+    exemplo: 'tabela.alias("e").merge(novos.alias("n"), "e.id = n.id").whenMatchedUpdateAll().whenNotMatchedInsertAll().execute()',
+  },
+  {
+    id: 'vacuum', termo: 'Vacuum', padroes: ['vacuum'],
+    definicao: 'Apagar de verdade os arquivos que nenhuma versão recente de uma tabela Delta usa. Depois dele, o time travel para antes da retenção não funciona.',
+    analogia: 'Jogar fora os rascunhos velhos: o armário esvazia, mas não dá mais para consultar.',
+    exemplo: 'DeltaTable.forPath(spark, "estoque").vacuum(168)',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
@@ -403,7 +500,7 @@ const REGEX = new Map(GLOSSARIO.map((t) => [
 
 // Nível de cada termo: o módulo em que ele aparece primeiro (a ordem do glossário).
 const ORDEM_MODULOS = ['basico', 'dados', 'paralelismo', 'pyspark', 'alem', 'projetos'];
-const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo', pyspark: 'spark' };
+const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo', pyspark: 'spark', alem: 'micro-lote' };
 const NIVEL = new Map();
 {
   let nivel = 0;

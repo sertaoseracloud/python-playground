@@ -1,4 +1,6 @@
 """DataFrame do pyspark do DivergePython: transformações montam o plano; ações o executam."""
+import random
+
 from .. import _motor as m
 from ..errors import AnalysisException, PySparkTypeError, PySparkValueError
 from ..rdd import _Estreito
@@ -15,6 +17,17 @@ class _FazerRow:
 
     def __call__(self, linhas):
         return [T._criar_row(self.nomes, linha) for linha in linhas]
+
+
+class _Sorteio:
+    """As linhas cujo número sorteado (pela semente e pela partição) cai em [de, ate)."""
+
+    def __init__(self, semente, de, ate):
+        self.semente, self.de, self.ate = semente, de, ate
+
+    def __call__(self, indice, linhas):
+        sorteio = random.Random(self.semente * 1000003 + indice)
+        return [linha for linha in linhas if self.de <= sorteio.random() < self.ate]
 
 
 class DataFrame:
@@ -37,6 +50,24 @@ class DataFrame:
 
     def printSchema(self, level=None):
         print(mostrar.arvore_do_schema(self.schema))
+
+    @property
+    def isStreaming(self):
+        from .streaming.fonte import FonteStream
+        return any(isinstance(n, FonteStream) for n in P.nos(self._plano))
+
+    def withWatermark(self, eventTime, delayThreshold):
+        from .functions import duracao_em_micros
+        from .streaming.fonte import MarcaDagua
+        e = self._entrada()
+        atributo = e.atributos[e.achar(eventTime)]
+        if not isinstance(atributo.tipo, T.TimestampType):
+            raise AnalysisException(f'The event time `{eventTime}` has the invalid type "{atributo.tipo.simpleString().upper()}", '
+                                    'but expected "TIMESTAMP".', 'EVENT_TIME_IS_NOT_ON_TIMESTAMP_TYPE', {}, '42K09')
+        atraso = duracao_em_micros(delayThreshold)
+        if not self.isStreaming:
+            return self  # como no Spark: num DataFrame de lote, a marca d'água não faz nada
+        return self._novo(MarcaDagua(self._plano, atributo, atraso))
 
     def __repr__(self):
         return f"DataFrame[{', '.join(f'{n}: {t}' for n, t in self.dtypes)}]"
@@ -193,6 +224,24 @@ class DataFrame:
         from .plano_largo import Coalesce
         return self._novo(Coalesce(self._plano, int(numPartitions)))
 
+    def randomSplit(self, weights, seed=None):
+        """Divide as linhas ao acaso, pelos pesos. A mesma semente dá a mesma divisão (mas não as
+        mesmas linhas do Spark, que usa outro gerador)."""
+        for w in weights:
+            if w < 0:
+                raise PySparkValueError(f'Weights must be positive. Found weight value: {w}', 'VALUE_NOT_POSITIVE',
+                                        {'arg_name': 'weights', 'arg_value': str(w)})
+        total = float(sum(weights))
+        limites = [0.0]
+        for w in weights:
+            limites.append(limites[-1] + w / total)
+        semente = int(seed) if seed is not None else random.randrange(2**31)
+        partes = []
+        for de, ate in zip(limites, limites[1:]):
+            rdd = _Estreito(self._plano.rdd(), None, 'randomSplit', com_indice=_Sorteio(semente, de, ate))
+            partes.append(DataFrame(P.ScanRDD(self.sparkSession, rdd, list(self._plano.saida)), self.sparkSession))
+        return partes
+
     # ---------- views e escrita ----------
     def createOrReplaceTempView(self, name):
         from .catalog import registrar_view
@@ -212,7 +261,11 @@ class DataFrame:
 
     @property
     def writeStream(self):
-        raise NotImplementedError('O Structured Streaming chega no módulo 🌊 Spark além do batch.')
+        if not self.isStreaming:
+            raise AnalysisException("`writeStream` can be called only on streaming Dataset/DataFrame.",
+                                    'WRITE_STREAM_NOT_ALLOWED', {}, '42601')
+        from .streaming import DataStreamWriter
+        return DataStreamWriter(self)
 
     # ---------- cache ----------
     def cache(self):
@@ -438,6 +491,8 @@ class DataFrame:
 
 def _para_json(v):
     """Valor de uma célula para a correção (JSON): datas como no show, Row vira dicionário."""
+    if hasattr(v, '_texto_do_spark'):  # vetor do pyspark.ml: o texto do show
+        return v._texto_do_spark()
     import datetime
     import math
     if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):

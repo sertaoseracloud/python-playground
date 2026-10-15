@@ -10,6 +10,18 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.5.0',
+    data: '2026-10-15',
+    titulo: 'Spark além do batch',
+    resumo: 'O quinto módulo chegou: tabelas Delta com versões, dados que chegam aos poucos (Structured Streaming) e aprendizado de máquina com o MLlib, tudo no navegador.',
+    grupos: [
+      { titulo: '🌊 Módulo novo', itens: ['12 lições e 36 exercícios, com a cooperativa (Delta Lake), as estações do sertão (streaming) e a safra (MLlib).', 'Certificado "Streaming, Machine Learning e Delta Lake com Spark", de 20 horas, com o badge 🌊.', 'Termos novos no glossário: micro-lote, marca d\'água, pipeline, time travel, upsert e outros.'] },
+      { titulo: '🏘️ Vila', itens: ['O mapa de cada módulo ocupa a tela toda, e a estrada faz curvas pelo caminho dos exercícios.', 'A cada exercício resolvido, alguém constrói uma casa, nasce um filho ou um animal tem um filhote. A vila sai do seu progresso, sem nada a mais guardado no navegador.'] },
+      { titulo: '⚡ Aba Execução', itens: ['A parte 🌊 Micro-lotes mostra cada lote: o que entrou, o estado, a marca d\'água e o que saiu, em visual, em tabela e no resumo falado.', 'Cada fit do MLlib aparece como job, com as iterações.'] },
+      { titulo: '♿ Acessibilidade', itens: ['O streaming roda num relógio simulado: o resultado não depende do tempo real, nem da velocidade do computador.'] },
+    ],
+  },
+  {
     versao: '0.4.2',
     data: '2026-10-15',
     titulo: 'A trilha virou um mapa',

@@ -149,7 +149,13 @@ class SparkSession:
 
     @property
     def readStream(self):
-        raise NotImplementedError('O Structured Streaming chega no módulo 🌊 Spark além do batch.')
+        from .streaming import DataStreamReader
+        return DataStreamReader(self)
+
+    @property
+    def streams(self):
+        from .streaming import StreamingQueryManager
+        return StreamingQueryManager(self)
 
     def sql(self, sqlQuery, args=None, **kwargs):
         from .sql import executar

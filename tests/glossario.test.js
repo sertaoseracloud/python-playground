@@ -18,4 +18,10 @@ describe('glossário', () => {
     expect(ids('O Pool divide as tarefas entre os processos', 'paralelismo')).not.toContain('estagio');
     expect(ids('O Pool divide as tarefas entre os processos', 'paralelismo')).toContain('processo');
   });
+
+  it('os termos do streaming, do Delta e do MLlib só aparecem do módulo alem em diante', () => {
+    const texto = "A marca d'água descarta o atrasado; o merge faz o upsert; o pipeline junta o estimador";
+    expect(ids(texto, 'alem')).toEqual(expect.arrayContaining(['marca-dagua', 'upsert', 'pipeline', 'estimador']));
+    expect(ids(texto, 'pyspark')).not.toContain('marca-dagua');
+  });
 });

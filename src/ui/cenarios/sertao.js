@@ -1,6 +1,7 @@
 // 🌵 Sertão (o cenário "normal"): chão de terra e areia, açude, mandacarus e pedras.
 import { sprite, passo } from './pixel.js';
 import { pessoa, pedra } from './comuns.js';
+import { taipa as casaTaipa } from './casas.js';
 
 const mandacaru = sprite({ v: '#3f7d3a', e: '#2c5a28', t: '#a8754a' }, `
 .......vv.......
@@ -63,9 +64,10 @@ export const sertao = {
   estrada: { cores: ['#a8754a', '#8e6038', '#bf8c5e'], padrao: 'terra' },
   bloqueio: { cor: '#3d7fb8', borda: '#2a5a85', brilho: '#9fd0f0' },
   objetos: [mandacaru, pedra('#c9bfae', '#a39684', '#7a6e5e')],
+  casa: casaTaipa,
   personagens: [
-    { id: 'vaqueiro', movimento: 'andar', quadros: pessoa({ chapeu: '#6b4226', roupa: '#b5562d', calca: '#5a3a22' }) },
-    { id: 'cabrita', movimento: 'andar', quadros: [cabrita, passo(cabrita, 'andar')] },
-    { id: 'calango', movimento: 'andar', quadros: [calango, passo(calango, 'andar')] },
+    { id: 'vaqueiro', movimento: 'andar', tipo: 'pessoa', quadros: pessoa({ chapeu: '#6b4226', roupa: '#b5562d', calca: '#5a3a22' }) },
+    { id: 'cabrita', movimento: 'andar', tipo: 'animal', quadros: [cabrita, passo(cabrita, 'andar')] },
+    { id: 'calango', movimento: 'andar', tipo: 'animal', quadros: [calango, passo(calango, 'andar')] },
   ],
 };

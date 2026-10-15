@@ -1,6 +1,7 @@
 // ❄️ Gelo: neve, gelo partido, cristais iguais lado a lado (como processos em paralelo).
 import { sprite, passo } from './pixel.js';
 import { pedra } from './comuns.js';
+import { iglu as casaIglu } from './casas.js';
 
 const cristal = sprite({ w: '#ffffff', c: '#a9dcf5', a: '#5d9cc9' }, `
 .......w........
@@ -81,9 +82,10 @@ export const gelo = {
   estrada: { cores: ['#bcd8ea', '#a9cbe0', '#d3e6f2'], padrao: 'liso' },
   bloqueio: { cor: '#8fbfe0', borda: '#5d8fb0', brilho: '#e8f6ff' },
   objetos: [cristal, pedra('#ffffff', '#cfe3ef', '#9cc3dc')],
+  casa: casaIglu,
   personagens: [
-    { id: 'pinguim', movimento: 'andar', quadros: [pinguim, passo(pinguim, 'andar')] },
-    { id: 'raposa-do-artico', movimento: 'andar', quadros: [raposa, passo(raposa, 'andar')] },
-    { id: 'coruja-das-neves', movimento: 'voar', quadros: [coruja, passo(coruja, 'voar')] },
+    { id: 'pinguim', movimento: 'andar', tipo: 'animal', quadros: [pinguim, passo(pinguim, 'andar')] },
+    { id: 'raposa-do-artico', movimento: 'andar', tipo: 'animal', quadros: [raposa, passo(raposa, 'andar')] },
+    { id: 'coruja-das-neves', movimento: 'voar', tipo: 'animal', quadros: [coruja, passo(coruja, 'voar')] },
   ],
 };

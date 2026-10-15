@@ -1,6 +1,7 @@
 // 🌸 Jardim florido: grama, caminho de pedrinhas, canteiros e arbustos (as cores e o estilo do CSS).
 import { sprite, passo } from './pixel.js';
 import { pessoa } from './comuns.js';
+import { flores as casaFlores } from './casas.js';
 
 const canteiro = sprite({ r: '#e63973', y: '#f5c542', a: '#8e5bd1', v: '#4f8a3a', t: '#7a5232' }, `
 ................
@@ -81,9 +82,10 @@ export const jardim = {
   estrada: { cores: ['#d8cfc0', '#c4baa9', '#e6dfd2'], padrao: 'pedras' },
   bloqueio: null,
   objetos: [canteiro, arbusto],
+  casa: casaFlores,
   personagens: [
-    { id: 'jardineira', movimento: 'andar', quadros: pessoa({ chapeu: '#e9c46a', roupa: '#8e5bd1', calca: '#5a3e2b' }) },
-    { id: 'borboleta', movimento: 'voar', quadros: [borboleta, passo(borboleta, 'voar')] },
-    { id: 'beija-flor', movimento: 'voar', quadros: [beijaFlor, passo(beijaFlor, 'voar')] },
+    { id: 'jardineira', movimento: 'andar', tipo: 'pessoa', quadros: pessoa({ chapeu: '#e9c46a', roupa: '#8e5bd1', calca: '#5a3e2b' }) },
+    { id: 'borboleta', movimento: 'voar', tipo: 'animal', quadros: [borboleta, passo(borboleta, 'voar')] },
+    { id: 'beija-flor', movimento: 'voar', tipo: 'animal', quadros: [beijaFlor, passo(beijaFlor, 'voar')] },
   ],
 };

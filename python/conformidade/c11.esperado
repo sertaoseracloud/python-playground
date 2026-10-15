@@ -1,0 +1,11 @@
+4 3
+[('arroz', 10, 24.9), ('cafe', 7, 39.8)]
+[('arroz', 10, 24.9), ('cafe', 16, 21.0), ('sal', 2, 2.0)]
+AnalysisException True
+['produto', 'qtd', 'preco'] 4
+['produto', 'qtd', 'preco', 'cidade'] [('arroz', None), ('cafe', None), ('sal', 'Crato'), ('sal', None)]
+[(0, 'WRITE'), (1, 'WRITE'), (2, 'UPDATE'), (3, 'DELETE'), (4, 'MERGE'), (5, 'WRITE')]
+['ErrorIfExists', 'Append', 'Append']
+4
+vacuum recusou True
+OPTIMIZE 7

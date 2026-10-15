@@ -30,8 +30,13 @@ fica no GitHub Pages.
   agregações e `pivot`, joins e broadcast, funções de janela, leitura e escrita (CSV, JSON, schema
   DDL), Spark SQL, partições, shuffle, skew, cache e `explain()`. As partições rodam em paralelo nos
   workers do navegador, e a aba **⚡ Execução** mostra os jobs, os estágios e as tarefas.
+- **🌊 Spark além do batch** (0.5.0): **12 lições e 36 exercícios**: Delta Lake (tabela com versões,
+  histórico, time travel, merge, update, delete, schema, vacuum e optimize), Structured Streaming
+  (micro-lotes, fontes e saídas, modos, estado, janelas e marca d'água, num relógio simulado) e MLlib
+  (features, pipelines, regressão linear e logística, árvore de decisão, KMeans e avaliação).
+  Certificado: Streaming, Machine Learning e Delta Lake com Spark (20 h).
 - **Em breve**, nas próximas versões (aparecem na landing e no fim da trilha como "em breve"):
-  🌊 Spark além do batch (Streaming, MLlib e Delta) e 🏗️ Projetos.
+  🏗️ Projetos.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal**, um terminal de verdade: o `print` aparece
@@ -141,8 +146,10 @@ de erro seguem o Spark.
   quem tem neste navegador o **mesmo nome** do certificado (acentos e maiúsculas contam) restaura o
   módulo e os anteriores da cadeia, nas datas do certificado. O certificado emitido de novo é o mesmo;
   nada do que já está no navegador é apagado (`src/restaurar.js`).
-- **🗺️ Cenários da trilha**: cada módulo tem um mapa em tiles de pixel art (como nos RPGs clássicos) que cobre
-  o módulo inteiro e rola junto com a página, com personagens andando de tile em tile, sem pisar na água nem no
+- **🗺️ Cenários da trilha**: cada módulo tem um mapa em tiles de pixel art (como nos RPGs clássicos) que ocupa a
+  tela toda e rola junto com a página, com uma estrada que faz curvas pelos exercícios e uma vila que cresce a
+  cada exercício resolvido (casas, filhos e filhotes, calculados do progresso, sem nada a mais no navegador), com
+  personagens andando de tile em tile, sem pisar na água nem no
   caminho (`src/ui/cenarios/`). É só decoração: o leitor de tela não lê, e os personagens param com "reduzir
   movimento" e no alto contraste.
 

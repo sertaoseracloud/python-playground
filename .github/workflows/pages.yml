@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python -m pip install pyspark==4.0.1
+      - run: python -m pip install pyspark==4.0.1 delta-spark==4.0.0 numpy==2.2.6
       - run: python python/conformidade/rodar.py --real
 
   build:

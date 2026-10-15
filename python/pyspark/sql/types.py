@@ -161,6 +161,13 @@ class StructType(DataType):
 
 # ---------- Row ----------
 
+class UserDefinedType(DataType):
+    """Tipo de uma classe do Python, como o VectorUDT do pyspark.ml (a classe aponta para ele em __UDT__)."""
+
+    def aceita(self, valor):
+        return True
+
+
 def _criar_row(campos, valores):
     row = Row(*valores)
     row.__fields__ = list(campos)
@@ -268,6 +275,9 @@ def inferir_tipo(valor):
         for k, v in valor.items():
             chave, val = juntar_tipos(chave, inferir_tipo(k)), juntar_tipos(val, inferir_tipo(v))
         return MapType(chave, val, True)
+    udt = getattr(type(valor), '__UDT__', None)
+    if udt is not None:
+        return udt
     raise PySparkTypeError(f'Column, parameter or value of type {type(valor).__name__} is not supported.',
                            'CANNOT_INFER_TYPE_FOR_FIELD',
                            {'data_type': type(valor).__name__})
@@ -414,6 +424,10 @@ def conferir(valor, tipo, campo, inferido=False):
         else:
             raise erro()
         return _criar_row(tipo.names, [conferir(v, f.dataType, f.name) for v, f in zip(valores, tipo.fields)])
+    if isinstance(tipo, UserDefinedType):
+        if not tipo.aceita(valor):
+            raise erro()
+        return valor
     return valor
 
 
@@ -495,5 +509,5 @@ def tipo_do_texto(texto):
 __all__ = [
     'DataType', 'StringType', 'IntegerType', 'LongType', 'ShortType', 'ByteType', 'DoubleType', 'FloatType',
     'BooleanType', 'DateType', 'TimestampType', 'NullType', 'BinaryType', 'ArrayType', 'MapType',
-    'StructField', 'StructType', 'Row',
+    'StructField', 'StructType', 'Row', 'UserDefinedType',
 ]

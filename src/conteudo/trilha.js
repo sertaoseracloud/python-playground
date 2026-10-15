@@ -4,12 +4,12 @@ import { moduloBasico } from './basico.js';
 import { moduloDados } from './dados.js';
 import { moduloParalelismo } from './paralelismo.js';
 import { moduloPyspark } from './pyspark.js';
+import { moduloAlem } from './alem.js';
 
-export const modulos = [moduloBasico, moduloDados, moduloParalelismo, moduloPyspark];
+export const modulos = [moduloBasico, moduloDados, moduloParalelismo, moduloPyspark, moduloAlem];
 
 /** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
 export const PROXIMOS_MODULOS = [
-  { id: 'alem', icone: '🌊', titulo: 'Spark além do batch' },
   { id: 'projetos', icone: '🏗️', titulo: 'Projetos' },
 ];
 

@@ -21,10 +21,14 @@ export async function corrigir(problema, arquivos, executar, { incluirOcultos = 
     const chamadas = regrasDeFuncao.map((r) => ({ funcao: r.funcao, args: r.args ?? [] }));
     // Os dados do exercício e os do caso valem mais que um arquivo de mesmo nome do aluno.
     const dadosDoCaso = teste.dados ?? {};
-    const r = await executar({ ...arquivos, ...(problema.dados ?? {}), ...dadosDoCaso }, { entrada: teste.entrada ?? [], chamadas });
+    // As métricas das regras `modelo` são calculadas pelo executor, depois do programa, nos dados de teste do caso.
+    const avaliacoes = teste.regras.filter((r) => 'modelo' in r && r.metrica)
+      .map((r) => ({ variavel: r.modelo, nome: r.metrica.nome, dados: r.metrica.dados, ...(r.metrica.preparar ? { preparar: r.metrica.preparar } : {}) }));
+    const r = await executar({ ...arquivos, ...(problema.dados ?? {}), ...dadosDoCaso }, { entrada: teste.entrada ?? [], chamadas, avaliacoes });
     const resultados = teste.regras.map((regra) => detalharRegra(regra, {
       saida: r.saida, erro: r.erro, variaveis: r.variaveis, codigo, arquivos: r.arquivos_gerados ?? {}, paralelismo: r.paralelismo,
       tabelas: r.tabelas ?? {},
+      streaming: r.streaming ?? null, deltas: r.deltas ?? {}, modelos: r.modelos ?? {},
       retorno: r.retornos?.[regrasDeFuncao.indexOf(regra)],
     }));
     const erroExecucao = primeiraLinhaDoErro(r.erro) || undefined;

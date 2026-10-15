@@ -15,7 +15,16 @@ afterAll(() => pool.fechar());
 beforeAll(async () => { const { sessao } = await iniciarPython({ pool }); executar = (a, o) => sessao.executar(a, o); }, 120_000);
 
 describe('estrutura', () => {
-  it.each([['basico', 40, 10], ['dados', 40, 10], ['paralelismo', 35, 10], ['pyspark', 45, 14]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {
+  it('o módulo alem tem, em cada área, 3 fáceis, 6 médios e 3 difíceis, e vem depois do PySpark', () => {
+    const m = modulos.find((x) => x.id === 'alem');
+    for (const prefixo of ['dl-', 'st-', 'ml-']) {
+      const area = m.itens.filter((i) => i.tipo === 'problema' && i.id.startsWith(prefixo));
+      expect(['facil', 'medio', 'dificil'].map((d) => area.filter((i) => i.dificuldade === d).length)).toEqual([3, 6, 3]);
+    }
+    expect(modulos.map((x) => x.id).slice(-2)).toEqual(['pyspark', 'alem']);
+  });
+
+  it.each([['basico', 40, 10], ['dados', 40, 10], ['paralelismo', 35, 10], ['pyspark', 45, 14], ['alem', 36, 12]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {
     const m = modulos.find((x) => x.id === id);
     expect(m.itens.filter((i) => i.tipo === 'problema')).toHaveLength(exercicios);
     expect(m.itens.filter((i) => i.tipo === 'licao')).toHaveLength(licoes);

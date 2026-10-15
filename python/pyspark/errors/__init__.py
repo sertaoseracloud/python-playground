@@ -44,6 +44,10 @@ class AnalysisException(PySparkException):
     """Erro de análise: o plano pede algo que não existe (coluna, tabela, caminho...)."""
 
 
+class IllegalArgumentException(PySparkException, ValueError):
+    """Argumento inválido (o vacuum com retenção curta, por exemplo)."""
+
+
 class ParseException(AnalysisException):
     """SQL ou expressão que não dá para ler (a mensagem do Spark começa com uma quebra de linha)."""
 
@@ -83,6 +87,10 @@ class SparkRuntimeException(PySparkException, RuntimeError):
     pass
 
 
+class StreamingQueryException(PySparkException):
+    """A consulta de streaming parou porque um micro-lote falhou (a causa vem na mensagem)."""
+
+
 def divisao_por_zero():
     return ArithmeticException(
         'Division by zero. Use `try_divide` to tolerate divisor being 0 and return NULL instead. '
@@ -109,5 +117,5 @@ def caminho_nao_existe(caminho):
 __all__ = [
     'PySparkException', 'AnalysisException', 'ParseException', 'PySparkValueError', 'PySparkTypeError',
     'PySparkRuntimeError', 'PySparkNotImplementedError', 'ArithmeticException', 'NumberFormatException',
-    'DateTimeException', 'SparkRuntimeException',
+    'DateTimeException', 'SparkRuntimeException', 'StreamingQueryException',
 ]

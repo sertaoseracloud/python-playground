@@ -42,6 +42,56 @@ describe('PySpark no navegador', () => {
     expect(r.tabelas.df.linhas).toEqual([['Ana', 3]]);
   }, 120_000);
 
+  it('o Delta roda no Pyodide e o resultado traz as tabelas', async () => {
+    const r = await rodar(`${INICIO}from delta.tables import DeltaTable\n`
+      + 'spark.createDataFrame([("a", 1)], ["p", "q"]).write.format("delta").save("estoque")\n'
+      + 'DeltaTable.forPath(spark, "estoque").update("q = 1", {"q": "q + 1"})\n'
+      + 'v0 = spark.read.format("delta").option("versionAsOf", 0).load("estoque").first().q\n');
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.v0).toBe(1);
+    expect(r.deltas.estoque).toEqual({ versao: 1, operacoes: ['WRITE', 'UPDATE'], colunas: ['p', 'q'], linhasPorVersao: [1, 1] });
+  }, 120_000);
+
+  it('o streaming roda no Pyodide e o resultado traz os micro-lotes', async () => {
+    const r = await rodar(`${INICIO}q = (spark.readStream.schema("estacao STRING, temperatura DOUBLE")\n`
+      + '  .option("maxFilesPerTrigger", 1).csv("leituras", header=True).groupBy("estacao").count()\n'
+      + '  .writeStream.format("memory").queryName("contagem").outputMode("complete").start())\n'
+      + 'q.processAllAvailable()\n'
+      + 'total = sorted((r.estacao, r["count"]) for r in spark.table("contagem").collect())\n',
+    {
+      'leituras/lote-01.csv': 'estacao,temperatura\nCrato,31.5\nSobral,29.0\n',
+      'leituras/lote-02.csv': 'estacao,temperatura\nCrato,33.0\n',
+    });
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.total).toEqual([['Crato', 2], ['Sobral', 1]]);
+    expect(r.streaming.consultas[0].lotes.map((l) => [l.entrada, l.estado, l.saida])).toEqual([[2, 2, 2], [1, 2, 2]]);
+    expect(r.spark.jobs.map((j) => j.acao)).toContain('lote 0 de contagem');
+  }, 120_000);
+
+  it('o MLlib treina no Pyodide, com o fit como job da aba Execução', async () => {
+    const r = await rodar(`${INICIO}from pyspark.ml.feature import VectorAssembler\nfrom pyspark.ml.regression import LinearRegression\n`
+      + 'df = spark.createDataFrame([(float(x), 2.0 + 3.0 * x) for x in range(8)], ["x", "label"])\n'
+      + 'treino = VectorAssembler(inputCols=["x"], outputCol="features").transform(df)\n'
+      + 'm = LinearRegression().fit(treino)\n'
+      + 'coef = [round(c, 6) for c in m.coefficients]\nb = round(m.intercept, 6)\n');
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.coef).toEqual([3]);
+    expect(r.variaveis.b).toBe(2);
+    expect(r.spark.jobs.map((j) => j.acao)).toContain('fit LinearRegression');
+    expect(r.tabelas.treino.colunas.at(-1)).toEqual({ nome: 'features', tipo: 'vector' });
+  }, 120_000);
+
+  it('a correção pede a métrica, e o resultado traz o bloco modelos', async () => {
+    const r = await (await sessao).executar({ 'main.py': `${INICIO}from pyspark.ml.feature import VectorAssembler\nfrom pyspark.ml.regression import LinearRegression\n`
+      + 'montador = VectorAssembler(inputCols=["x"], outputCol="features")\n'
+      + 'm = LinearRegression().fit(montador.transform(spark.read.csv("t.csv", header=True, inferSchema=True)))\n',
+    't.csv': 'x,label\n0,2.0\n1,5.0\n2,8.0\n3,11.0\n' },
+    { avaliacoes: [{ variavel: 'm', nome: 'rmse', dados: 't.csv', preparar: 'montador' }] });
+    expect(r.erro).toBeNull();
+    expect(r.modelos.m.tipo).toBe('LinearRegressionModel');
+    expect(r.modelos.m.metricas['rmse@t.csv']).toBeLessThan(1e-9);
+  }, 120_000);
+
   it('um DataFrame que só falha ao calcular vira erro na tabela, sem derrubar a execução', async () => {
     const r = await rodar(`${INICIO}df = spark.range(3).select(F.udf(lambda x: 1 // 0, "int")("id"))\n`);
     expect(r.erro).toBeNull();

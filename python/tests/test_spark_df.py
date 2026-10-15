@@ -164,3 +164,11 @@ def test_rdd_vira_dataframe_e_volta(spark):
     assert df.dtypes == [('letra', 'string'), ('n', 'bigint')]
     assert df.rdd.map(lambda r: r.n * 10).collect() == [10, 20]
     assert spark.createDataFrame(sc.parallelize([Row(x=1)])).first().x == 1
+
+def test_campo_de_struct_com_ponto(spark):
+    from pyspark.sql import functions as F
+    df = spark.createDataFrame([(1, 'a')], ['x', 'y']).select(F.struct('x', 'y').alias('p'))
+    assert df.select('p.x', F.col('p.y')).columns == ['x', 'y']
+    assert [tuple(r) for r in df.select('p.x', F.col('p.y')).collect()] == [(1, 'a')]
+    t = spark.createDataFrame([(1, 'a')], ['x', 'y']).alias('p')
+    assert [tuple(r) for r in t.select('p.x').collect()] == [(1,)]  # com a tabela p, p.x é a coluna x dela

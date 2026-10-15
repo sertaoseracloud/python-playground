@@ -892,6 +892,14 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
 .barra.cor-1 { background: var(--verde); }
 .barra.cor-2 { background: var(--laranja); }
 .barra.cor-3 { background: var(--ciano); }
+.micro-lotes { margin-bottom: 18px; }
+.linha-dos-lotes { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 8px; }
+.lote-bloco {
+  display: grid; gap: 2px; min-width: 6.5em; padding: 4px 8px; border: 1px solid var(--linha); border-radius: 4px;
+  background: var(--fundo-mais-escuro); font-family: var(--fonte-codigo); font-size: 0.85rem;
+}
+.lote-bloco .lote-id { font-weight: 700; }
+.tabela-lotes td.arquivos { text-align: left; }
 .tabela-execucao { border-collapse: collapse; font-family: var(--fonte-codigo); font-size: 0.85rem; }
 .tabela-execucao caption { text-align: left; font-weight: 700; padding: 6px 0; }
 .tabela-execucao th, .tabela-execucao td { border: 1px solid var(--linha); padding: 3px 8px; text-align: left; }
