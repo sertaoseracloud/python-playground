@@ -9,6 +9,8 @@ export const BADGES = {
   paralelismo: { cor: '#ffb86c', simbolo: '|||', faixa: 'PARALELISMO' },
   // A estrela do logo do Spark: um asterisco simples, porque o gerador só tem a fonte do site.
   pyspark: { cor: '#ff79c6', simbolo: '*', faixa: 'PYSPARK' },
+  // A onda do ícone 🌊: um til, porque o gerador de PNG só tem a fonte do site.
+  alem: { cor: '#50fa7b', simbolo: '~', faixa: 'ALÉM DO BATCH' },
   final: { cor: '#f1c40f', simbolo: '★', faixa: 'TRILHA COMPLETA' },
 };
 
@@ -144,5 +146,6 @@ ${badge('basico', 805, 40, 195)}
 ${badge('dados', 985, 190, 195)}
 ${badge('paralelismo', 805, 340, 195)}
 ${badge('pyspark', 675, 190, 195)}
+${badge('alem', 1000, 400, 195)}
 </svg>`;
 }

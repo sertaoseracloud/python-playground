@@ -61,6 +61,13 @@ export const CERTIFICADOS = {
     hashtags: ['PySpark', 'Spark', 'Dados'],
     conteudos: ['RDD, partições e shuffle', 'DataFrame, funções, nulos e agregações', 'Joins, broadcast e funções de janela', 'Spark SQL, leitura e escrita, cache e explain'],
   },
+  alem: {
+    titulo: 'Streaming, Machine Learning e Delta Lake com Spark',
+    cargaHoraria: 20,
+    resumo: 'concluiu o módulo Spark além do batch, resolvendo os 36 problemas práticos',
+    hashtags: ['Spark', 'Streaming', 'MachineLearning', 'DeltaLake'],
+    conteudos: ['Delta Lake: versões, merge e time travel', "Structured Streaming: micro-lotes, janelas e marca d'água", 'MLlib: pipelines, regressão, classificação e agrupamento', 'Avaliação de modelos'],
+  },
 };
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
