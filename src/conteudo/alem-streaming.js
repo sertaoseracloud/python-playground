@@ -83,8 +83,9 @@ export const licoesStreaming = {
         (<code>"5 minutes"</code>), as janelas <b>deslizam</b> e se sobrepõem.</p>
       <p>Leitura atrasada acontece: o sinal da estação caiu e voltou depois. A <b>marca d'água</b>
         (<code>withWatermark("momento", "5 minutes")</code>) diz quanto atraso esperar: é o maior tempo já visto menos 5
-        minutos. O que chega antes dela é descartado, e a janela que ela já passou fecha (no <code>append</code>, só sai
-        quando fecha).</p>`,
+        minutos. A leitura cuja janela já fechou é descartada, e a janela que a marca d'água passa fecha (no
+        <code>append</code>, só sai quando fecha). Como no Spark, o descarte usa a marca d'água do lote anterior, e um
+        lote extra sem dados roda quando a marca anda.</p>`,
     arquivos: programa('janelas', bloco`
       ${LER()}
       por_janela = (leituras.withWatermark("momento", "5 minutes")

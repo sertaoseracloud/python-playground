@@ -89,8 +89,8 @@ Critério de sucesso:
   `withWatermark(coluna, atraso)`; `dropDuplicates` com marca d'água.
 
 **Execução (relógio simulado):**
-- **Quais arquivos entram:** cada micro-lote pega os arquivos da pasta ainda não lidos, em ordem
-  de nome, até `maxFilesPerTrigger`. Os arquivos que o próprio programa grava na pasta entre um
+- **Quais arquivos entram:** cada micro-lote pega os arquivos da pasta ainda não lidos, na ordem
+  de modificação e, no empate, de nome (como o PySpark 4, conferido no CI), até `maxFilesPerTrigger`. Os arquivos que o próprio programa grava na pasta entre um
   lote e outro também entram.
 - **Fonte `rate`:** gera `rowsPerSecond` linhas por segundo do relógio virtual.
 - **Gatilho:**
@@ -108,6 +108,10 @@ Critério de sucesso:
   lote.
   - Janelas abaixo dela são descartadas do estado.
   - No modo `append`, uma janela só sai quando a marca d'água passa do seu fim.
+  - Como no PySpark 4 (conferido no CI), cada lote usa duas marcas: a linha atrasada é descartada
+    quando o fim da sua janela não passa da marca d'água usada no lote anterior; a marca atual fecha
+    as janelas e limpa o estado. Quando a marca anda, roda um lote extra sem dados, que emite e
+    limpa.
   - Uma linha atrasada além da marca d'água é ignorada e contada como descartada.
 - **Saídas:**
   - `console` imprime como o Spark: `-------------------------------------------`,
@@ -200,7 +204,9 @@ As operações do Delta e os `fit` do MLlib entram como jobs comuns no bloco `sp
 **Categorias e dados que a regra usa:**
 - As categorias são Streaming, Modelo e Delta.
 - O `metrica.dados` aponta para o arquivo de teste do caso. O executor avalia o modelo do aluno
-  nesses dados, depois do programa, e devolve o valor em `modelos[variavel].metricas`.
+  nesses dados, depois do programa, e devolve o valor em `modelos[variavel].metricas`. Se o modelo
+  não for um `PipelineModel`, `metrica.preparar` aponta o transformador do aluno que monta as
+  features (por exemplo, o `VectorAssembler`).
 - O executor Python devolve também `modelos` (tipo, coeficientes, intercepto, k, profundidade e
   métricas pedidas) e `deltas` (versão, operações e schema de cada caminho lido ou gravado). As
   regras novas leem isso.
@@ -297,9 +303,10 @@ acessibilidade e sobre, nunca um teste desligado sem explicação.
   12. pipeline treinado em dados novos (D).
 
 **Os dados:**
-- São gerados por um script versionado (`scripts/gerar-dados-alem.mjs`) com semente fixa, com uma
-  relação clara para o modelo aprender. Por exemplo, a produção cresce com a chuva e a área, e a
-  irrigação reduz o risco.
+- São escritos à mão em `src/conteudo/alem-dados.js`, pequenos, com uma relação exata para o
+  modelo aprender: a produção é uma fórmula sem ruído (os coeficientes esperados são os da fórmula),
+  e a irrigação e a chuva reduzem o risco. Assim cada valor esperado pode ser conferido de cabeça.
+  (Decisão do plano 4, no lugar do script `gerar-dados-alem.mjs`.)
 - Os grupos do KMeans são bem separados.
 
 ### 5.4 Certificado, badge e glossário
@@ -333,7 +340,7 @@ acessibilidade e sobre, nunca um teste desligado sem explicação.
 
 ## 7. Documentação e versão
 
-- A declaração de acessibilidade e a página sobre ganham uma nota: o streaming usa um relógio
+- A declaração de acessibilidade e o README (o site não tem página sobre separada) ganham uma nota: o streaming usa um relógio
   simulado, e o MLlib é uma implementação para aprender, com números próximos aos do Spark.
 - README, novidades e a capa com o badge novo.
 - Sai na versão **0.5.0**, junto com os cenários da trilha (spec própria). Publica só com o "sim".
