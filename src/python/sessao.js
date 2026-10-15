@@ -51,11 +51,11 @@ export async function criarSessao(pyodide, { pool, fontes = FONTES } = {}) {
      * `semJSPI`, o resultado volta com `precisa_entrada` em vez de esperar.
      */
     executar(arquivos, {
-      principal = 'main.py', entrada = [], chamadas = [], interativo = false, argv = [], ...ganchos
+      principal = 'main.py', entrada = [], chamadas = [], interativo = false, argv = [], avaliacoes = [], ...ganchos
     } = {}) {
       return chamar('import diverge_runtime.execucao as _e\n_e.executar_json',
         // null (Ctrl+D numa execução repetida) vira undefined, que chega no Python como None.
-        { arquivos, principal, entrada: entrada.map((r) => r ?? undefined), chamadas, interativo, argv }, ganchos);
+        { arquivos, principal, entrada: entrada.map((r) => r ?? undefined), chamadas, interativo, argv, avaliacoes }, ganchos);
     },
 
     /** O >>>: `{ acao: 'iniciar', doPrograma }` ou `{ acao: 'linha', texto }` → `{ saida, erro, continua }`. */

@@ -10,7 +10,7 @@ import traceback
 
 from diverge_paralelo.instalar import instalar as instalar_paralelo
 
-from . import deltas, estagios, pool, streams
+from . import deltas, estagios, modelos, pool, streams
 from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
@@ -181,7 +181,7 @@ def _tabelas(escopo):
     return tabelas
 
 
-def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=False, argv=None):
+def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=False, argv=None, avaliacoes=()):
     _gravar(arquivos)
     _esquecer_modulos_do_aluno(arquivos)
     pool.zerar(PASTA)
@@ -196,6 +196,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
     tabelas = {}
     resumo_deltas = {}
     resumo_streaming = None
+    resumo_modelos = {}
     terminal = _terminal_js() if interativo else None
     saida.ao_escrever = terminal.escrever if terminal is not None else None
     # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
@@ -223,6 +224,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         tabelas = {} if precisa else _tabelas(escopo)
         resumo_deltas = deltas.resumo()  # ainda na pasta do aluno: os caminhos saem relativos a ela
         resumo_streaming = streams.resumo()
+        resumo_modelos = {} if precisa else modelos.resumo(escopo, avaliacoes)
     finally:
         try:
             desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
@@ -248,6 +250,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         'tabelas': tabelas,
         'deltas': resumo_deltas,
         'streaming': resumo_streaming,
+        'modelos': resumo_modelos,
         'precisa_entrada': precisa,
     }
 
@@ -262,5 +265,6 @@ def executar_json(args):
         args.get('chamadas', []),
         bool(args.get('interativo', False)),
         list(args.get('argv', None) or []),
+        list(args.get('avaliacoes', None) or []),
     )
     return _json_dumps(resultado, ensure_ascii=False)

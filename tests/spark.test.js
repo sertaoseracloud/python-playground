@@ -49,7 +49,7 @@ describe('PySpark no navegador', () => {
       + 'v0 = spark.read.format("delta").option("versionAsOf", 0).load("estoque").first().q\n');
     expect(r.erro).toBeNull();
     expect(r.variaveis.v0).toBe(1);
-    expect(r.deltas.estoque).toEqual({ versao: 1, operacoes: ['WRITE', 'UPDATE'], colunas: ['p', 'q'] });
+    expect(r.deltas.estoque).toEqual({ versao: 1, operacoes: ['WRITE', 'UPDATE'], colunas: ['p', 'q'], linhasPorVersao: [1, 1] });
   }, 120_000);
 
   it('o streaming roda no Pyodide e o resultado traz os micro-lotes', async () => {
@@ -79,6 +79,17 @@ describe('PySpark no navegador', () => {
     expect(r.variaveis.b).toBe(2);
     expect(r.spark.jobs.map((j) => j.acao)).toContain('fit LinearRegression');
     expect(r.tabelas.treino.colunas.at(-1)).toEqual({ nome: 'features', tipo: 'vector' });
+  }, 120_000);
+
+  it('a correção pede a métrica, e o resultado traz o bloco modelos', async () => {
+    const r = await (await sessao).executar({ 'main.py': `${INICIO}from pyspark.ml.feature import VectorAssembler\nfrom pyspark.ml.regression import LinearRegression\n`
+      + 'montador = VectorAssembler(inputCols=["x"], outputCol="features")\n'
+      + 'm = LinearRegression().fit(montador.transform(spark.read.csv("t.csv", header=True, inferSchema=True)))\n',
+    't.csv': 'x,label\n0,2.0\n1,5.0\n2,8.0\n3,11.0\n' },
+    { avaliacoes: [{ variavel: 'm', nome: 'rmse', dados: 't.csv', preparar: 'montador' }] });
+    expect(r.erro).toBeNull();
+    expect(r.modelos.m.tipo).toBe('LinearRegressionModel');
+    expect(r.modelos.m.metricas['rmse@t.csv']).toBeLessThan(1e-9);
   }, 120_000);
 
   it('um DataFrame que só falha ao calcular vira erro na tabela, sem derrubar a execução', async () => {
