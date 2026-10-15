@@ -193,7 +193,7 @@ class DeltaMergeBuilder:
             if d['__a'] is not None and d['__f'] is not None:
                 if d['__a'] in casadas and self._casadas:
                     raise SparkRuntimeException(
-                        '[DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE] Cannot perform Merge as multiple source rows matched and '
+                        'Cannot perform Merge as multiple source rows matched and '
                         'attempted to modify the same target row in the Delta table in possibly conflicting ways.',
                         'DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE', {}, '21506')
                 casadas[d['__a']] = d

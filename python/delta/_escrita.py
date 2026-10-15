@@ -44,7 +44,7 @@ def _diferenca(atual, novo):
 
 def _incompativel(snap):
     return AnalysisException(
-        f'[_LEGACY_ERROR_TEMP_DELTA_0007] A schema mismatch detected when writing to the Delta table (Table ID: {snap.id}).\n'
+        f'A schema mismatch detected when writing to the Delta table (Table ID: {snap.id}).\n'
         'To enable schema migration using DataFrameWriter or DataStreamWriter, please set:\n'
         "'.option(\"mergeSchema\", \"true\")'.", '_LEGACY_ERROR_TEMP_DELTA_0007', {}, None)
 
@@ -54,8 +54,6 @@ def schema_final(snap, novo, opcoes, modo):
         return novo
     novas, conflito = _diferenca(snap.schema, novo)
     if conflito or (novas and not _sim(opcoes, 'mergeSchema')):
-        raise _incompativel(snap)
-    if modo == 'overwrite' and not _sim(opcoes, 'mergeSchema') and len(novo.fields) != len(snap.schema.fields):
         raise _incompativel(snap)
     return T.StructType(list(snap.schema.fields) + novas)
 
@@ -83,7 +81,7 @@ def gravar_delta(df, destino, modo, opcoes):
     if existe and modo == 'ignore':
         return None
     if existe and modo == 'errorifexists':
-        raise AnalysisException(f'[DELTA_PATH_EXISTS] Cannot write to already existent path file:{destino} without setting '
+        raise AnalysisException(f'Cannot write to already existent path file:{destino} without setting '
                                 "OVERWRITE = 'true'.", 'DELTA_PATH_EXISTS', {'path': f'file:{destino}'}, '42K04')
     os.makedirs(destino, exist_ok=True)
     acoes = []

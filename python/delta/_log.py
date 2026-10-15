@@ -45,7 +45,7 @@ class Snapshot:
 
 
 def nao_e_delta(caminho):
-    return AnalysisException(f'[DELTA_MISSING_DELTA_TABLE] `{caminho}` is not a Delta table.', 'DELTA_MISSING_DELTA_TABLE',
+    return AnalysisException(f'`{caminho}` is not a Delta table.', 'DELTA_MISSING_DELTA_TABLE',
                              {'tableName': caminho}, '42P01')
 
 
@@ -56,7 +56,7 @@ def snapshot(caminho, versao=None):
     if versao is None:
         versao = disponiveis[-1]
     if versao not in disponiveis:
-        raise AnalysisException(f'[DELTA_VERSION_NOT_FOUND] Cannot time travel Delta table to version {versao}. '
+        raise AnalysisException(f'Cannot time travel Delta table to version {versao}. '
                                 f'Available versions: [{disponiveis[0]}, {disponiveis[-1]}].', 'DELTA_VERSION_NOT_FOUND',
                                 {'userVersion': str(versao)}, '22003')
     arquivos, schema, id_tabela, commit = {}, T.StructType([]), '', {}
@@ -92,6 +92,6 @@ def versao_no_momento(caminho, ms):
         if info.get('timestamp', 0) <= ms:
             escolhida = v
     if escolhida is None:
-        raise AnalysisException('[DELTA_TIMESTAMP_EARLIER_THAN_COMMIT_RETENTION] The provided timestamp is before the earliest '
+        raise AnalysisException('The provided timestamp is before the earliest '
                                 'version available to this table.', 'DELTA_TIMESTAMP_EARLIER_THAN_COMMIT_RETENTION', {}, '42816')
     return escolhida

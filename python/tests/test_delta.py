@@ -235,3 +235,18 @@ def test_optimize_junta_arquivos_pequenos(spark):
     h = t.history(1).first()
     assert h.operation == 'OPTIMIZE'
     assert spark.read.format('delta').option('versionAsOf', h.version - 1).load('estoque').count() == 6
+
+
+def test_overwrite_com_menos_colunas_mantem_o_schema(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    spark.createDataFrame([('sal', 1)], ['produto', 'qtd']).write.format('delta').mode('overwrite').save('estoque')
+    df = spark.read.format('delta').load('estoque')
+    assert df.columns == ['produto', 'qtd', 'preco']
+    assert tuplas(df) == [('sal', 1, None)]
+
+
+def test_a_classe_do_erro_aparece_uma_vez_so(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    with pytest.raises(AnalysisException) as e:
+        spark.read.format('delta').option('versionAsOf', 9).load('estoque')
+    assert str(e.value).count('[DELTA_VERSION_NOT_FOUND]') == 1
