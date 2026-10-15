@@ -44,6 +44,10 @@ class AnalysisException(PySparkException):
     """Erro de análise: o plano pede algo que não existe (coluna, tabela, caminho...)."""
 
 
+class IllegalArgumentException(PySparkException, ValueError):
+    """Argumento inválido (o vacuum com retenção curta, por exemplo)."""
+
+
 class ParseException(AnalysisException):
     """SQL ou expressão que não dá para ler (a mensagem do Spark começa com uma quebra de linha)."""
 
