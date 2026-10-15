@@ -263,3 +263,32 @@ def test_a_classe_do_erro_aparece_uma_vez_so(spark):
     with pytest.raises(AnalysisException) as e:
         spark.read.format('delta').option('versionAsOf', 9).load('estoque')
     assert str(e.value).count('[DELTA_VERSION_NOT_FOUND]') == 1
+
+def test_vacuum_zero_sem_a_checagem_apaga_a_versao_antiga(spark):
+    from delta.tables import DeltaTable
+    spark.createDataFrame([('mel', 10)], ['produto', 'qtd']).write.format('delta').save('estoque')
+    spark.createDataFrame([('feijao', 30)], ['produto', 'qtd']).write.format('delta').mode('overwrite').save('estoque')
+    spark.conf.set('spark.databricks.delta.retentionDurationCheck.enabled', 'false')
+    try:
+        DeltaTable.forPath(spark, 'estoque').vacuum(0)
+        with pytest.raises(Exception):
+            spark.read.format('delta').option('versionAsOf', 0).load('estoque').collect()
+    finally:
+        spark.conf.set('spark.databricks.delta.retentionDurationCheck.enabled', 'true')
+
+
+def test_operacoes_que_os_exercicios_usam(spark):
+    from delta.tables import DeltaTable
+    linhas = [('mel', 10, 25.0), ('farinha', 40, 6.5)]
+    df = spark.createDataFrame(linhas, 'produto STRING, qtd INT, preco DOUBLE')
+    df.write.format('delta').save('estoque')
+    for linha in df.collect():
+        spark.createDataFrame([linha], df.schema).write.format('delta').mode('append').save('miudo')
+    DeltaTable.forPath(spark, 'miudo').optimize().executeCompaction()
+    t = DeltaTable.forPath(spark, 'estoque')
+    t.update("produto = 'mel'", {'preco': 'preco * 1.1'})
+    (t.alias('e').merge(df.alias('n'), 'e.produto = n.produto')
+     .whenMatchedUpdate(set={'qtd': 'e.qtd + n.qtd'}).whenNotMatchedInsertAll().execute())
+    ops = [r.operation for r in t.history().orderBy('version').collect()]
+    assert ops == ['WRITE', 'UPDATE', 'MERGE']
+    assert [r.operation for r in DeltaTable.forPath(spark, 'miudo').history().orderBy('version').collect()] == ['WRITE', 'WRITE', 'OPTIMIZE']
