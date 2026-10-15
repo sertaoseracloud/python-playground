@@ -226,3 +226,24 @@ def test_deltas_no_resultado():
     assert r['erro'] is None
     assert r['deltas'] == {'dados/estoque': {'versao': 1, 'operacoes': ['WRITE', 'DELETE'], 'colunas': ['p', 'q']}}
     assert rodar('x = 1\n')['deltas'] == {}  # cada execução começa sem tabelas registradas
+
+
+def test_streaming_no_resultado():
+    codigo = ('from pyspark.sql import SparkSession\nspark = SparkSession.builder.getOrCreate()\n'
+              'leituras = spark.readStream.schema("estacao STRING, temperatura DOUBLE").csv("leituras", header=True)\n'
+              'leituras.writeStream.format("console").queryName("q").start()\n')
+    r = execucao.executar({'main.py': codigo, 'leituras/a.csv': 'estacao,temperatura\nCrato,31.5\nSobral,29.0\n'})
+    assert r['erro'] is None
+    assert 'Batch: 0' in r['saida'] and '|  Crato|' in r['saida']  # o start() sem espera roda no fim do programa
+    assert r['streaming'] == {'consultas': [{'nome': 'q', 'modo': 'append', 'formato': 'console', 'lotes': [
+        {'id': 0, 'entrada': 2, 'arquivos': ['a.csv'], 'estado': 0, 'marcaDagua': None, 'saida': 2, 'descartadas': 0}]}]}
+    assert 'leituras' not in r['tabelas']  # o DataFrame de streaming não tem linhas fora do writeStream
+    assert rodar('x = 1\n')['streaming'] is None
+
+
+def test_erro_do_streaming_no_fim_do_programa_vira_erro_do_aluno():
+    codigo = ('from pyspark.sql import SparkSession, functions as F\nspark = SparkSession.builder.getOrCreate()\n'
+              'quebra = F.udf(lambda t: 1 // 0, "int")\n'
+              'spark.readStream.schema("t DOUBLE").csv("leituras").select(quebra("t")).writeStream.format("console").start()\n')
+    r = execucao.executar({'main.py': codigo, 'leituras/a.csv': '1.0\n'})
+    assert r['erro']['tipo'] == 'StreamingQueryException'

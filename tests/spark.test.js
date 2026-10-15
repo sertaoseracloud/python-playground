@@ -52,6 +52,22 @@ describe('PySpark no navegador', () => {
     expect(r.deltas.estoque).toEqual({ versao: 1, operacoes: ['WRITE', 'UPDATE'], colunas: ['p', 'q'] });
   }, 120_000);
 
+  it('o streaming roda no Pyodide e o resultado traz os micro-lotes', async () => {
+    const r = await rodar(`${INICIO}q = (spark.readStream.schema("estacao STRING, temperatura DOUBLE")\n`
+      + '  .option("maxFilesPerTrigger", 1).csv("leituras", header=True).groupBy("estacao").count()\n'
+      + '  .writeStream.format("memory").queryName("contagem").outputMode("complete").start())\n'
+      + 'q.processAllAvailable()\n'
+      + 'total = sorted((r.estacao, r["count"]) for r in spark.table("contagem").collect())\n',
+    {
+      'leituras/lote-01.csv': 'estacao,temperatura\nCrato,31.5\nSobral,29.0\n',
+      'leituras/lote-02.csv': 'estacao,temperatura\nCrato,33.0\n',
+    });
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.total).toEqual([['Crato', 2], ['Sobral', 1]]);
+    expect(r.streaming.consultas[0].lotes.map((l) => [l.entrada, l.estado, l.saida])).toEqual([[2, 2, 2], [1, 2, 2]]);
+    expect(r.spark.jobs.map((j) => j.acao)).toContain('lote 0 de contagem');
+  }, 120_000);
+
   it('um DataFrame que só falha ao calcular vira erro na tabela, sem derrubar a execução', async () => {
     const r = await rodar(`${INICIO}df = spark.range(3).select(F.udf(lambda x: 1 // 0, "int")("id"))\n`);
     expect(r.erro).toBeNull();

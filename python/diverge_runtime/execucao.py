@@ -10,7 +10,7 @@ import traceback
 
 from diverge_paralelo.instalar import instalar as instalar_paralelo
 
-from . import deltas, estagios, pool
+from . import deltas, estagios, pool, streams
 from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
@@ -171,6 +171,8 @@ def _tabelas(escopo):
     for nome, valor in list(escopo.items()):
         if nome.startswith('_') or not callable(getattr(type(valor), '_diverge_tabela', None)):
             continue
+        if getattr(valor, 'isStreaming', False):
+            continue  # um DataFrame de streaming não tem linhas fora do writeStream
         try:
             with estagios.local():
                 tabelas[nome] = valor._diverge_tabela(1000)
@@ -193,6 +195,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
     retornos = []
     tabelas = {}
     resumo_deltas = {}
+    resumo_streaming = None
     terminal = _terminal_js() if interativo else None
     saida.ao_escrever = terminal.escrever if terminal is not None else None
     # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
@@ -207,6 +210,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         try:
             codigo = compile(arquivos.get(principal, ''), principal, 'exec')
             exec(codigo, escopo)
+            streams.terminar()  # as consultas que ficaram ativas rodam a entrada disponível
         except _PrecisaDeEntrada:
             precisa = True
         except BaseException as e:  # SystemExit e KeyboardInterrupt também viram erro do aluno
@@ -218,6 +222,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
                 retornos.append(_chamar(escopo, chamada))
         tabelas = {} if precisa else _tabelas(escopo)
         resumo_deltas = deltas.resumo()  # ainda na pasta do aluno: os caminhos saem relativos a ela
+        resumo_streaming = streams.resumo()
     finally:
         try:
             desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
@@ -242,6 +247,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         'spark': estagios.resumo(),
         'tabelas': tabelas,
         'deltas': resumo_deltas,
+        'streaming': resumo_streaming,
         'precisa_entrada': precisa,
     }
 
