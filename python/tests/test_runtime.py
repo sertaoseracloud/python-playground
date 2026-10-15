@@ -215,3 +215,14 @@ def test_repl_com_o_escopo_do_programa():
 def test_chamadas_usam_as_respostas_que_sobraram_na_fila():
     r = execucao.executar({'main.py': 'a = input()\ndef f():\n    return input()\n'}, entrada=['1', '2'], chamadas=[{'funcao': 'f', 'args': []}])
     assert r['retornos'][0]['valor'] == '2'
+
+
+def test_deltas_no_resultado():
+    codigo = ('from pyspark.sql import SparkSession\nfrom delta.tables import DeltaTable\n'
+              'spark = SparkSession.builder.getOrCreate()\n'
+              'spark.createDataFrame([("a", 1)], ["p", "q"]).write.format("delta").save("dados/estoque")\n'
+              'DeltaTable.forPath(spark, "dados/estoque").delete("q = 1")\n')
+    r = rodar(codigo)
+    assert r['erro'] is None
+    assert r['deltas'] == {'dados/estoque': {'versao': 1, 'operacoes': ['WRITE', 'DELETE'], 'colunas': ['p', 'q']}}
+    assert rodar('x = 1\n')['deltas'] == {}  # cada execução começa sem tabelas registradas

@@ -42,6 +42,16 @@ describe('PySpark no navegador', () => {
     expect(r.tabelas.df.linhas).toEqual([['Ana', 3]]);
   }, 120_000);
 
+  it('o Delta roda no Pyodide e o resultado traz as tabelas', async () => {
+    const r = await rodar(`${INICIO}from delta.tables import DeltaTable\n`
+      + 'spark.createDataFrame([("a", 1)], ["p", "q"]).write.format("delta").save("estoque")\n'
+      + 'DeltaTable.forPath(spark, "estoque").update("q = 1", {"q": "q + 1"})\n'
+      + 'v0 = spark.read.format("delta").option("versionAsOf", 0).load("estoque").first().q\n');
+    expect(r.erro).toBeNull();
+    expect(r.variaveis.v0).toBe(1);
+    expect(r.deltas.estoque).toEqual({ versao: 1, operacoes: ['WRITE', 'UPDATE'], colunas: ['p', 'q'] });
+  }, 120_000);
+
   it('um DataFrame que só falha ao calcular vira erro na tabela, sem derrubar a execução', async () => {
     const r = await rodar(`${INICIO}df = spark.range(3).select(F.udf(lambda x: 1 // 0, "int")("id"))\n`);
     expect(r.erro).toBeNull();

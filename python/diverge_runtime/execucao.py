@@ -10,7 +10,7 @@ import traceback
 
 from diverge_paralelo.instalar import instalar as instalar_paralelo
 
-from . import estagios, pool
+from . import deltas, estagios, pool
 from .valores import descrever
 
 PASTA = '/home/pyodide/exercicio'
@@ -192,6 +192,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
     precisa = False
     retornos = []
     tabelas = {}
+    resumo_deltas = {}
     terminal = _terminal_js() if interativo else None
     saida.ao_escrever = terminal.escrever if terminal is not None else None
     # multiprocessing e concurrent.futures do DivergePython, só durante esta execução.
@@ -216,6 +217,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
             for chamada in chamadas:
                 retornos.append(_chamar(escopo, chamada))
         tabelas = {} if precisa else _tabelas(escopo)
+        resumo_deltas = deltas.resumo()  # ainda na pasta do aluno: os caminhos saem relativos a ela
     finally:
         try:
             desfazer_paralelo()  # ainda com a saída do aluno: o print dos processos não esperados entra nela
@@ -239,6 +241,7 @@ def executar(arquivos, principal='main.py', entrada=(), chamadas=(), interativo=
         'paralelismo': pool.resumo(),
         'spark': estagios.resumo(),
         'tabelas': tabelas,
+        'deltas': resumo_deltas,
         'precisa_entrada': precisa,
     }
 
