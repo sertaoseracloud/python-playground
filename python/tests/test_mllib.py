@@ -5,8 +5,9 @@ import math
 import pytest
 
 from diverge_runtime import estagios
-from pyspark.errors import IllegalArgumentException
+from pyspark.errors import IllegalArgumentException, SparkRuntimeException
 from pyspark.sql import SparkSession
+from pyspark.ml.feature import OneHotEncoder, StandardScaler, StringIndexer, VectorAssembler
 from pyspark.ml.linalg import DenseVector, SparseVector, Vectors
 
 
@@ -60,3 +61,83 @@ def test_random_split_deterministico_e_sem_sobra(spark):
     assert {r.id for r in df.randomSplit([0.7, 0.3], seed=7)[0].collect()} != ida
     with pytest.raises(ValueError, match='Weights must be positive'):
         df.randomSplit([0.5, -1.0])
+
+
+def test_params_como_o_pyspark():
+    va = VectorAssembler(inputCols=['a'], outputCol='v')
+    assert va.getInputCols() == ['a'] and va.setOutputCol('w') is va and va.getOutputCol() == 'w'
+    assert va.getHandleInvalid() == 'error'
+    with pytest.raises(TypeError, match='unexpected keyword'):
+        VectorAssembler(colunas=['a'])
+
+
+def test_vector_assembler_denso_e_esparso(spark):
+    df = spark.createDataFrame([(1.0, 2, True, Vectors.dense([3.0, 4.0])), (0.0, 0, False, Vectors.dense([0.0, 5.0]))],
+                               ['a', 'b', 'c', 'd'])
+    r = VectorAssembler(inputCols=['a', 'b', 'c', 'd'], outputCol='v').transform(df).collect()
+    assert r[0].v == DenseVector([1.0, 2.0, 1.0, 3.0, 4.0])
+    assert isinstance(r[1].v, SparseVector) and str(r[1].v) == '(5,[4],[5.0])'  # comprimido como no Spark
+    with pytest.raises(IllegalArgumentException, match='Data type string of column e is not supported'):
+        VectorAssembler(inputCols=['e'], outputCol='v').transform(spark.createDataFrame([('x',)], ['e']))
+
+
+def test_vector_assembler_e_os_nulos(spark):
+    df = spark.createDataFrame([(1.0, 2.0), (None, 3.0)], 'a DOUBLE, b DOUBLE')
+    with pytest.raises(SparkRuntimeException, match='Encountered null while assembling a row'):
+        VectorAssembler(inputCols=['a', 'b'], outputCol='v').transform(df).collect()
+    assert VectorAssembler(inputCols=['a', 'b'], outputCol='v', handleInvalid='skip').transform(df).count() == 1
+    mantido = VectorAssembler(inputCols=['a', 'b'], outputCol='v', handleInvalid='keep').transform(df).collect()[1].v
+    assert math.isnan(mantido[0]) and mantido[1] == 3.0
+
+
+def test_string_indexer_por_frequencia_e_alfabeto(spark):
+    df = spark.createDataFrame([(c,) for c in 'babcab'] + [('x',), ('y',)], ['c'])
+    modelo = StringIndexer(inputCol='c', outputCol='i').fit(df)
+    assert modelo.labels == ['b', 'a', 'c', 'x', 'y']  # b 3×, a 2×, depois o empate em ordem alfabética
+    assert [r.i for r in modelo.transform(df).collect()][:3] == [0.0, 1.0, 0.0]
+    assert 'fit StringIndexer' in acoes()
+    alfabetica = StringIndexer(inputCol='c', outputCol='i', stringOrderType='alphabetAsc').fit(df)
+    assert alfabetica.labels == ['a', 'b', 'c', 'x', 'y']
+
+
+def test_string_indexer_rotulo_novo(spark):
+    modelo = StringIndexer(inputCol='c', outputCol='i').fit(spark.createDataFrame([('a',), ('b',)], ['c']))
+    novo = spark.createDataFrame([('a',), ('z',)], ['c'])
+    with pytest.raises(SparkRuntimeException, match='Unseen label: z'):
+        modelo.transform(novo).collect()
+    assert [r.i for r in modelo.setHandleInvalid('keep').transform(novo).collect()] == [0.0, 2.0]
+    assert modelo.setHandleInvalid('skip').transform(novo).count() == 1
+
+
+def test_one_hot_encoder_dropa_o_ultimo(spark):
+    df = spark.createDataFrame([(0.0,), (1.0,), (2.0,)], ['i'])
+    modelo = OneHotEncoder(inputCols=['i'], outputCols=['v']).fit(df)
+    assert modelo.categorySizes == [3]
+    assert [str(r.v) for r in modelo.transform(df).collect()] == ['(2,[0],[1.0])', '(2,[1],[1.0])', '(2,[],[])']
+    inteiro = OneHotEncoder(inputCol='i', outputCol='v', dropLast=False).fit(df).transform(df).collect()
+    assert str(inteiro[2].v) == '(3,[2],[1.0])'
+
+
+def test_standard_scaler_com_desvio_amostral(spark):
+    df = spark.createDataFrame([(Vectors.dense([x, 10.0]),) for x in (1.0, 2.0, 3.0, 4.0)], ['x'])
+    modelo = StandardScaler(inputCol='x', outputCol='s').fit(df)
+    assert modelo.mean.toArray() == [2.5, 10.0]
+    assert modelo.std[0] == pytest.approx(math.sqrt(5 / 3)) and modelo.std[1] == 0.0
+    escalado = modelo.transform(df).first().s
+    assert escalado[0] == pytest.approx(1 / math.sqrt(5 / 3)) and escalado[1] == 0.0  # desvio 0: o Spark dá 0
+    centrado = StandardScaler(inputCol='x', outputCol='s', withMean=True).fit(df).transform(df).first().s
+    assert centrado[0] == pytest.approx(-1.5 / math.sqrt(5 / 3))
+
+
+def test_pipeline_treina_e_passa_adiante(spark):
+    from pyspark.ml import Pipeline, PipelineModel
+    df = spark.createDataFrame([('milho', 1.0), ('feijao', 2.0), ('milho', 3.0)], ['cultura', 'chuva'])
+    pipe = Pipeline(stages=[StringIndexer(inputCol='cultura', outputCol='ci'),
+                            OneHotEncoder(inputCols=['ci'], outputCols=['cv']),
+                            VectorAssembler(inputCols=['chuva', 'cv'], outputCol='features')])
+    modelo = pipe.fit(df)
+    assert isinstance(modelo, PipelineModel)
+    assert [type(s).__name__ for s in modelo.stages] == ['StringIndexerModel', 'OneHotEncoderModel', 'VectorAssembler']
+    assert [str(r.features) for r in modelo.transform(df).collect()] == ['[1.0,1.0]', '[2.0,0.0]', '[3.0,1.0]']
+    with pytest.raises(TypeError, match='Cannot recognize a pipeline stage'):
+        Pipeline(stages=['x']).fit(df)
