@@ -469,6 +469,270 @@ git -c user.name="Cláudio Raposo" -c user.email=engcfraposo@gmail.com commit -m
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
+### Revisão de 2026-10-15: tiles estilo Tibia e física (Tasks 2a, 2b e 2c)
+
+Na primeira conferência, o usuário pediu tiles em pixel art no estilo do Tibia e personagens andando
+de tile em tile, com colisão. A spec foi revisada (seção "Como funciona"). As Tasks 1 e 2 já feitas
+continuam valendo: o palco sticky, o mapa do site, a camada na trilha e os testes de acessibilidade.
+As tarefas abaixo trocam o desenho vetorial pelos tiles e o deslize em CSS pela física. A Task 3
+(conferência) roda depois delas.
+
+**Interfaces novas** (todas em `src/ui/cenarios/`):
+- `pixel.js`:
+  - `LADO = 16`;
+  - `sprite(paleta, texto) → { paleta, linhas }` (lança erro se não for 16×16 ou se usa cor fora da paleta);
+  - `passo(sprite, movimento) → sprite` (o 2º quadro: pernas deslocadas 1px, ou asas 1px acima);
+  - `desenharSprite(ctx, sprite, x, y, { escala = 2, espelhar = false, cor })`.
+- `mapa.js`:
+  - `TILE = 32`;
+  - `sorteador(semente) → () => número em [0, 1)` (mulberry32 sobre o hash do texto);
+  - `colunasDaEstrada(colunas, raio = 112) → número[]`;
+  - `gerarMapa({ colunas, linhas, cenario, semente }) → { colunas, linhas, tiles: [{ tipo: 'chao'|'estrada'|'bloqueio'|'objeto', variante }] }`;
+  - `tileEm(mapa, c, l) → tile | null`.
+- `fisica.js`:
+  - `podePisar(mapa, movimento, c, l) → boolean`;
+  - `proximoPasso(p, mapa, sortear) → p'`, em que `p = { c, l, movimento, direcao: [dc, dl], quadro: 0|1, parado }`;
+  - `posicoesIniciais(mapa, personagens, sortear) → (p | null)[]`.
+- `palco.js`: `ligarCenarios(raiz, { janela = window } = {}) → { desligar() }`.
+- **Cenário:**
+  - `{ id, nome, chao: { cores: [base, escuro, claro], pesos: [6, 3, 1] }, estrada: { cores, padrao: 'terra'|'tabuas'|'pedras'|'liso' }, bloqueio: { cor, borda, brilho } | null, objetos: [sprite…], personagens: [{ id, movimento, quadros: [sprite, sprite] }] }`;
+  - as variações do chão e da estrada são texturas geradas por código, com semente, a partir das cores;
+  - só objetos e personagens são desenhados à mão.
+
+#### Task 2a: Pixel art, mapa e física (puros)
+
+**Files:** criar `src/ui/cenarios/pixel.js`, `mapa.js` e `fisica.js`; os testes ficam em
+`tests/cenarios-mapa.test.js` e `tests/cenarios-fisica.test.js`.
+
+- [ ] **Step 1: Testes que falham**
+
+`tests/cenarios-mapa.test.js`:
+
+```js
+// Mapa de tiles dos cenários: determinístico, com a estrada embaixo dos nós e espaço livre dos dois lados.
+import { describe, it, expect } from 'vitest';
+import { gerarMapa, colunasDaEstrada, sorteador, tileEm, TILE } from '../src/ui/cenarios/mapa.js';
+import { sprite, passo, LADO } from '../src/ui/cenarios/pixel.js';
+import { CENARIOS } from '../src/ui/cenarios/index.js';
+
+const mapaDe = (id, colunas = 40, linhas = 25, semente = 'basico') => gerarMapa({ colunas, linhas, cenario: CENARIOS[id], semente });
+
+describe('pixel art', () => {
+  it('sprite valida 16×16 e as cores', () => {
+    const linha = '.'.repeat(LADO);
+    expect(() => sprite({ a: '#000' }, Array(LADO).fill(linha).join('\n'))).not.toThrow();
+    expect(() => sprite({ a: '#000' }, Array(15).fill(linha).join('\n'))).toThrow('16×16');
+    expect(() => sprite({ a: '#000' }, [...Array(15).fill(linha), `b${'.'.repeat(15)}`].join('\n'))).toThrow('fora da paleta');
+  });
+
+  it('o 2º quadro da caminhada é diferente do 1º e continua 16×16', () => {
+    const s = CENARIOS.sertao.personagens[0].quadros[0];
+    const b = passo(s, 'andar');
+    expect(b.linhas).toHaveLength(LADO);
+    expect(b.linhas.every((l) => l.length === LADO)).toBe(true);
+    expect(b.linhas.join('')).not.toBe(s.linhas.join(''));
+  });
+});
+
+describe('mapa', () => {
+  it('sorteador é determinístico pela semente', () => {
+    const a = sorteador('pyspark'); const b = sorteador('pyspark'); const c = sorteador('dados');
+    const sa = [a(), a(), a()];
+    expect([b(), b(), b()]).toEqual(sa);
+    expect([c(), c(), c()]).not.toEqual(sa);
+  });
+
+  it('a mesma semente gera o mesmo mapa', () => {
+    expect(mapaDe('sertao')).toEqual(mapaDe('sertao'));
+    expect(mapaDe('sertao', 40, 25, 'outro')).not.toEqual(mapaDe('sertao'));
+  });
+
+  it('a estrada cobre a faixa dos nós (±112px do centro)', () => {
+    const cols = colunasDaEstrada(40);
+    const centro = (40 * TILE) / 2;
+    expect(cols.some((c) => c * TILE <= centro - 100)).toBe(true);
+    expect(cols.some((c) => (c + 1) * TILE >= centro + 100)).toBe(true);
+  });
+
+  it.each(Object.keys(CENARIOS))('%s: a estrada é só estrada, e há chão livre dos dois lados', (id) => {
+    for (const [colunas, linhas] of [[40, 25], [11, 17]]) {
+      const m = mapaDe(id, colunas, linhas);
+      const estrada = new Set(colunasDaEstrada(colunas));
+      for (let l = 0; l < linhas; l++) {
+        for (let c = 0; c < colunas; c++) {
+          expect(tileEm(m, c, l).tipo === 'estrada').toBe(estrada.has(c));
+        }
+      }
+      const livres = (lado) => m.tiles.filter((t, i) => t.tipo === 'chao' && (lado ? i % colunas > Math.max(...estrada) : i % colunas < Math.min(...estrada))).length;
+      expect(livres(false)).toBeGreaterThanOrEqual(linhas);
+      expect(livres(true)).toBeGreaterThanOrEqual(linhas);
+    }
+  });
+
+  it('cenários com área bloqueada têm manchas; os outros não', () => {
+    for (const [id, c] of Object.entries(CENARIOS)) {
+      const tem = mapaDe(id).tiles.some((t) => t.tipo === 'bloqueio');
+      expect(tem, id).toBe(Boolean(c.bloqueio));
+    }
+  });
+});
+```
+
+`tests/cenarios-fisica.test.js`:
+
+```js
+// Física dos personagens: um tile por passo, nas 4 direções, sem pisar onde não pode.
+import { describe, it, expect } from 'vitest';
+import { gerarMapa, sorteador, tileEm } from '../src/ui/cenarios/mapa.js';
+import { proximoPasso, posicoesIniciais, podePisar } from '../src/ui/cenarios/fisica.js';
+import { CENARIOS } from '../src/ui/cenarios/index.js';
+
+function simular(id, passos = 2000) {
+  const c = CENARIOS[id];
+  const mapa = gerarMapa({ colunas: 40, linhas: 25, cenario: c, semente: id });
+  const sortear = sorteador(`fisica-${id}`);
+  let ps = posicoesIniciais(mapa, c.personagens, sortear);
+  const historico = ps.map((p) => (p ? [p] : []));
+  for (let i = 0; i < passos; i++) {
+    ps = ps.map((p, k) => {
+      if (!p) return p;
+      const q = proximoPasso(p, mapa, sortear);
+      historico[k].push(q);
+      return q;
+    });
+  }
+  return { mapa, historico, c };
+}
+
+describe('física', () => {
+  it.each(Object.keys(CENARIOS))('%s: ninguém pisa onde não pode, e todo passo é para um vizinho', (id) => {
+    const { mapa, historico, c } = simular(id);
+    historico.forEach((h, k) => {
+      const mov = c.personagens[k].movimento;
+      for (let i = 0; i < h.length; i++) {
+        const p = h[i];
+        expect(podePisar(mapa, mov, p.c, p.l), `${id}/${c.personagens[k].id} em ${p.c},${p.l}`).toBe(true);
+        expect(tileEm(mapa, p.c, p.l).tipo).not.toBe('estrada');
+        if (i > 0) expect(Math.abs(p.c - h[i - 1].c) + Math.abs(p.l - h[i - 1].l)).toBeLessThanOrEqual(1);
+      }
+    });
+  });
+
+  it('quem anda nunca entra na água; voadores podem; peixe e jangadeiro nunca saem dela', () => {
+    const { mapa } = simular('rio', 1);
+    const agua = mapa.tiles.findIndex((t) => t.tipo === 'bloqueio');
+    const [c, l] = [agua % mapa.colunas, Math.floor(agua / mapa.colunas)];
+    expect(podePisar(mapa, 'andar', c, l)).toBe(false);
+    expect(podePisar(mapa, 'voar', c, l)).toBe(true);
+    expect(podePisar(mapa, 'nadar', c, l)).toBe(true);
+    const chao = mapa.tiles.findIndex((t) => t.tipo === 'chao');
+    expect(podePisar(mapa, 'nadar', chao % mapa.colunas, Math.floor(chao / mapa.colunas))).toBe(false);
+  });
+
+  it('os personagens se mexem (não ficam parados para sempre) e viram para onde andam', () => {
+    const { historico } = simular('sertao', 200);
+    const vaqueiro = historico[0];
+    const andou = new Set(vaqueiro.map((p) => `${p.c},${p.l}`)).size;
+    expect(andou).toBeGreaterThan(10);
+    const passo = vaqueiro.find((p, i) => i > 0 && !p.parado);
+    expect(Math.abs(passo.direcao[0]) + Math.abs(passo.direcao[1])).toBe(1);
+  });
+});
+```
+
+- [ ] **Step 2:** rodar e ver falhar: `rtk proxy npx vitest run tests/cenarios-mapa.test.js tests/cenarios-fisica.test.js` (os módulos não existem).
+
+- [ ] **Step 3: Implementar.**
+  - `pixel.js`: o `sprite` divide o texto em linhas aparadas, valida 16×16 e a paleta (`.` é
+    transparente). O `passo` desloca 1px para os lados, alternado, as 4 últimas linhas (pernas) no
+    `andar` e no `nadar`, e sobe 1px as linhas 4 a 9 (asas) no `voar` e no `saltar`. O
+    `desenharSprite` usa `fillRect` por pixel.
+  - `mapa.js`:
+    - estrada nas colunas de `colunasDaEstrada`;
+    - chão com a variante sorteada pelos pesos;
+    - quando há `bloqueio`, de 2 a 3 manchas elípticas de raio 1 a 2 tiles, só em tiles de chão a
+      ≥ 2 colunas da estrada;
+    - objetos em ~6% dos tiles de chão restantes, também a ≥ 2 colunas da estrada.
+  - `fisica.js`:
+    - `podePisar`: estrada ou fora do mapa dá falso; `voar` pode o resto; `nadar` e `saltar` só no
+      `bloqueio`; `andar` só no `chao`;
+    - `proximoPasso`: com 20% de chance fica parado; senão tenta a mesma direção (70%) e, depois, as
+      outras em ordem sorteada; o 1º vizinho onde pode pisar vira o passo
+      (`quadro = 1 - quadro`, `parado = false`); se nenhum der, fica parado;
+    - `posicoesIniciais`: para cada personagem, sorteia um tile onde pode pisar (pares à esquerda
+      da estrada, ímpares à direita), com até 200 tentativas; se não achar, devolve `null`.
+
+- [ ] **Step 4:** rodar e ver passar; commit "Cenários: pixel art, mapa de tiles e física (puros)".
+
+#### Task 2b: Os 7 cenários em pixel art
+
+**Files:** reescrever `src/ui/cenarios/<id>.js` (os 7) e ajustar `tests/cenarios.test.js`.
+
+- [ ] **Step 1: ajustar o teste** (falha com o formato antigo):
+  - cada cenário tem `chao.cores` (3), `chao.pesos` (3), `estrada.padrao` em
+    `['terra', 'tabuas', 'pedras', 'liso']`, `objetos` com 2 a 3 sprites válidos e 3 personagens
+    com `quadros` de 2 sprites válidos;
+  - os cenários com `bloqueio` são `sertao`, `vale`, `gelo`, `fogo` e `rio`;
+  - o tamanho é `JSON.stringify(cenario).length ≤ 12 * 1024`;
+  - `htmlDoCenario` continua com `aria-hidden`, sem texto, sem foco e sem ids, e traz
+    `data-cenario` e `data-semente`.
+- [ ] **Step 2:** reescrever os 7 arquivos com objetos e personagens 16×16 desenhados à mão (a
+  tabela da spec). O 2º quadro de cada personagem é `passo(quadro1, movimento)`. O `htmlDoCenario`
+  passa a devolver
+  `<div class="cenario cenario-<id>" aria-hidden="true" data-cenario="<id>" data-semente="<moduloId ou id>"><div class="cenario-palco"></div></div>`,
+  e `htmlDoCenario(id, semente = id)` recebe o id do módulo como semente.
+- [ ] **Step 3:** rodar `tests/cenarios.test.js`, `tests/cenarios-mapa.test.js` e
+  `tests/cenarios-fisica.test.js`, e ver passar; commit "Cenários: os 7 cenários em pixel art".
+
+#### Task 2c: O palco no navegador (canvas, temporizador e CSS)
+
+**Files:** criar `src/ui/cenarios/palco.js`; alterar `src/ui/inicio.js` (chamar `ligarCenarios`
+e passar `m.id` como semente), `src/cenarios.css` e `tests/cenarios-trilha.test.js`.
+
+- [ ] **Step 1: testes que falham** em `tests/cenarios-trilha.test.js`:
+  - com uma `janela` falsa (`setInterval`/`clearInterval` contados, `IntersectionObserver` falso,
+    `matchMedia` configurável e `innerWidth`), o `ligarCenarios` cria 1 temporizador no caso normal;
+  - não cria nenhum temporizador com `prefers-reduced-motion`, com a classe `a11y-sem-movimento`,
+    com `data-tema="alto-contraste"` nem sem `IntersectionObserver`;
+  - o `desligar()` chama `clearInterval` e o `disconnect` dos observadores;
+  - com `innerWidth` 375, só 1 personagem por cenário (`.personagem` dentro de cada palco);
+  - o CSS tem `image-rendering: pixelated` no `.cenario-mapa` e no `.personagem canvas`, a
+    `transition: transform` no `.personagem`, a regra que zera a transição com
+    `prefers-reduced-motion`, e mantém `pointer-events: none`, o palco sticky e o véu da legenda.
+- [ ] **Step 2: Implementar `palco.js`.**
+  - Por camada:
+    - cria `canvas.cenario-mapa` no palco, mede o palco (`clientWidth` e `clientHeight`, mínimo
+      1 tile), gera o mapa e o desenha;
+    - o chão e a estrada são texturas com semente; a área bloqueada tem cor, pontos de brilho e
+      borda de 2px nos lados que tocam o chão; os objetos são sprites. No alto contraste, só o
+      contorno das áreas bloqueadas e dos objetos, na cor `--suave`;
+    - cria os personagens (`span.personagem.personagem-N.mov-X > canvas` de 32×32), nas posições
+      iniciais, com `transform: translate(c*32px, l*32px)` (voadores 8px acima, com sombra pelo CSS).
+  - Um `setInterval` de 400 ms para todas as camadas. A cada passo:
+    - não faz nada se `document.hidden` estiver ligado, ou se o movimento reduzido foi ligado depois;
+    - em cada camada visível e não bloqueada, aplica `proximoPasso`, atualiza o `transform`, troca
+      o quadro e espelha o sprite pela direção;
+    - de vez em quando, o peixe ganha a classe `saltando` por 400 ms.
+  - O `IntersectionObserver` marca as camadas visíveis.
+  - Um `resize` com espera de 200 ms refaz os mapas.
+  - Um `MutationObserver` em `data-tema` e `class` do `<html>` redesenha (e para tudo se o
+    movimento reduzido for ligado).
+  - Sem `getContext('2d')` (happy-dom), pula o desenho, mas mantém a lógica.
+- [ ] **Step 3: CSS.**
+  - Sai: o deslize em `@keyframes`, a `.cenario-fundo` e as faixas `--faixa`.
+  - Entra:
+    - `.cenario-mapa` (absoluto, 100%, opacidade .45, pixelado);
+    - `.personagem` (absoluto em 0,0, 32×32, `transition: transform .4s linear`);
+    - `.personagem canvas` (pixelado);
+    - `.mov-voar::after` (sombra oval);
+    - `.saltando canvas` (`cen-salto` .4s);
+    - a transição zerada com `prefers-reduced-motion`, `a11y-sem-movimento` e alto contraste.
+  - Os temas, o véu e o palco continuam.
+- [ ] **Step 4:** em `inicio.js`, `htmlDoCenario(CENARIO_DO_MODULO[m.id], m.id)`; no fim de
+  `renderInicio`, `desligarCenarios?.(); desligarCenarios = ligarCenarios(el).desligar;`.
+- [ ] **Step 5:** suíte inteira, lint e commit "Cenários: mapa em canvas e personagens andando de
+  tile em tile".
+
 ### Task 3: Conferência visual e axe (python-playground)
 
 **Files:** só os ajustes de `src/cenarios.css` e dos desenhos que a conferência pedir.
