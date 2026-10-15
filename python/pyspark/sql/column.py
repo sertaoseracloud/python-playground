@@ -168,20 +168,36 @@ class Col(Expr):
     def nome(self):
         return self.nome_col
 
+    def _resolver(self, e):
+        """`a.b`: a coluna b da tabela a; sem tabela a, o campo b da coluna struct a (como o Spark).
+        Devolve (índice do atributo, campo ou None)."""
+        q = self.qualificador
+        if q is not None and not any((a.qualificador or '').lower() == q.lower() for a in e.atributos):
+            achados = [i for i, a in enumerate(e.atributos) if a.nome.lower() == q.lower()]
+            if len(achados) == 1 and isinstance(e.atributos[achados[0]].tipo, T.StructType):
+                return achados[0], self.nome_col
+        return e.achar(self.nome_col, self.qualificador), None
+
     def _atributo(self, e):
-        return e.atributos[e.achar(self.nome_col, self.qualificador)]
+        return e.atributos[self._resolver(e)[0]]
 
     def explicar(self, e):
-        return self._atributo(e).ref()
+        i, campo = self._resolver(e)
+        return e.atributos[i].ref() + (f'.{campo}' if campo else '')
 
     def tipo(self, e):
-        return self._atributo(e).tipo
+        i, campo = self._resolver(e)
+        tipo = e.atributos[i].tipo
+        return tipo[campo].dataType if campo else tipo
 
     def anulavel(self, e):
-        return self._atributo(e).anulavel
+        i, campo = self._resolver(e)
+        return True if campo else e.atributos[i].anulavel
 
     def compilar(self, e):
-        i = e.achar(self.nome_col, self.qualificador)
+        i, campo = self._resolver(e)
+        if campo:
+            return lambda linha: None if linha[i] is None else linha[i][campo]
         return lambda linha: linha[i]
 
 

@@ -246,8 +246,12 @@ class Apelido(No):
 def atributo_de_saida(expr, e):
     """O atributo que uma expressão do select produz (o mesmo, se for só a coluna)."""
     base = sem_alias(expr)
-    if isinstance(base, (Col, Ref)) and not isinstance(expr, Alias):
-        return e.atributos[e.achar(base.nome_col, base.qualificador) if isinstance(base, Col) else e.achar_atributo(base.atributo)]
+    if isinstance(base, Ref) and not isinstance(expr, Alias):
+        return e.atributos[e.achar_atributo(base.atributo)]
+    if isinstance(base, Col) and not isinstance(expr, Alias):
+        i, campo = base._resolver(e)
+        if campo is None:  # a própria coluna; um campo de struct (window.start) é uma coluna nova
+            return e.atributos[i]
     return Atributo(nome_de_saida(expr), expr.tipo(e), anulavel=expr.anulavel(e))
 
 

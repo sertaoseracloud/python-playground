@@ -6,13 +6,14 @@ import { iniciarPython } from './python-node.js';
 import { PoolPython } from '../src/python/pool.js';
 import { workerNode } from './pool-node.js';
 import { exerciciosDelta, licoesDelta } from '../src/conteudo/alem-delta.js';
+import { exerciciosStreaming, licoesStreaming } from '../src/conteudo/alem-streaming.js';
 
 const pool = new PoolPython({ criarWorker: workerNode, maximo: 4 });
 afterAll(() => pool.fechar());
 let executar;
 beforeAll(async () => { const { sessao } = await iniciarPython({ pool }); executar = (a, o) => sessao.executar(a, o); }, 120_000);
 
-const AREAS = [['delta', exerciciosDelta, licoesDelta]];
+const AREAS = [['delta', exerciciosDelta, licoesDelta], ['streaming', exerciciosStreaming, licoesStreaming]];
 
 describe.each(AREAS)('%s', (_area, exercicios, licoes) => {
   it('12 exercícios: 3 fáceis, 6 médios e 3 difíceis', () => {

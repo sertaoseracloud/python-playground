@@ -38,19 +38,20 @@ export const coopEstoque = { 'estoque.csv': ESTOQUE, 'entrada-dia-1.csv': ENTRAD
 export const coopEstoqueOculto = { 'estoque.csv': ESTOQUE_OCULTO, 'entrada-dia-1.csv': ENTRADA_OCULTO };
 
 // ---------- 🌊 Structured Streaming: as estações do sertão ----------
-// Um arquivo por lote. A última linha do lote-03 visível (Crato, 07:58) e a do lote-04 oculto
-// (Sobral, 14:12) chegam atrasadas: a marca d'água de 5 minutos descarta as duas.
+// Um arquivo por lote. A última linha do lote-03 visível (Crato, 07:40) e a do lote-04 oculto
+// (Sobral, 13:50) chegam atrasadas: a janela delas já fechou na marca d'água do lote anterior, e a
+// marca d'água de 5 minutos descarta as duas.
 const lote = (...linhas) => `estacao,momento,temperatura,umidade,chuva_mm\n${linhas.map((l) => `${l}\n`).join('')}`;
 export const estacoes = {
   'leituras/lote-01.csv': lote('Petrolina,2026-03-10 08:01:00,31.0,40,0.0', 'Crato,2026-03-10 08:03:00,27.5,70,12.0', 'Sobral,2026-03-10 08:04:00,33.5,35,0.0'),
   'leituras/lote-02.csv': lote('Petrolina,2026-03-10 08:12:00,34.0,38,0.0', 'Crato,2026-03-10 08:14:00,26.0,80,25.0'),
-  'leituras/lote-03.csv': lote('Juazeiro,2026-03-10 08:21:00,35.5,30,0.0', 'Crato,2026-03-10 07:58:00,25.0,85,30.0'),
+  'leituras/lote-03.csv': lote('Juazeiro,2026-03-10 08:21:00,35.5,30,0.0', 'Crato,2026-03-10 07:40:00,25.0,85,30.0'),
 };
 export const estacoesOculto = {
   'leituras/lote-01.csv': lote('Mossoró,2026-03-11 14:02:00,36.0,25,0.0', 'Sobral,2026-03-11 14:06:00,29.0,60,8.0'),
   'leituras/lote-02.csv': lote('Mossoró,2026-03-11 14:11:00,37.5,22,0.0'),
   'leituras/lote-03.csv': lote('Crato,2026-03-11 14:25:00,24.0,90,40.0', 'Sobral,2026-03-11 14:08:00,28.0,65,5.0', 'Mossoró,2026-03-11 14:26:00,38.0,20,0.0'),
-  'leituras/lote-04.csv': lote('Juazeiro,2026-03-11 14:31:00,34.0,33,0.0', 'Sobral,2026-03-11 14:12:00,27.0,70,3.0'),
+  'leituras/lote-04.csv': lote('Juazeiro,2026-03-11 14:31:00,34.0,33,0.0', 'Sobral,2026-03-11 13:50:00,27.0,70,3.0'),
 };
 
 // ---------- 🤖 MLlib: a safra ----------
