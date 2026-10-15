@@ -68,7 +68,7 @@ def test_escrita(spark, tmp_path):
     vendas(spark).write.partitionBy('regiao').mode('overwrite').parquet('por_regiao')
     assert sorted(n for n in os.listdir('por_regiao') if not n.startswith('_')) == ['regiao=Nordeste', 'regiao=Norte', 'regiao=Sudeste']
     with pytest.raises(AnalysisException) as e:
-        vendas(spark).write.format('delta').save('d')
+        vendas(spark).write.format('inventado').save('d')  # o delta existe desde a fase 5
     assert e.value.getErrorClass() == 'DATA_SOURCE_NOT_FOUND'
 
 

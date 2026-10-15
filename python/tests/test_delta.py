@@ -35,3 +35,84 @@ def test_relogio_comeca_em_2026_e_so_anda_quando_pedem():
 def test_illegal_argument_exception():
     with pytest.raises(ValueError):
         raise IllegalArgumentException('requirement failed')
+
+
+ESTOQUE = [('arroz', 10, 24.9), ('feijao', 4, 8.5), ('cafe', 7, 19.9)]
+
+
+def estoque(spark, linhas=ESTOQUE):
+    return spark.createDataFrame(linhas, ['produto', 'qtd', 'preco'])
+
+
+def test_gravar_e_ler_delta_com_log(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    assert sorted(os.listdir('estoque/_delta_log')) == ['00000000000000000000.json']
+    acoes = [json.loads(linha) for linha in open('estoque/_delta_log/00000000000000000000.json', encoding='utf-8')]
+    tipos = [next(iter(a)) for a in acoes]
+    assert tipos[:3] == ['commitInfo', 'protocol', 'metaData'] and 'add' in tipos
+    info = acoes[0]['commitInfo']
+    assert info['operation'] == 'WRITE' and info['operationParameters']['mode'] == 'ErrorIfExists'
+    assert info['timestamp'] == relogio.em_ms(relogio.INICIO)
+    df = spark.read.format('delta').load('estoque')
+    assert df.dtypes == [('produto', 'string'), ('qtd', 'bigint'), ('preco', 'double')]
+    assert tuplas(df, 'produto') == sorted(ESTOQUE)
+
+
+def test_append_cria_versoes_e_time_travel(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    estoque(spark, [('milho', 3, 5.0)]).write.format('delta').mode('append').save('estoque')
+    estoque(spark, [('sal', 1, 2.0)]).write.format('delta').mode('overwrite').save('estoque')
+    assert spark.read.format('delta').load('estoque').count() == 1
+    assert spark.read.format('delta').option('versionAsOf', 0).load('estoque').count() == 3
+    assert spark.read.format('delta').option('versionAsOf', 1).load('estoque').count() == 4
+    # 1 s por commit: a versão 1 foi gravada às 00:00:01
+    assert spark.read.format('delta').option('timestampAsOf', '2026-01-01 00:00:01').load('estoque').count() == 4
+    with pytest.raises(AnalysisException, match=r'Cannot time travel Delta table to version 7\. Available versions: \[0, 2\]'):
+        spark.read.format('delta').option('versionAsOf', 7).load('estoque')
+    with pytest.raises(AnalysisException, match='before the earliest version'):
+        spark.read.format('delta').option('timestampAsOf', '2025-12-31 23:00:00').load('estoque')
+
+
+def test_modos(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    with pytest.raises(AnalysisException, match='already exist'):
+        estoque(spark).write.format('delta').save('estoque')
+    estoque(spark).write.format('delta').mode('ignore').save('estoque')
+    assert spark.read.format('delta').load('estoque').count() == 3
+    assert len(os.listdir('estoque/_delta_log')) == 1
+
+
+def test_coluna_nova_sem_merge_schema_e_recusada(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    novo = spark.createDataFrame([('sal', 1, 2.0, 'Crato')], ['produto', 'qtd', 'preco', 'cidade'])
+    with pytest.raises(AnalysisException, match='A schema mismatch detected when writing to the Delta table'):
+        novo.write.format('delta').mode('append').save('estoque')
+    assert len(os.listdir('estoque/_delta_log')) == 1
+
+
+def test_merge_schema_linhas_antigas_nulas(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    novo = spark.createDataFrame([('sal', 1, 2.0, 'Crato')], ['produto', 'qtd', 'preco', 'cidade'])
+    novo.write.format('delta').mode('append').option('mergeSchema', 'true').save('estoque')
+    df = spark.read.format('delta').load('estoque')
+    assert df.columns == ['produto', 'qtd', 'preco', 'cidade']
+    assert tuplas(df.select('produto', 'cidade'), 'produto') == [('arroz', None), ('cafe', None), ('feijao', None), ('sal', 'Crato')]
+    df.show()  # não quebra com nulos de arquivos antigos
+
+
+def test_overwrite_schema(spark):
+    estoque(spark).write.format('delta').save('estoque')
+    outro = spark.createDataFrame([(1, 'x')], ['id', 'nome'])
+    with pytest.raises(AnalysisException, match='schema mismatch'):
+        outro.write.format('delta').mode('overwrite').save('estoque')
+    outro.write.format('delta').mode('overwrite').option('overwriteSchema', 'true').save('estoque')
+    assert spark.read.format('delta').load('estoque').dtypes == [('id', 'bigint'), ('nome', 'string')]
+
+
+def test_delta_vazio_e_configure(spark):
+    from delta import configure_spark_with_delta_pip
+    construtor = SparkSession.builder  # cada acesso a .builder dá um construtor novo
+    assert configure_spark_with_delta_pip(construtor) is construtor
+    spark.createDataFrame([], 'produto STRING, qtd BIGINT').write.format('delta').save('vazio')
+    df = spark.read.format('delta').load('vazio')
+    assert df.count() == 0 and df.columns == ['produto', 'qtd']
