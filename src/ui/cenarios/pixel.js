@@ -40,3 +40,9 @@ export function desenharSprite(ctx, s, x, y, { escala = 2, espelhar = false, cor
     }
   }
 }
+
+/** Mistura duas cores #rrggbb: `t` = 0 dá a primeira, 1 dá a segunda. */
+export function misturar(a, b, t) {
+  const canal = (cor, i) => parseInt(cor.slice(i, i + 2), 16);
+  return `#${[1, 3, 5].map((i) => Math.round(canal(a, i) * (1 - t) + canal(b, i) * t).toString(16).padStart(2, '0')).join('')}`;
+}
