@@ -33,6 +33,8 @@ try:
 except Exception as e:  # noqa: BLE001
     print(type(e).__name__, 'schema mismatch' in str(e).lower())
 novo.write.format('delta').mode('append').option('mergeSchema', 'true').save(caminho)
+print(t.toDF().columns, t.toDF().count())  # a DeltaTable antiga: as linhas novas, o schema de quando foi criada
+t = DeltaTable.forPath(spark, caminho)
 print(t.toDF().columns, linhas(t.toDF().select('produto', 'cidade')))
 
 h = t.history().orderBy('version').collect()

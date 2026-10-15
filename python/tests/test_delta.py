@@ -100,6 +100,19 @@ def test_merge_schema_linhas_antigas_nulas(spark):
     df.show()  # não quebra com nulos de arquivos antigos
 
 
+def test_delta_table_guarda_o_schema_de_quando_foi_criada(spark):
+    from delta.tables import DeltaTable
+    estoque(spark).write.format('delta').save('estoque')
+    t = DeltaTable.forPath(spark, 'estoque')
+    novo = spark.createDataFrame([('sal', 1, 2.0, 'Crato')], ['produto', 'qtd', 'preco', 'cidade'])
+    novo.write.format('delta').mode('append').option('mergeSchema', 'true').save('estoque')
+    assert t.toDF().columns == ['produto', 'qtd', 'preco']  # como no Delta: as linhas novas, o schema antigo
+    assert t.toDF().count() == 4
+    assert DeltaTable.forPath(spark, 'estoque').toDF().columns == ['produto', 'qtd', 'preco', 'cidade']
+    t.update("produto = 'sal'", {'qtd': '5'})
+    assert spark.read.format('delta').load('estoque').filter("produto = 'sal'").first().cidade == 'Crato'
+
+
 def test_overwrite_schema(spark):
     estoque(spark).write.format('delta').save('estoque')
     outro = spark.createDataFrame([(1, 'x')], ['id', 'nome'])

@@ -23,8 +23,10 @@ def _predicado(condicao):
 
 
 class DeltaTable:
-    def __init__(self, sessao, caminho, apelido=None):
+    def __init__(self, sessao, caminho, apelido=None, colunas=None):
         self._sessao, self._caminho, self._apelido = sessao, caminho, apelido
+        # Como no Delta: o toDF() lê as linhas atuais, mas com o schema de quando a DeltaTable foi criada.
+        self._colunas = colunas if colunas is not None else _log.snapshot(caminho).schema.names
 
     @classmethod
     def forPath(cls, sparkSession, path, hadoopConf=None):
@@ -38,10 +40,15 @@ class DeltaTable:
         return _log.eh_delta(os.path.abspath(identifier))
 
     def alias(self, aliasName):
-        return DeltaTable(self._sessao, self._caminho, aliasName)
+        return DeltaTable(self._sessao, self._caminho, aliasName, self._colunas)
+
+    def _atual(self):
+        return self._sessao.read.format('delta').load(self._caminho)
 
     def toDF(self):
-        df = self._sessao.read.format('delta').load(self._caminho)
+        df = self._atual()
+        if df.columns != self._colunas:
+            df = df.select(*self._colunas)
         return df.alias(self._apelido) if self._apelido else df
 
     def history(self, limit=None):
@@ -55,7 +62,7 @@ class DeltaTable:
         return self._sessao.createDataFrame(linhas, COLUNAS_HISTORICO)
 
     def update(self, condition=None, set=None):  # noqa: A002 — o nome é o da API do Delta
-        df = self.toDF()
+        df = self._atual()
         cond = F.lit(True) if condition is None else _coluna(condition)
         alvo = F.coalesce(cond, F.lit(False))
         novas = [F.when(alvo, _coluna(set[c])).otherwise(F.col(c)).alias(c) if c in set else F.col(c) for c in df.columns]
@@ -102,7 +109,7 @@ class DeltaTable:
         return DeltaMergeBuilder(self, source, condition)
 
     def delete(self, condition=None):
-        df = self.toDF()
+        df = self._atual()
         alvo = F.lit(True) if condition is None else F.coalesce(_coluna(condition), F.lit(False))
         n = df.filter(alvo).count()
         _escrita.reescrever(self._sessao, self._caminho, df.filter(~alvo), 'DELETE',
