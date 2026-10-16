@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.0.0',
+    data: '2026-10-16',
+    titulo: 'A trilha completa',
+    resumo: 'Os últimos 6 projetos chegaram, e com eles o certificado final: do primeiro print ao streaming, Delta Lake e MLlib.',
+    grupos: [
+      { titulo: '🏗️ Projetos novos', itens: ['Sensores do sertão e streaming de música (Structured Streaming), ETL bronze → prata → ouro e qualidade de dados com SCD tipo 2 (Delta Lake), recomendação e detecção de fraude (MLlib).', 'Agora são 18 projetos de 5 etapas: o módulo 🏗️ está completo.'] },
+      { titulo: '🎓 Certificado final', itens: ['"Engenharia de dados com Python e Spark: trilha completa", de 155 horas, com o badge ★, quando todos os módulos e todos os projetos estiverem concluídos.', 'O certificado final também restaura o progresso em outro navegador, inclusive os projetos.'] },
+      { titulo: '📖 Glossário', itens: ['Termos novos: arquitetura medalhão e SCD tipo 2.'] },
+    ],
+  },
+  {
     versao: '0.7.0',
     data: '2026-10-16',
     titulo: 'Projetos de Spark avançado',

@@ -37,4 +37,10 @@ describe('glossário', () => {
     expect(ids(texto, 'projetos')).toEqual(expect.arrayContaining(['salting', 'media-movel', 'pivot']));
     expect(ids(texto, 'alem')).not.toContain('salting');
   });
+
+  it('medalhão e SCD tipo 2 aparecem nos projetos', () => {
+    const texto = 'A arquitetura medalhão tem bronze, prata e ouro; o SCD tipo 2 guarda o histórico';
+    expect(ids(texto, 'projetos')).toEqual(expect.arrayContaining(['medalhao', 'scd2']));
+    expect(ids(texto, 'alem')).not.toContain('medalhao');
+  });
 });

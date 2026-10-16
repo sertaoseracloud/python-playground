@@ -56,12 +56,12 @@ com outros dados e os mesmos nomes de arquivo.
 
 | Projeto | Dados | Etapas |
 |---|---|---|
-| 🌡️ Sensores do sertão | `leituras/lote-*.csv` | a consulta de streaming; contagem por estação; janela de 10 minutos; marca d'água; alerta na memória com SQL |
+| 🌡️ Sensores do sertão | `leituras/lote-*.csv` | a consulta de streaming; contagem por estação; janela de 10 minutos; marca d'água; alertas na memória, consultados com SQL |
 | 🎵 Streaming de música | `plays/lote-*.json` | ler o stream; plays por música; top da semana (janela de 7 dias); `update` só do que mudou; o top em uma tabela de memória |
 | 🥉🥈🥇 ETL bronze → prata → ouro | `bruto/*.csv` | bronze em Delta (como chegou); prata (limpa e tipada); ouro (agregada); `merge` da carga do dia; time travel para conferir |
-| 🧹 Qualidade de dados e SCD tipo 2 | `clientes-dia-N.csv` | regras de qualidade; quarentena das linhas ruins; tabela de clientes em Delta; SCD tipo 2 com `merge` (início, fim, atual); a versão de uma data |
+| 🧹 Qualidade de dados e SCD tipo 2 | `clientes-dia-N.csv` | regras de qualidade; quarentena das linhas ruins; tabela de clientes em Delta; SCD tipo 2 com `merge` (início, fim, atual); como a tabela estava em cada data (pelo início e fim) |
 | 🎯 Recomendação | `avaliacoes.csv` (usuário, filme, nota) | preparar as features; agrupar usuários com KMeans; nota média por grupo; recomendar o que o grupo gosta; avaliar no teste |
-| 🕵️ Detecção de fraude | `transacoes.csv` | features (valor, hora, distância); `Pipeline` com `StandardScaler`; regressão logística; AUC no teste; árvore de decisão e comparação |
+| 🕵️ Detecção de fraude | `transacoes.csv` | features (valor, hora, distância); `Pipeline` com `StandardScaler` (a árvore usa as features sem escala); regressão logística; AUC no teste; árvore de decisão e comparação |
 
 ## 2. Estrutura
 
@@ -92,6 +92,8 @@ etapa de cada projeto confere o resultado final do pipeline.
   somada de todos os módulos (os projetos entram na soma) e o resumo "concluiu a trilha completa:
   os 5 módulos, 196 problemas práticos e 18 projetos (90 etapas)".
 - Só sai com todos os módulos e todos os projetos concluídos; entra no fim da cadeia.
+- Restaurar pelo certificado final devolve também os projetos (que não têm certificado), na data do final. Carga:
+  102 h dos 5 certificados de módulo + 53 h dos projetos = 155 h.
 - O badge ★ ("TRILHA COMPLETA") já existe em `src/badges.js`; o teste de carga horária do final
   (`skipIf(!CERTIFICADOS.final)`) passa a rodar.
 

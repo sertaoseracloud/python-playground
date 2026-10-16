@@ -242,7 +242,7 @@ function htmlPagina(temResultadoInicial) {
       <p class="voltar-trilha"><a href="#/">← Página inicial</a></p>
       <header class="cabecalho-validador">
         <h1>🔎 Validar certificado</h1>
-        <p>Confira se um certificado ou badge da <b>${esc(EMISSOR.organizacao)}</b> é autêntico.</p>
+        <p>Confira se um certificado ou badge da <b>${esc(EMISSOR.organizacao)}</b> é autêntico: o de cada módulo ou o certificado final, da trilha completa.</p>
         <p class="selo-privacidade"><span aria-hidden="true">🔒</span> A conferência é feita aqui mesmo, no seu navegador: nada é enviado para nenhum lugar.</p>
       </header>
 
