@@ -10,7 +10,7 @@ PROGRAMAS = sorted(p.stem for p in PASTA.glob('c[0-9][0-9]_*.py'))
 
 
 def test_ha_programas():
-    assert len(PROGRAMAS) == 16
+    assert len(PROGRAMAS) == 17
 
 
 @pytest.mark.parametrize('nome', PROGRAMAS)
