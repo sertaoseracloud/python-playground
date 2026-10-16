@@ -12,8 +12,9 @@ import { projetoAgro } from './agro.js';
 import { projetoEnergia } from './energia.js';
 import { projetoHashtags } from './hashtags.js';
 import { projetoLogistica } from './logistica.js';
+import { projetoSensores } from './sensores.js';
 
-export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude, projetoAgro, projetoEnergia, projetoHashtags, projetoLogistica];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude, projetoAgro, projetoEnergia, projetoHashtags, projetoLogistica, projetoSensores];
 
 export const moduloProjetos = {
   id: 'projetos',
