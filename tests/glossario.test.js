@@ -31,4 +31,10 @@ describe('glossário', () => {
     expect(ids(texto, 'alem')).not.toContain('percentil');
     expect(ids(texto, 'alem')).not.toContain('funil');
   });
+
+  it('salting, média móvel e pivot aparecem nos projetos', () => {
+    const texto = 'O salting reparte a chave; a média móvel alisa a curva; o pivot vira as linhas em colunas';
+    expect(ids(texto, 'projetos')).toEqual(expect.arrayContaining(['salting', 'media-movel', 'pivot']));
+    expect(ids(texto, 'alem')).not.toContain('salting');
+  });
 });

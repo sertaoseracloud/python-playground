@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.7.0',
+    data: '2026-10-16',
+    titulo: 'Projetos de Spark avançado',
+    resumo: 'Mais 6 projetos no módulo 🏗️: distorção e salting, média móvel, pivot, séries com falhas, JSON com listas e broadcast.',
+    grupos: [
+      { titulo: '🏗️ Projetos novos', itens: ['Mobilidade urbana, saúde pública, agronegócio, energia solar, hashtags e seguidores, e logística: 6 projetos de 5 etapas.', 'Já são 12 dos 18 projetos. Os últimos 6 e o certificado final da trilha chegam na 1.0.0.'] },
+      { titulo: '✨ PySpark', itens: ['unpivot (e melt), para voltar do formato largo ao longo, conferido com o PySpark de verdade.'] },
+      { titulo: '📖 Glossário', itens: ['Termos novos: salting, média móvel e pivot.'] },
+    ],
+  },
+  {
     versao: '0.6.0',
     data: '2026-10-15',
     titulo: 'Projetos',
