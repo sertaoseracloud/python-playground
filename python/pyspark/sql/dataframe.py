@@ -195,6 +195,35 @@ class DataFrame:
     def crossJoin(self, other):
         return self.join(other, how='cross')
 
+    def unpivot(self, ids, values, variableColumnName, valueColumnName):
+        """Do formato largo para o longo: cada coluna de `values` vira uma linha (nome e valor). As
+        linhas saem na ordem do Spark (cada linha de entrada, coluna a coluna), com o tipo de valor
+        mais largo entre as colunas."""
+        from . import functions as F
+        from ..errors import AnalysisException
+        ids = [ids] if isinstance(ids, str) else list(ids)
+        if values is None:
+            values = [c for c in self.columns if c not in ids]
+        values = [values] if isinstance(values, str) else list(values)
+        tipos = dict(self.dtypes)
+        distintos = {tipos[v] for v in values}
+        if len(distintos) == 1:
+            alvo = distintos.pop()
+        elif distintos <= {'tinyint', 'smallint', 'int', 'bigint'}:
+            alvo = 'bigint'
+        elif distintos <= {'tinyint', 'smallint', 'int', 'bigint', 'float', 'double'}:
+            alvo = 'double'
+        else:
+            raise AnalysisException(
+                f'[UNPIVOT_VALUE_DATA_TYPE_MISMATCH] Unpivot value columns must share a least common type, some types do not: '
+                f'[{", ".join(f"{chr(34)}{tipos[v].upper()}{chr(34)}" for v in values)}].',
+                'UNPIVOT_VALUE_DATA_TYPE_MISMATCH', {}, '42K09')
+        pares = [F.struct(F.lit(v).alias(variableColumnName), F.col(f'`{v}`').cast(alvo).alias(valueColumnName)) for v in values]
+        return (self.select(*ids, F.explode(F.array(*pares)).alias('__unpivot'))
+                .select(*ids, f'__unpivot.{variableColumnName}', f'__unpivot.{valueColumnName}'))
+
+    melt = unpivot
+
     def union(self, other):
         from .avancado import unir
         return self._novo(unir([self._plano, other._plano]))

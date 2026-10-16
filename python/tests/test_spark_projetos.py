@@ -70,3 +70,18 @@ def test_timestamp_em_segundos(spark):
     assert [r.i for r in intervalos] == [None, 595, 5400]
     assert t.select(s.alias('s')).dtypes == [('s', 'bigint')]
     assert t.select(s.alias('s')).first().s == 1792054805  # 2026-10-15 09:00:05 contado como UTC
+
+def test_unpivot_volta_ao_formato_longo(spark):
+    largo = spark.createDataFrame([('soja', 36, 41), ('milho', 23, 25)], ['cultura', '2023', '2024'])
+    longo = largo.unpivot('cultura', ['2023', '2024'], 'ano', 'toneladas')
+    assert longo.dtypes == [('cultura', 'string'), ('ano', 'string'), ('toneladas', 'bigint')]
+    assert [tuple(r) for r in longo.collect()] == [('soja', '2023', 36), ('soja', '2024', 41), ('milho', '2023', 23), ('milho', '2024', 25)]
+    assert [tuple(r) for r in largo.melt(['cultura'], None, 'ano', 't').collect()] == [tuple(r) for r in longo.collect()]
+
+
+def test_unpivot_tipos_diferentes(spark):
+    df = spark.createDataFrame([(1, 2, 2.5)], 'id INT, a INT, b DOUBLE')
+    assert df.unpivot('id', ['a', 'b'], 'k', 'v').dtypes == [('id', 'int'), ('k', 'string'), ('v', 'double')]
+    misto = spark.createDataFrame([(1, 'x', 2)], 'id INT, a STRING, b INT')
+    with pytest.raises(AnalysisException, match='UNPIVOT_VALUE_DATA_TYPE_MISMATCH'):
+        misto.unpivot('id', ['a', 'b'], 'k', 'v')
