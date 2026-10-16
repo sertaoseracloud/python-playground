@@ -75,7 +75,7 @@ describe('certificados', () => {
 
 describe('cadeia de certificados (como num blockchain)', () => {
   it('a ordem é a da trilha', () => {
-    expect(ORDEM).toEqual(modulos.map((m) => m.id).filter((id) => id in CERTIFICADOS));
+    expect(ORDEM).toEqual([...modulos.map((m) => m.id).filter((id) => id in CERTIFICADOS), 'final']);
     expect(anteriores(ORDEM[0])).toEqual([]);
   });
 
@@ -154,5 +154,13 @@ describe('compartilhar', () => {
       const problemas = m.itens.filter((i) => i.tipo === 'problema').length;
       expect(CERTIFICADOS[m.id].resumo).toMatch(new RegExp(`(^|\\D)${problemas} problemas`));
     }
+  });
+
+  it('o resumo do certificado final bate com a trilha inteira', () => {
+    const projetos = modulos.find((m) => m.id === 'projetos');
+    const exercicios = modulos.filter((m) => m.id !== 'projetos').flatMap((m) => m.itens).filter((i) => i.tipo === 'problema').length;
+    const etapas = projetos.itens.filter((i) => i.tipo === 'problema').length;
+    expect(CERTIFICADOS.final.resumo).toBe(`concluiu a trilha completa: os ${modulos.length - 1} módulos, ${exercicios} problemas práticos e ${projetos.grupos.length} projetos (${etapas} etapas)`);
+    expect(ORDEM.at(-1)).toBe('final');
   });
 });

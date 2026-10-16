@@ -30,8 +30,8 @@ export const EMISSOR = {
 };
 
 // cargaHoraria: horas de cada certificado (soma das atividades do módulo, mínimo 1 hora;
-// veja src/cargaHoraria.js). O certificado final (trilha completa) volta na fase 6, quando
-// todos os módulos existirem.
+// veja src/cargaHoraria.js). O final soma os módulos e as horas dos projetos, que não têm
+// certificado próprio.
 export const CERTIFICADOS = {
   basico: {
     titulo: 'Fundamentos de Python',
@@ -67,6 +67,13 @@ export const CERTIFICADOS = {
     resumo: 'concluiu o módulo Spark além do batch, resolvendo os 36 problemas práticos',
     hashtags: ['Spark', 'Streaming', 'MachineLearning', 'DeltaLake'],
     conteudos: ['Delta Lake: versões, merge e time travel', "Structured Streaming: micro-lotes, janelas e marca d'água", 'MLlib: pipelines, regressão, classificação e agrupamento', 'Avaliação de modelos'],
+  },
+  final: {
+    titulo: 'Engenharia de dados com Python e Spark: trilha completa',
+    cargaHoraria: 155,
+    resumo: 'concluiu a trilha completa: os 5 módulos, 196 problemas práticos e 18 projetos (90 etapas)',
+    hashtags: ['Python', 'PySpark', 'EngenhariaDeDados'],
+    conteudos: ['Python básico e para dados', 'Paralelismo', 'PySpark', 'Streaming, Delta Lake e MLlib', '18 projetos de ponta a ponta'],
   },
 };
 

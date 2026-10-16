@@ -34,8 +34,10 @@ describe('carga horária', () => {
     expect(CERTIFICADOS[id].cargaHoraria).toBe(horasDosItens(modulo.itens));
   });
 
-  it.skipIf(!CERTIFICADOS.final)('o certificado final soma todos os módulos', () => {
-    expect(CERTIFICADOS.final.cargaHoraria).toBe(MODULOS.reduce((s, id) => s + CERTIFICADOS[id].cargaHoraria, 0));
+  it('o certificado final soma os certificados dos módulos e as horas dos projetos', () => {
+    const projetos = modulos.find((m) => m.id === 'projetos');
+    expect(CERTIFICADOS.final.cargaHoraria).toBe(MODULOS.reduce((s, id) => s + CERTIFICADOS[id].cargaHoraria, 0) + horasDosItens(projetos.itens));
+    expect(CERTIFICADOS.final.cargaHoraria).toBe(155);
   });
 
   it('texto em horas', () => {
