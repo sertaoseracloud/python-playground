@@ -2,8 +2,9 @@
 // pasta) tem a visão geral e 5 etapas; cada etapa continua do código da anterior (base.js).
 import { projetoPalavras } from './palavras.js';
 import { projetoVendasRegiao } from './vendas-regiao.js';
+import { projetoLogs } from './logs.js';
 
-export const PROJETOS = [projetoPalavras, projetoVendasRegiao];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs];
 
 export const moduloProjetos = {
   id: 'projetos',
