@@ -20,6 +20,7 @@ afterEach(() => vi.useRealTimers());
 describe('MotorPython', () => {
   it('executa em fila e mede o tempo', async () => {
     const motor = new MotorPython({ criarWorker: () => workerFalso() });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     const [a, b] = await Promise.all([motor.executar({ 'main.py': 'a' }), motor.executar({ 'main.py': 'b' })]);
     expect([a.saida, b.saida]).toEqual(['a', 'b']);
     expect(a.ms).toBeGreaterThanOrEqual(0);
@@ -36,6 +37,7 @@ describe('MotorPython', () => {
         return w;
       },
     });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     await vi.advanceTimersByTimeAsync(1);
     const travada = motor.executar({ 'main.py': 'while True: pass' });
     const expectativa = expect(travada).rejects.toThrow(TempoEsgotado);
@@ -52,6 +54,7 @@ describe('MotorPython', () => {
     const avisos = [];
     const w = workerFalso({ travar: true });
     const motor = new MotorPython({ limiteMs: 1000, criarWorker: () => w, aoAbrirPool: (abrindo) => avisos.push(abrindo) });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     await vi.advanceTimersByTimeAsync(1);
     const execucao = motor.executar({ 'main.py': 'pool' });
     await vi.advanceTimersByTimeAsync(500);
@@ -69,6 +72,7 @@ describe('MotorPython', () => {
     vi.useFakeTimers();
     const w = workerFalso({ travar: true });
     const motor = new MotorPython({ limiteMs: 1000, criarWorker: () => w });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     await vi.advanceTimersByTimeAsync(1);
     const execucao = motor.executar({ 'main.py': 'pool' });
     const expectativa = expect(execucao).rejects.toThrow(TempoEsgotado);
@@ -87,6 +91,7 @@ describe('MotorPython: terminal', () => {
     try {
       const w = workerManual();
       const motor = new MotorPython({ limiteMs: 1000, criarWorker: () => w });
+      motor.garantir(); // o worker só nasce na primeira necessidade
       w.onmessage({ data: { tipo: 'pronto' } });
       let digitar;
       const pendente = motor.executar({}, {}, { aoPedirEntrada: () => new Promise((r) => { digitar = r; }) });
@@ -108,6 +113,7 @@ describe('MotorPython: terminal', () => {
   it('a saída ao vivo chega pelo gancho aoSaida', async () => {
     const w = workerManual();
     const motor = new MotorPython({ criarWorker: () => w });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     w.onmessage({ data: { tipo: 'pronto' } });
     const vistos = [];
     const pendente = motor.executar({}, {}, { aoSaida: (t) => vistos.push(t) });
@@ -122,6 +128,7 @@ describe('MotorPython: terminal', () => {
   it('repl entra na mesma fila e manda a mensagem do REPL', async () => {
     const w = workerManual();
     const motor = new MotorPython({ criarWorker: () => w });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     w.onmessage({ data: { tipo: 'pronto' } });
     const pendente = motor.repl({ acao: 'linha', texto: '1 + 1', interativo: true });
     await new Promise((r) => setTimeout(r));
@@ -138,6 +145,7 @@ describe('MotorPython: terminal', () => {
     try {
       const w = workerManual();
       const motor = new MotorPython({ criarWorker: () => w });
+      motor.garantir(); // o worker só nasce na primeira necessidade
       w.onmessage({ data: { tipo: 'pronto' } });
       const pendente = motor.executar({}, {}, { aoPedirEntrada: () => Promise.reject(new Error('cancelada')) });
       await new Promise((r) => setTimeout(r));
@@ -156,11 +164,51 @@ describe('MotorPython: terminal', () => {
   it('interromper rejeita com Interrompido e recria o worker', async () => {
     const criados = [];
     const motor = new MotorPython({ criarWorker: () => { const w = workerManual(); criados.push(w); return w; } });
+    motor.garantir(); // o worker só nasce na primeira necessidade
     criados[0].onmessage({ data: { tipo: 'pronto' } });
     const pendente = motor.executar({}, {});
     await new Promise((r) => setTimeout(r));
     motor.interromper();
     await expect(pendente).rejects.toBeInstanceOf(Interrompido);
     expect(criados).toHaveLength(2);
+  });
+});
+
+describe('MotorPython sob demanda (a landing e a trilha não baixam o Python)', () => {
+  const contador = () => {
+    const criados = [];
+    return { criados, criarWorker: () => { const w = workerFalso(); criados.push(w); return w; } };
+  };
+
+  it('não abre o worker antes de precisar', () => {
+    const { criados, criarWorker } = contador();
+    new MotorPython({ criarWorker });
+    expect(criados).toHaveLength(0);
+  });
+
+  it('garantir abre uma vez só, e executar espera o carregamento', async () => {
+    const { criados, criarWorker } = contador();
+    const motor = new MotorPython({ criarWorker });
+    const a = motor.garantir();
+    const b = motor.garantir();
+    const r = await motor.executar({ 'main.py': 'oi' });
+    await Promise.all([a, b]);
+    expect(criados).toHaveLength(1);
+    expect(r.saida).toBe('oi');
+  });
+
+  it('interromper antes de começar não cria worker', () => {
+    const { criados, criarWorker } = contador();
+    const motor = new MotorPython({ criarWorker });
+    expect(() => motor.interromper()).not.toThrow();
+    expect(criados).toHaveLength(0);
+  });
+
+  it('o estado carregando só é avisado ao garantir', async () => {
+    const estados = [];
+    const motor = new MotorPython({ criarWorker: () => workerFalso(), aoMudarEstado: (s) => estados.push(s) });
+    expect(estados).toEqual([]);
+    await motor.garantir();
+    expect(estados).toEqual(['carregando', 'pronto']);
   });
 });
