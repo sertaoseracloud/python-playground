@@ -22,7 +22,13 @@ export class MotorPython {
     this.criarWorker = criarWorker;
     this.fila = Promise.resolve();
     this.proximoId = 1;
-    this.iniciar();
+    // O worker só nasce na primeira necessidade (garantir): a landing e a trilha não baixam o Python.
+  }
+
+  /** Abre o worker na primeira chamada; as seguintes devolvem o mesmo carregamento. */
+  garantir() {
+    if (!this.worker) this.iniciar();
+    return this.pronto;
   }
 
   iniciar() {
@@ -88,6 +94,7 @@ export class MotorPython {
 
   /** Ctrl+C: encerra a execução em andamento (o worker é recriado). */
   interromper() {
+    if (!this.worker) return;
     const atual = this.atual;
     if (!atual) return;
     this.atual = null;
@@ -97,7 +104,7 @@ export class MotorPython {
   }
 
   async #rodar(mensagem, ganchos) {
-    await this.pronto;
+    await this.garantir();
     const id = this.proximoId++;
     const inicio = performance.now();
     return new Promise((resolve, reject) => {
