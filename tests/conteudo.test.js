@@ -21,7 +21,7 @@ describe('estrutura', () => {
       const area = m.itens.filter((i) => i.tipo === 'problema' && i.id.startsWith(prefixo));
       expect(['facil', 'medio', 'dificil'].map((d) => area.filter((i) => i.dificuldade === d).length)).toEqual([3, 6, 3]);
     }
-    expect(modulos.map((x) => x.id).slice(-2)).toEqual(['pyspark', 'alem']);
+    expect(modulos.map((x) => x.id).slice(-3)).toEqual(['pyspark', 'alem', 'projetos']);
   });
 
   it.each([['basico', 40, 10], ['dados', 40, 10], ['paralelismo', 35, 10], ['pyspark', 45, 14], ['alem', 36, 12]])('o módulo %s tem %i exercícios e %i lições', (id, exercicios, licoes) => {

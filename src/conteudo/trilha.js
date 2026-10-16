@@ -5,13 +5,12 @@ import { moduloDados } from './dados.js';
 import { moduloParalelismo } from './paralelismo.js';
 import { moduloPyspark } from './pyspark.js';
 import { moduloAlem } from './alem.js';
+import { moduloProjetos } from './projetos/index.js';
 
-export const modulos = [moduloBasico, moduloDados, moduloParalelismo, moduloPyspark, moduloAlem];
+export const modulos = [moduloBasico, moduloDados, moduloParalelismo, moduloPyspark, moduloAlem, moduloProjetos];
 
 /** Módulos das próximas versões (só título e ícone, para a landing e a trilha). */
-export const PROXIMOS_MODULOS = [
-  { id: 'projetos', icone: '🏗️', titulo: 'Projetos' },
-];
+export const PROXIMOS_MODULOS = [];
 
 export const DIFICULDADES = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
 

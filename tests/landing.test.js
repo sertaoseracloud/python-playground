@@ -4,8 +4,8 @@ import { renderLanding, numerosDaTrilha } from '../src/ui/landing.js';
 import { modulos, problemas, PROXIMOS_MODULOS } from '../src/conteudo/trilha.js';
 import { CERTIFICADOS, ORDEM } from '../src/certificados.js';
 
-// Um certificado por módulo e, quando a trilha tiver o final, mais um.
-const TOTAL_CERTIFICADOS = modulos.length + (CERTIFICADOS.final ? 1 : 0);
+// Um certificado por módulo que tem certificado (os projetos não têm) e, quando a trilha tiver o final, mais um.
+const TOTAL_CERTIFICADOS = Object.keys(CERTIFICADOS).length;
 
 describe('landing page', () => {
   beforeEach(() => localStorage.clear());
