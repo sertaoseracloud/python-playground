@@ -5,17 +5,19 @@
 import { CERTIFICADOS } from './certificados.js';
 
 /**
- * Um bloco por módulo da cadeia (o certificado final não tem itens próprios e fica de fora).
+ * Um bloco por módulo da cadeia. O certificado final não tem itens próprios, mas prova também os
+ * projetos, que não têm certificado: eles voltam na data do final.
  * `modulos` é o de conteudo/trilha.js.
  */
 export function planoDeRestauracao(cert, modulos) {
   const elos = [...cert.cadeia, { modulo: cert.modulo, data: cert.data }];
+  if (cert.modulo === 'final') elos.push({ modulo: 'projetos', data: cert.data });
   return elos.flatMap(({ modulo, data }) => {
     const m = modulos.find((x) => x.id === modulo);
     if (!m) return [];
     return [{
       modulo,
-      titulo: CERTIFICADOS[modulo].titulo,
+      titulo: CERTIFICADOS[modulo]?.titulo ?? m.titulo,
       data,
       licoes: m.itens.filter((i) => i.tipo === 'licao').length,
       exercicios: m.itens.filter((i) => i.tipo === 'problema').length,

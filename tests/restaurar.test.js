@@ -28,14 +28,23 @@ const reemitido = (cert, modulo) => {
 beforeEach(() => localStorage.clear());
 
 describe('planoDeRestauracao', () => {
+  it('o final só sai com todos os projetos: faltando uma etapa, o diploma fica desabilitado', async () => {
+    const { calcularJornada } = await import('../src/gamificacao.js');
+    const ultima = modulos.find((m) => m.id === 'projetos').itens.at(-1).id;
+    const j = calcularJornada({ modulos, statusDe: (id) => (id === ultima ? undefined : 'resolvido'), dataDe: () => '2026-10-16' });
+    expect(j.final.concluido).toBe(false);
+  });
+
   it('um bloco por módulo da cadeia, com os itens e a data de cada um', () => {
     const { cert } = emitido(ORDEM.at(-1));
     const plano = planoDeRestauracao(cert, modulos);
-    const comItens = ORDEM.filter((id) => modulos.some((m) => m.id === id));
-    expect(plano.map((b) => b.modulo)).toEqual(comItens); // o final não traz itens
+    // O final não traz itens próprios, mas devolve os projetos (que não têm certificado), na data dele.
+    const comItens = [...ORDEM.filter((id) => modulos.some((m) => m.id === id)), 'projetos'];
+    expect(plano.map((b) => b.modulo)).toEqual(comItens);
+    expect(plano.at(-1).data).toBe(cert.data);
     for (const b of plano) {
       const m = modulos.find((x) => x.id === b.modulo);
-      expect(b.titulo).toBe(CERTIFICADOS[b.modulo].titulo);
+      expect(b.titulo).toBe(CERTIFICADOS[b.modulo]?.titulo ?? m.titulo);
       expect(b.ids).toEqual(m.itens.map((i) => i.id));
       expect(b.exercicios).toBe(m.itens.filter((i) => i.tipo === 'problema').length);
       expect(b.licoes).toBe(m.itens.filter((i) => i.tipo === 'licao').length);
