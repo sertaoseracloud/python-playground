@@ -16,8 +16,9 @@ import { projetoSensores } from './sensores.js';
 import { projetoMusica } from './musica.js';
 import { projetoEtl } from './etl.js';
 import { projetoQualidade } from './qualidade.js';
+import { projetoRecomendacao } from './recomendacao.js';
 
-export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude, projetoAgro, projetoEnergia, projetoHashtags, projetoLogistica, projetoSensores, projetoMusica, projetoEtl, projetoQualidade];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude, projetoAgro, projetoEnergia, projetoHashtags, projetoLogistica, projetoSensores, projetoMusica, projetoEtl, projetoQualidade, projetoRecomendacao];
 
 export const moduloProjetos = {
   id: 'projetos',
