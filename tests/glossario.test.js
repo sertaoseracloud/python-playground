@@ -24,4 +24,11 @@ describe('glossário', () => {
     expect(ids(texto, 'alem')).toEqual(expect.arrayContaining(['marca-dagua', 'upsert', 'pipeline', 'estimador']));
     expect(ids(texto, 'pyspark')).not.toContain('marca-dagua');
   });
+
+  it('os termos dos projetos só aparecem no módulo projetos', () => {
+    const texto = 'O percentil 95 das rotas; as palavras vazias saem antes; o funil de conversão da loja';
+    expect(ids(texto, 'projetos')).toEqual(expect.arrayContaining(['percentil', 'palavras-vazias', 'funil']));
+    expect(ids(texto, 'alem')).not.toContain('percentil');
+    expect(ids(texto, 'alem')).not.toContain('funil');
+  });
 });

@@ -14,8 +14,8 @@ const escreverCodigo = (obj) => paraBase64Url(new TextEncoder().encode(JSON.stri
 const CERT = { nome: 'Maria da Conceição', modulo: 'basico', data: '2026-10-11' };
 
 describe('certificados', () => {
-  it('existe um certificado para cada módulo (o final volta quando a trilha estiver completa)', () => {
-    expect(Object.keys(CERTIFICADOS).filter((id) => id !== 'final').sort()).toEqual(modulos.map((m) => m.id).sort());
+  it('existe um certificado para cada módulo, menos os projetos (o final chega com a trilha completa)', () => {
+    expect(Object.keys(CERTIFICADOS).filter((id) => id !== 'final').sort()).toEqual(modulos.map((m) => m.id).filter((id) => id !== 'projetos').sort());
     for (const c of Object.values(CERTIFICADOS)) {
       expect(c.titulo).toBeTruthy();
       expect(c.conteudos.length).toBeGreaterThan(2);
@@ -150,7 +150,7 @@ describe('compartilhar', () => {
   });
 
   it('os números do texto batem com o conteúdo da trilha', () => {
-    for (const m of modulos) {
+    for (const m of modulos.filter((x) => CERTIFICADOS[x.id])) {
       const problemas = m.itens.filter((i) => i.tipo === 'problema').length;
       expect(CERTIFICADOS[m.id].resumo).toMatch(new RegExp(`(^|\\D)${problemas} problemas`));
     }

@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '0.6.0',
+    data: '2026-10-15',
+    titulo: 'Projetos',
+    resumo: 'O último módulo da trilha começou: projetos de dados de ponta a ponta com PySpark, em que cada etapa continua do código da anterior.',
+    grupos: [
+      { titulo: '🏗️ Módulo novo', itens: ['6 projetos de 5 etapas: contagem de palavras em livros de cordel, vendas por região, análise de logs, funil de e-commerce, painel de indicadores e notas de exame.', 'Quem resolve uma etapa continua do próprio código na seguinte.', 'Os outros 12 projetos e o certificado final da trilha chegam nas próximas versões.'] },
+      { titulo: '✨ PySpark', itens: ['Percentis com percentile_approx, livros inteiros com wholeTextFiles e o momento em segundos com cast("long"), conferidos com o PySpark de verdade.'] },
+      { titulo: '📖 Glossário', itens: ['Termos novos: percentil, palavras vazias e funil de conversão.'] },
+    ],
+  },
+  {
     versao: '0.5.0',
     data: '2026-10-15',
     titulo: 'Spark além do batch',

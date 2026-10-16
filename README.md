@@ -35,8 +35,10 @@ fica no GitHub Pages.
   (micro-lotes, fontes e saídas, modos, estado, janelas e marca d'água, num relógio simulado) e MLlib
   (features, pipelines, regressão linear e logística, árvore de decisão, KMeans e avaliação).
   Certificado: Streaming, Machine Learning e Delta Lake com Spark (20 h).
-- **Em breve**, nas próximas versões (aparecem na landing e no fim da trilha como "em breve"):
-  🏗️ Projetos.
+- **🏗️ Projetos** (0.6.0): **6 projetos de 5 etapas** (30 etapas), pipelines de dados de ponta a ponta com PySpark,
+  em que cada etapa continua do código da anterior: contagem de palavras em livros de cordel, vendas por região,
+  análise de logs (com percentil 95 e sessões), funil de e-commerce, painel de indicadores e notas de exame. Os
+  outros 12 projetos (Spark avançado e além do batch) e o certificado final da trilha chegam nas próximas versões.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal**, um terminal de verdade: o `print` aparece

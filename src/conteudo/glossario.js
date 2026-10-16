@@ -489,6 +489,25 @@ export const GLOSSARIO = [
     analogia: 'Jogar fora os rascunhos velhos: o armário esvazia, mas não dá mais para consultar.',
     exemplo: 'DeltaTable.forPath(spark, "estoque").vacuum(168)',
   },
+  // ---------- Projetos ----------
+  {
+    id: 'percentil', termo: 'Percentil', padroes: ['percentil', 'percentis', 'p95', 'mediana'],
+    definicao: 'O valor que deixa uma fração dos dados abaixo dele: o percentil 90 é maior ou igual a 90% dos valores. A mediana é o percentil 50.',
+    analogia: 'A fila da merenda por altura: o percentil 90 é quem só tem 10% da fila mais alta que ele.',
+    exemplo: 'df.agg(F.percentile_approx("ms", 0.95))',
+  },
+  {
+    id: 'palavras-vazias', termo: 'Palavras vazias (stop words)', padroes: ['palavras? vazias?', 'stop ?words?'],
+    definicao: 'Palavras muito comuns (a, o, de, que) que quase não dizem nada sobre o texto; saem antes de contar.',
+    analogia: 'O "é..." e o "tipo assim" de quem conversa: aparecem toda hora, mas não contam a história.',
+    exemplo: 'contagem.join(vazias, "palavra", "left_anti")',
+  },
+  {
+    id: 'funil', termo: 'Funil de conversão', padroes: ['funil', 'funis', 'convers(ão|ões)'],
+    definicao: 'As etapas por que o cliente passa até comprar (visita, carrinho, compra) e quantos chegam a cada uma.',
+    analogia: 'A peneira do garimpo: entra muita areia, e a cada peneira fica menos, até sobrar o ouro.',
+    exemplo: 'eventos.groupBy("evento").agg(F.countDistinct("usuario"))',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
@@ -500,7 +519,7 @@ const REGEX = new Map(GLOSSARIO.map((t) => [
 
 // Nível de cada termo: o módulo em que ele aparece primeiro (a ordem do glossário).
 const ORDEM_MODULOS = ['basico', 'dados', 'paralelismo', 'pyspark', 'alem', 'projetos'];
-const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo', pyspark: 'spark', alem: 'micro-lote' };
+const INICIO_DO_NIVEL = { basico: 'variavel', dados: 'comprehension', paralelismo: 'paralelismo', pyspark: 'spark', alem: 'micro-lote', projetos: 'percentil' };
 const NIVEL = new Map();
 {
   let nivel = 0;
