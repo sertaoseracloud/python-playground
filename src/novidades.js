@@ -10,6 +10,17 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.0.2',
+    data: '2026-10-16',
+    titulo: 'Mais leve no celular',
+    resumo: 'No celular, os botões de ajuda não cobrem mais o código, e o Python só carrega quando você abre um exercício.',
+    grupos: [
+      { titulo: '📱 Celular', itens: ['Os botões de ajuda, acessibilidade e privacidade viram um só (⚙️): no exercício, eles não cobrem mais o código.'] },
+      { titulo: '⚡ Mais rápido', itens: ['O Python só é baixado quando você abre um exercício: a página inicial e a trilha abrem mais rápido no celular.'] },
+      { titulo: '🏅 Badges', itens: ['No cartão do badge, o nome do curso aparece inteiro.'] },
+    ],
+  },
+  {
     versao: '1.0.1',
     data: '2026-10-16',
     titulo: 'Tudo cabe no celular',
