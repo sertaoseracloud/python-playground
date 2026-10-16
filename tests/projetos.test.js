@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { modulos, PROXIMOS_MODULOS } from '../src/conteudo/trilha.js';
 
 // Os projetos já publicados, na ordem da trilha.
-const IDS = ['palavras', 'vendas-regiao', 'logs', 'funil', 'painel'];
+const IDS = ['palavras', 'vendas-regiao', 'logs', 'funil', 'painel', 'notas'];
 const m = modulos.find((x) => x.id === 'projetos');
 const doProjeto = (id) => m.itens.filter((i) => i.grupo === id);
 const etapas = (id) => doProjeto(id).filter((i) => i.tipo === 'problema');
