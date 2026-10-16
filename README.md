@@ -35,12 +35,14 @@ fica no GitHub Pages.
   (micro-lotes, fontes e saídas, modos, estado, janelas e marca d'água, num relógio simulado) e MLlib
   (features, pipelines, regressão linear e logística, árvore de decisão, KMeans e avaliação).
   Certificado: Streaming, Machine Learning e Delta Lake com Spark (20 h).
-- **🏗️ Projetos** (0.6.0 e 0.7.0): **12 projetos de 5 etapas** (60 etapas), pipelines de dados de ponta a ponta com
+- **🏗️ Projetos** (0.6.0 a 1.0.0): **18 projetos de 5 etapas** (90 etapas), pipelines de dados de ponta a ponta com
   PySpark, em que cada etapa continua do código da anterior. DataFrame e SQL: contagem de palavras em livros de cordel,
   vendas por região, análise de logs, funil de e-commerce, painel de indicadores e notas de exame. Spark avançado:
-  mobilidade urbana (distorção e salting), saúde pública (média móvel), agronegócio (pivot e unpivot), energia solar
-  (lacunas e preenchimento), hashtags e seguidores (JSON e explode) e logística (broadcast). Os últimos 6 projetos
-  (além do batch) e o certificado final da trilha chegam na 1.0.0.
+  mobilidade urbana, saúde pública, agronegócio, energia solar, hashtags e seguidores, e logística. Além do batch:
+  sensores do sertão e streaming de música (Structured Streaming), ETL bronze → prata → ouro e qualidade de dados com
+  SCD tipo 2 (Delta Lake), recomendação e detecção de fraude (MLlib).
+- **🎓 Certificado final**: "Engenharia de dados com Python e Spark: trilha completa" (155 h), com todos os módulos e
+  os 18 projetos concluídos; no fim da cadeia de certificados, com o badge ★.
 - **Como no LeetCode**: **▶ Executar** roda os casos visíveis; **⬆ Enviar** roda todos, inclusive os
   **casos ocultos**, que usam outros valores, então resposta fixa no código não passa.
 - **Tela do exercício**: descrição, editor e **🖥️ Terminal**, um terminal de verdade: o `print` aparece

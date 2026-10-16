@@ -526,6 +526,18 @@ export const GLOSSARIO = [
     analogia: 'A tabela da merenda: uma linha por dia e uma coluna por turma, em vez de uma linha para cada dia e turma.',
     exemplo: 'df.groupBy("cultura").pivot("ano").sum("toneladas")',
   },
+  {
+    id: 'medalhao', termo: 'Arquitetura medalhão (bronze, prata, ouro)', padroes: ['medalhão', 'camadas? (bronze|prata|ouro)'],
+    definicao: 'Organizar o lago de dados em camadas: bronze guarda os dados como chegaram, prata limpos e tipados, ouro agregados para o relatório.',
+    analogia: 'O caminho do algodão: o fardo que chega do roçado, o fio limpo e penteado, e o pano pronto para a costureira.',
+    exemplo: 'bruto.write.format("delta").save("bronze")',
+  },
+  {
+    id: 'scd2', termo: 'SCD tipo 2 (histórico)', padroes: ['scd( tipo)? ?2', 'dimens(ão|ões) que mudam? devagar'],
+    definicao: 'Guardar o histórico de uma tabela: quando um valor muda, a linha antiga ganha a data de fim e uma linha nova entra com a data de início.',
+    analogia: 'O caderno de endereços que não apaga: risca o endereço velho com a data da mudança e escreve o novo embaixo.',
+    exemplo: 'whenMatchedUpdate(set={"fim": "e.dia", "atual": "false"})',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.
