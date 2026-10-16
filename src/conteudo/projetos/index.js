@@ -8,8 +8,9 @@ import { projetoPainel } from './painel.js';
 import { projetoNotas } from './notas.js';
 import { projetoMobilidade } from './mobilidade.js';
 import { projetoSaude } from './saude.js';
+import { projetoAgro } from './agro.js';
 
-export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil, projetoPainel, projetoNotas, projetoMobilidade, projetoSaude, projetoAgro];
 
 export const moduloProjetos = {
   id: 'projetos',
