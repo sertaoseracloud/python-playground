@@ -45,12 +45,12 @@ com outros dados e os mesmos nomes de arquivo.
 
 | Projeto | Dados | Etapas |
 |---|---|---|
-| 🚌 Mobilidade urbana | `viagens.csv` (um terminal com muito mais viagens) | viagens por linha; o desequilíbrio no `explain` e nas partições; salting da chave; agregar de volta; comparar os planos |
+| 🚌 Mobilidade urbana | `viagens.csv` (um terminal com muito mais viagens) | viagens por linha; o desequilíbrio entre os terminais; salting da chave; agregar de volta; comparar a maior tarefa e os planos (a ordem das partições não é conferida: o hash do nosso `repartition` não é o do Spark) |
 | 🏥 Saúde pública | `atendimentos.csv` por município e dia | casos por dia; média móvel de 7 dias (janela); variação semanal; municípios em alta; ranking por região |
 | 🌾 Agronegócio | `safras.csv` por cultura, estado e ano | produção por cultura; `pivot` cultura × ano; crescimento ano a ano; os estados líderes; o relatório com `unpivot` (`stack`) |
 | ☀️ Energia solar | `geracao.csv` de hora em hora | geração por dia; pico do dia; lacunas na série; preencher com a última leitura; acumulado do mês |
 | #️⃣ Hashtags e seguidores | `posts.json` (com listas) | ler JSON; `explode` das hashtags; as mais usadas por dia; quem segue quem (`explode` duplo); alcance por hashtag |
-| 🚚 Logística | `entregas.csv`, `cidades.csv` (pequena), `rotas.csv` | juntar com as cidades (broadcast); prazo por rota; atrasos; o plano com e sem broadcast; o relatório por transportadora |
+| 🚚 Logística | `entregas.csv`, `cidades.csv` (pequena, com a UF), `rotas.csv` (o prazo) | juntar com as cidades (broadcast); prazo por rota; atrasos; o plano com e sem broadcast; o relatório por transportadora |
 
 ### 1.0.0 — além do batch e o certificado final
 
@@ -78,7 +78,7 @@ com outros dados e os mesmos nomes de arquivo.
 - O módulo sai de `PROXIMOS_MODULOS` na 0.6.0. Até a 1.0.0, a descrição do módulo diz quantos
   projetos já estão no ar e que os próximos chegam nas versões seguintes.
 - O motor ganha o que os projetos da 0.6.0 usam: `F.percentile_approx`, `sc.wholeTextFiles` e o CAST de
-  TIMESTAMP para segundos, conferidos com o PySpark real (`c16`).
+  TIMESTAMP para segundos, conferidos com o PySpark real (`c16`). Na 0.7.0, `DataFrame.unpivot`/`melt` (`c17`); o `stack` do SQL fica de fora.
 
 ## 3. Correção
 

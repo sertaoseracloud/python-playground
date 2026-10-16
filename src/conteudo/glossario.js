@@ -508,6 +508,24 @@ export const GLOSSARIO = [
     analogia: 'A peneira do garimpo: entra muita areia, e a cada peneira fica menos, até sobrar o ouro.',
     exemplo: 'eventos.groupBy("evento").agg(F.countDistinct("usuario"))',
   },
+  {
+    id: 'salting', termo: 'Salting (sal na chave)', padroes: ['salting', 'salgar', 'salgad[ao]s?'],
+    definicao: 'Acrescentar à chave de um groupBy ou join um pedaço a mais (o sal) para repartir uma chave grande em várias tarefas; depois, uma segunda agregação junta os pedaços.',
+    analogia: 'A fila única do banco virando quatro caixas: o mesmo povo, atendido em paralelo.',
+    exemplo: 'df.withColumn("sal", F.col("id") % 4).groupBy("terminal", "sal").count()',
+  },
+  {
+    id: 'media-movel', termo: 'Média móvel', padroes: ['médias? móve(l|is)'],
+    definicao: 'A média de uma janela que anda junto com o tempo: a de hoje usa hoje e os dias anteriores. Alisa os altos e baixos de um dia só.',
+    analogia: 'Olhar a chuva da semana, e não a de um dia: um temporal isolado não muda tudo.',
+    exemplo: 'F.avg("casos").over(Window.partitionBy("municipio").orderBy("dia").rowsBetween(-6, 0))',
+  },
+  {
+    id: 'pivot', termo: 'Pivot e unpivot', padroes: ['pivot', 'unpivot', 'formato (largo|longo)'],
+    definicao: 'O pivot vira os valores de uma coluna em colunas (do formato longo para o largo); o unpivot faz a volta.',
+    analogia: 'A tabela da merenda: uma linha por dia e uma coluna por turma, em vez de uma linha para cada dia e turma.',
+    exemplo: 'df.groupBy("cultura").pivot("ano").sum("toneladas")',
+  },
 ];
 
 // Letras (com acento), dígitos, _ e $ contam como parte de uma palavra.

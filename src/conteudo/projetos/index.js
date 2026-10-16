@@ -19,7 +19,7 @@ export const moduloProjetos = {
   id: 'projetos',
   titulo: 'Projetos',
   icone: '🏗️',
-  descricao: `Pipelines de dados de ponta a ponta com PySpark: ler, limpar, juntar, agregar e entregar. Cada projeto tem 5 etapas, e cada etapa continua do código da anterior. Já estão no ar ${PROJETOS.length} dos 18 projetos (DataFrame e SQL); os outros chegam nas próximas versões.`,
+  descricao: `Pipelines de dados de ponta a ponta com PySpark: ler, limpar, juntar, agregar e entregar. Cada projeto tem 5 etapas, e cada etapa continua do código da anterior. Já estão no ar ${PROJETOS.length} dos 18 projetos (DataFrame e SQL, e Spark avançado); os outros chegam nas próximas versões.`,
   grupos: PROJETOS.map((p) => p.grupo),
   itens: PROJETOS.flatMap((p) => p.itens),
 };
