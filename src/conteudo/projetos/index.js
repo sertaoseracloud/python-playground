@@ -3,8 +3,9 @@
 import { projetoPalavras } from './palavras.js';
 import { projetoVendasRegiao } from './vendas-regiao.js';
 import { projetoLogs } from './logs.js';
+import { projetoFunil } from './funil.js';
 
-export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao, projetoLogs, projetoFunil];
 
 export const moduloProjetos = {
   id: 'projetos',
