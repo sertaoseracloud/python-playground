@@ -106,7 +106,7 @@ export function svgCartao(modulo) {
   <text x="630" y="${y0 - 80}" font-family="${SANS}" font-size="26" font-weight="700" letter-spacing="5" fill="${cor}">${final ? 'CERTIFICADO DE CONCLUSÃO' : 'BADGE CONQUISTADO'}</text>
   ${linhas.map((l, i) => `<text x="630" y="${y0 + i * 60}" font-family="${SANS}" font-size="52" font-weight="800" fill="#f8f8f2">${escXml(l)}</text>`).join('\n  ')}
   <text x="630" y="${y0 + linhas.length * 60 + 20}" font-family="${SANS}" font-size="28" fill="#c9c6dc">Emitido por <tspan font-weight="700" fill="#f8f8f2">${escXml(EMISSOR.organizacao)}</tspan></text>
-  <text x="630" y="${y0 + linhas.length * 60 + 62}" font-family="${SANS}" font-size="24" fill="#9e9bb8">${escXml(EMISSOR.curso)}</text>
+  ${quebrar(EMISSOR.curso, 40).map((l, i) => `<text x="630" y="${y0 + linhas.length * 60 + 62 + i * 32}" font-family="${SANS}" font-size="24" fill="#9e9bb8">${escXml(l)}</text>`).join('\n  ')}
 </svg>`;
 }
 
