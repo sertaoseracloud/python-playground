@@ -1,8 +1,9 @@
 // 🏗️ Projetos: pipelines de dados de ponta a ponta com PySpark. Cada projeto (um arquivo nesta
 // pasta) tem a visão geral e 5 etapas; cada etapa continua do código da anterior (base.js).
 import { projetoPalavras } from './palavras.js';
+import { projetoVendasRegiao } from './vendas-regiao.js';
 
-export const PROJETOS = [projetoPalavras];
+export const PROJETOS = [projetoPalavras, projetoVendasRegiao];
 
 export const moduloProjetos = {
   id: 'projetos',
