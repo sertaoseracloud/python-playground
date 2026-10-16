@@ -9,6 +9,7 @@ Uma `Column` guarda uma expressão (`Expr`). A expressão sabe:
 Os nomes de coluna são resolvidos sem diferenciar maiúsculas, como no Spark. NULL segue a
 lógica de três valores do SQL, e o modo ANSI (padrão do Spark 4) dá erro na divisão por zero
 e no CAST de texto inválido."""
+import calendar
 import datetime
 import decimal
 import itertools
@@ -373,6 +374,9 @@ def converter(valor, de, para, ansi):
             if math.isnan(valor) or math.isinf(valor):
                 return falhou()
             return int(valor)
+        if isinstance(valor, datetime.datetime):
+            # TIMESTAMP → segundos desde 1970. O relógio daqui não tem fuso: a hora conta como UTC.
+            return calendar.timegm(valor.timetuple())
         if isinstance(valor, str):
             texto = valor.strip()
             if re.fullmatch(r'[+-]?\d+', texto):

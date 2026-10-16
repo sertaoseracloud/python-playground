@@ -167,6 +167,33 @@ class Distinto(Acumulador):
         return self.base.fim(r)
 
 
+class Percentil(Acumulador):
+    """percentile_approx: guarda os valores e, no fim, pega o de posição ceil(p * n) da lista
+    ordenada, como o QuantileSummaries do Spark (exato enquanto houver até `accuracy` valores)."""
+
+    def __init__(self, percentis):
+        self.percentis = percentis  # um float ou uma lista de floats
+
+    def zero(self):
+        return []
+
+    def somar(self, acc, v):
+        return acc if v is None else acc + [v]
+
+    def juntar(self, a, b):
+        return a + b
+
+    def fim(self, acc):
+        if not acc:
+            return None
+        ordenados = sorted(acc)
+        n = len(ordenados)
+
+        def um(p):
+            return ordenados[min(n - 1, max(0, math.ceil(p * n) - 1))]
+        return [um(p) for p in self.percentis] if isinstance(self.percentis, list) else um(self.percentis)
+
+
 class ComFiltro(Acumulador):
     """Agregação que só conta as linhas da condição (usada pelo pivot); sem linhas, NULL."""
 
@@ -232,6 +259,10 @@ class Agg(Expr):
             if not isinstance(t, T.NUMERICOS + (T.StringType, T.NullType)):
                 raise _tipo_errado(self, t, 'NUMERIC')
             return T.DoubleType()
+        if f == 'percentile_approx':
+            if not isinstance(t, T.NUMERICOS):
+                raise _tipo_errado(self, t, 'NUMERIC')
+            return T.ArrayType(t, False) if isinstance(self.args[1].valor, list) else t
         if f in ('collect_list', 'collect_set'):
             return T.ArrayType(t, False)
         return t
@@ -241,14 +272,17 @@ class Agg(Expr):
 
     def acumulador(self, e):
         f = self.funcao
-        base = {
-            'sum': Soma(), 'count': Contar(), 'avg': Media(), 'min': Extremo(False), 'max': Extremo(True),
-            'collect_list': ColetarLista(), 'collect_set': ColetarConjunto(),
-            'first': Primeiro(False, self.ignorar_nulos), 'last': Primeiro(True, self.ignorar_nulos),
-            'stddev': Variancia(True), 'stddev_samp': Variancia(True), 'stddev_pop': Variancia(True, True),
-            'variance': Variancia(), 'var_samp': Variancia(), 'var_pop': Variancia(False, True),
-            'approx_count_distinct': Contar(),
-        }[f]
+        if f == 'percentile_approx':
+            base = Percentil(self.args[1].valor)
+        else:
+            base = {
+                'sum': Soma(), 'count': Contar(), 'avg': Media(), 'min': Extremo(False), 'max': Extremo(True),
+                'collect_list': ColetarLista(), 'collect_set': ColetarConjunto(),
+                'first': Primeiro(False, self.ignorar_nulos), 'last': Primeiro(True, self.ignorar_nulos),
+                'stddev': Variancia(True), 'stddev_samp': Variancia(True), 'stddev_pop': Variancia(True, True),
+                'variance': Variancia(), 'var_samp': Variancia(), 'var_pop': Variancia(False, True),
+                'approx_count_distinct': Contar(),
+            }[f]
         if self.distinto or f == 'approx_count_distinct':
             base = Distinto(base, varios=len(self.args) > 1)
         if self.filtro is not None:
@@ -258,7 +292,9 @@ class Agg(Expr):
     def entrada_do_valor(self, e):
         """Função linha → o valor que entra no acumulador (tupla, se forem vários argumentos)."""
         from .column import como
-        fs = [a.compilar(e) for a in self.args]
+        # O percentil e a precisão do percentile_approx são constantes: só a coluna entra no acumulador.
+        args = self.args[:1] if self.funcao == 'percentile_approx' else self.args
+        fs = [a.compilar(e) for a in args]
         if self.funcao in ('sum', 'avg', 'stddev', 'stddev_samp', 'stddev_pop', 'variance', 'var_samp', 'var_pop'):
             alvo = T.DoubleType() if not isinstance(self.args[0].tipo(e), _INTEIROS) else T.LongType()
             fs = [como(fs[0], self.args[0].tipo(e), alvo, e.ansi)]
