@@ -178,7 +178,7 @@ function unidade(m, anterior, atual, cert) {
   return `
     <section class="bloco-unidade ${cenario ? 'com-cenario' : ''} ${m.desbloqueado ? '' : 'bloqueada'} ${atual ? 'unidade-atual' : ''}" id="unidade-${m.id}" aria-labelledby="titulo-${m.id}">${cenario}
       ${cabecalho.replace('<h2>', `<h2 id="titulo-${m.id}">`)}
-      <ol class="trilha" id="trilha-${m.id}">${nos}${trofeu(m, cert)}</ol>
+      <ol class="trilha" id="trilha-${m.id}">${nos}${cert ? trofeu(m, cert) : ''}</ol>
     </section>`;
 }
 
@@ -281,7 +281,7 @@ export function renderInicio(el) {
           <span><i class="mini">⭐</i> fácil · <i class="mini">🔥</i> médio · <i class="mini">💎</i> difícil</span>
           <span>O módulo seguinte abre com ${LIMITE_DESBLOQUEIO}% dos exercícios.</span>
         </p>
-        ${j.modulos.map((m, i) => unidade(m, j.modulos[i - 1], m.id === atual, certs[i])).join('')}
+        ${j.modulos.map((m, i) => unidade(m, j.modulos[i - 1], m.id === atual, certs.find((c) => c.id === m.id))).join('')}
         ${emBreve()}
         ${CERTIFICADOS.final ? diploma(j) : ''}
       </div>
