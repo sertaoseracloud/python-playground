@@ -721,6 +721,22 @@ def approx_count_distinct(c, rsd=None):
 approxCountDistinct = approx_count_distinct
 
 
+def percentile_approx(col, percentage, accuracy=10000):
+    """O percentil (ou a lista de percentis) da coluna: o menor valor da lista ordenada com pelo menos
+    essa fração dos valores menores ou iguais a ele. Com poucos dados, é exato, como no Spark."""
+    from ..errors import AnalysisException
+    from .agregacoes import Agg
+    lista = isinstance(percentage, (list, tuple))
+    valores = [float(p) for p in percentage] if lista else [float(percentage)]
+    fora = next((p for p in valores if not 0.0 <= p <= 1.0), None)
+    if fora is not None:
+        raise AnalysisException(
+            f'Cannot resolve "percentile_approx({para_expr(col).nome()}, {percentage}, {accuracy})" due to data type mismatch: '
+            f'The percentage must be between [0.0, 1.0], but got {percentage}.',
+            'DATATYPE_MISMATCH.VALUE_OUT_OF_RANGE', {}, '42K09')
+    return Column(Agg('percentile_approx', [para_expr(col), Lit(valores if lista else valores[0]), Lit(int(accuracy))]))
+
+
 def collect_list(c):
     return _agg('collect_list', c)
 

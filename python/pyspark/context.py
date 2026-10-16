@@ -112,6 +112,11 @@ class SparkContext:
         arquivos = _arquivos(caminho)
         return _Fonte(self, 'textFile', carregar=_LerLinhas(caminho, n), n=max(1, len(arquivos)) * n)
 
+    def wholeTextFiles(self, path, minPartitions=None, use_unicode=True):
+        """Pares (caminho, conteúdo), um por arquivo da pasta. O caminho vem como no Spark: file:/... ."""
+        caminho = os.path.abspath(path)
+        return _Fonte(self, 'wholeTextFiles', carregar=_LerInteiros(caminho), n=max(1, len(_arquivos(caminho))))
+
     def union(self, rdds):
         resultado = rdds[0]
         for r in rdds[1:]:
@@ -138,6 +143,22 @@ class _LerLinhas:
         for arquivo in _arquivos(self.caminho):
             with open(arquivo, 'rb') as f:
                 particoes.extend(faixas_de_linhas(f.read(), self.n))
+        return particoes
+
+
+class _LerInteiros:
+    """Lê no processo principal: cada arquivo inteiro numa partição, com o caminho como no Spark."""
+
+    def __init__(self, caminho):
+        self.caminho = caminho
+
+    def __call__(self):
+        if not os.path.exists(self.caminho):
+            raise caminho_nao_existe(self.caminho)
+        particoes = []
+        for arquivo in _arquivos(self.caminho):
+            with open(arquivo, encoding='utf-8', newline='') as f:
+                particoes.append([('file:' + arquivo.replace('\\', '/'), f.read())])
         return particoes
 
 
