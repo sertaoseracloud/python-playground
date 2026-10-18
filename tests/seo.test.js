@@ -58,6 +58,13 @@ describe('SEO', () => {
     expect(landing).toContain('href="#/trilha"');
   });
 
+  it('a homologação tem noindex e não altera o SEO principal', () => {
+    const saida = prerender(html, { homologacao: true });
+    expect(saida).toContain('<meta name="robots" content="noindex">');
+    expect(saida).not.toContain('<meta name="robots" content="index, follow, max-image-preview:large">');
+    expect(metaTags()).toContain('<meta name="robots" content="index, follow, max-image-preview:large">');
+  });
+
   it('o nome é DivergePython e o título e a descrição falam de acessibilidade', () => {
     expect(NOME).toBe('DivergePython');
     expect(PRINCIPAL.titulo).toMatch(/acessíve(l|is) para todas as pessoas/);

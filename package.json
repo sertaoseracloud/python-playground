@@ -7,6 +7,8 @@
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "lighthouse": "lhci autorun --collect.settings.chromeFlags=\"--no-sandbox\" --upload.target=filesystem --upload.outputDir=.lighthouseci",
     "badges": "node scripts/gerar-badges.mjs",
     "lint": "eslint ."
   },
@@ -26,7 +28,10 @@
     "qrcode-generator": "1.4.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "10.0.1",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.64.1",
     "@resvg/resvg-js": "^2.6.2",
     "axe-core": "4.14.0",
     "eslint": "10.12.0",

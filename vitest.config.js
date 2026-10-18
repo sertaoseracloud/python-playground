@@ -8,6 +8,7 @@ const SEMENTE_TESTES = '01010101010101010101010101010101010101010101010101010101
 export default defineConfig({
   plugins: [pluginHistorico()],
   define: {
+    __HOMOLOGACAO__: JSON.stringify(false),
     __CHAVE_CERTIFICADO__: JSON.stringify('chave-dos-testes'),
     __SEMENTE_ED25519__: JSON.stringify(SEMENTE_TESTES),
     __CHAVE_PUBLICA_ED25519__: JSON.stringify(chavePublicaDe(SEMENTE_TESTES)),
