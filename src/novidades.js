@@ -10,6 +10,24 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.0.4',
+    data: '2026-10-19',
+    titulo: 'CI verde e PRs automatizados',
+    resumo: 'Secrets de homologação configurados, permissões de workflow ajustadas e PRs reabertos sem conflitos.',
+    grupos: [
+      { titulo: '⚙️ CI/CD', itens: ['Secret CERTIFICADO_SEGREDO_HOMOLOGACAO criado em ambos os repositórios.', 'Permissões de workflow alteradas para write, permitindo criação automática de PRs pelo GitHub Actions.', 'Push vazio para reacinar o CI após configuração dos secrets.'] },
+    ],
+  },
+  {
+    versao: '1.0.3',
+    data: '2026-10-18',
+    titulo: 'Mural de apoio e workflows',
+    resumo: 'Correção do workflow de PR da feature e validação das pipelines.',
+    grupos: [
+      { titulo: '⚙️ CI/CD', itens: ['Workflow de PR da feature corrigido (chave duplicada removida) e pipelines validadas.'] },
+    ],
+  },
+  {
     versao: '1.0.2',
     data: '2026-10-16',
     titulo: 'Mais leve no celular',
