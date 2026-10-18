@@ -80,7 +80,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSAO: ${{ steps.versao.outputs.versao }}
         run: |
-          PR="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$GITHUB_REPOSITORY_OWNER:$GITHUB_REF_NAME" --state all --json number,state,mergedAt --limit 1)"
+          PR="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$GITHUB_REF_NAME" --state all --json number,state,mergedAt --limit 1)"
           NUMERO="$(echo "$PR" | jq -r '.[0].number // empty')"
           ESTADO="$(echo "$PR" | jq -r '.[0].state // empty')"
           MESCLADO="$(echo "$PR" | jq -r '.[0].mergedAt // empty')"
