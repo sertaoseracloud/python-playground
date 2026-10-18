@@ -21,7 +21,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ github.token }}
-          token: ${{ github.token }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
