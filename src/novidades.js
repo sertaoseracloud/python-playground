@@ -10,6 +10,15 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.0.3',
+    data: '2026-10-18',
+    titulo: 'Mural de apoio e workflows',
+    resumo: 'Correção do workflow de PR da feature e validação das pipelines.',
+    grupos: [
+      { titulo: '⚙️ CI/CD', itens: ['Workflow de PR da feature corrigido (chave duplicada removida) e pipelines validadas.'] },
+    ],
+  },
+  {
     versao: '1.0.2',
     data: '2026-10-16',
     titulo: 'Mais leve no celular',

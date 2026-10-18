@@ -34,13 +34,18 @@ const pyodide = {
  * site: o bundle recebe só valores derivados dela (SHA-256 com rótulos diferentes):
  *   - a chave do selo (HMAC-SHA256);
  *   - a semente Ed25519 (assinatura) e a chave pública correspondente.
- * Sem a variável, o build de produção falha; o modo dev usa um valor próprio e os
- * testes têm as chaves deles em vitest.config.js.
+ * A homologação usa outra variável, sem compartilhar chaves com produção.
+ * Sem a variável correspondente, o build falha; o modo dev usa um valor próprio.
  */
+const HOMOLOGACAO = process.env.HOMOLOGACAO === '1';
+
 function segredo(command) {
-  const valor = process.env.CERTIFICADO_SEGREDO;
+  const valor = HOMOLOGACAO
+    ? process.env.CERTIFICADO_SEGREDO_HOMOLOGACAO
+    : process.env.CERTIFICADO_SEGREDO;
   if (valor) return valor;
-  if (command === 'serve') return 'segredo-de-desenvolvimento';
+  if (command === 'serve') return HOMOLOGACAO ? 'segredo-de-homologacao' : 'segredo-de-desenvolvimento';
+  if (HOMOLOGACAO) throw new Error('Defina CERTIFICADO_SEGREDO_HOMOLOGACAO para gerar o build de homologação.');
   throw new Error('Defina CERTIFICADO_SEGREDO para gerar o build (veja o README, seção Certificados).');
 }
 const derivar = (rotulo, valor) => createHash('sha256').update(`python-playground:${rotulo}:${valor}`, 'utf8').digest('hex');
@@ -71,6 +76,7 @@ export default defineConfig(({ command }) => {
     base: './',
     plugins: [pyodide, publicarChave(chavePublica), pluginHistorico()],
     define: {
+      __HOMOLOGACAO__: JSON.stringify(HOMOLOGACAO),
       __CHAVE_CERTIFICADO__: JSON.stringify(derivar('certificado', valor)),
       __SEMENTE_ED25519__: JSON.stringify(semente),
       __CHAVE_PUBLICA_ED25519__: JSON.stringify(chavePublica),
