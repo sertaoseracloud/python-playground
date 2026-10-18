@@ -17,6 +17,7 @@ export default defineConfig({
   test: {
     testTimeout: 60000,
     hookTimeout: 120000,
+    exclude: ['tests/e2e/**'],
     // O pool de workers do Pyodide precisa do JSPI (WebAssembly.Suspending), que no
     // Node 24 ainda fica atrás desta opção.
     pool: 'forks',
