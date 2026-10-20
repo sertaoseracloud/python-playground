@@ -17,10 +17,18 @@ export default defineConfig({
   test: {
     testTimeout: 60000,
     hookTimeout: 120000,
-    exclude: ['**/node_modules/**', 'tests/e2e/**'],
+    exclude: ['**/node_modules/**', 'tests/e2e/**'], // os E2E rodam no Playwright
     // O pool de workers do Pyodide precisa do JSPI (WebAssembly.Suspending), que no
     // Node 24 ainda fica atrás desta opção.
     pool: 'forks',
     execArgv: ['--experimental-wasm-jspi'],
+    // Limites = a cobertura medida em 2026-10-20, arredondada para baixo: só pode subir.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.js'],
+      exclude: ['src/conteudo/**'],
+      reporter: ['text-summary', 'json-summary', 'html'],
+      thresholds: { statements: 76, branches: 72, functions: 78, lines: 77 },
+    },
   },
 });

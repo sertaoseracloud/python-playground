@@ -240,13 +240,23 @@ npm install
 npm run dev      # servidor local com recarga
 npm run lint     # ESLint
 npm test         # testes do site e de toda a trilha (Pyodide no Node 24, com JSPI)
+npm run test:cobertura  # os mesmos testes, com cobertura (o limite mínimo está em vitest.config.js)
 python -m pytest # testes do runtime e do paralelismo (python/diverge_runtime e diverge_paralelo) no CPython
+npm run comuns   # confere os arquivos comuns aos quatro playgrounds (comuns.json)
 npm run build    # gera dist/ (precisa de CERTIFICADO_SEGREDO)
 npm run badges   # regenera badges, capa e ícones em public/
 ```
 
+Alguns arquivos são iguais nos quatro playgrounds (php, terraform, python e kubernetes) e estão
+listados em [`comuns.json`](comuns.json) com o hash de cada um. Para mudar um deles, altere aqui e
+leve a mesma mudança aos outros com `npm run comuns:copiar -- ../php-playground ../terraform-playground ../kubernetes-playground`.
+Detalhes em [docs/debito-tecnico.md](docs/debito-tecnico.md#arquivos-comuns).
+
 Pull requests para `develop` e `main` rodam a conformidade com PySpark real, os testes Python e
-JavaScript, o lint, a auditoria de dependências e validam os builds de produção e homologação. A branch
+JavaScript (com cobertura), os arquivos comuns, o lint, a auditoria de dependências, os E2E com axe e o
+Lighthouse (checks `qualidade`, `e2e` e `lighthouse`) e validam os builds de produção e homologação.
+Quando a `main` é publicada, o job `tag` cria a tag `v<versão>` e a release do GitHub com o texto da
+versão em `src/novidades.js`. A branch
 `main` publica em produção; `develop`
 publica em `/homologacao/`, com dados do navegador isolados, certificados de outra chave e `noindex`.
 Depois de um push em `develop`, o GitHub Actions testa os dois endereços publicados e abre ou reabre

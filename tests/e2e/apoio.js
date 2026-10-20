@@ -10,16 +10,16 @@ export const TELAS = ['#/', '#/trilha', `#/p/${PRIMEIRO.id}`];
  * dia já foram vistos; com `muralApoio`, o mural abre (na landing e na trilha). `extras` grava
  * outras chaves (sem o prefixo).
  */
-export async function abrir(page, hash, { tutorial = false, extras = {}, muralApoio = false } = {}) {
+export async function abrir(page, hash, { tutorial = false, privacidade = true, extras = {}, muralApoio = false } = {}) {
   await page.goto('/');
-  await page.evaluate(({ tutorial, extras, muralApoio }) => {
+  await page.evaluate(({ tutorial, privacidade, extras, muralApoio }) => {
     localStorage.clear();
     const gravar = (chave, valor) => localStorage.setItem(`python-playground:${chave}`, JSON.stringify(valor));
-    gravar('pref:privacidade-vista', true);
+    if (privacidade) gravar('pref:privacidade-vista', true);
     if (!tutorial) gravar('pref:tutorial-visto', true);
     if (!muralApoio) gravar('pref:mural-apoio-visto-em', new Date().toLocaleDateString('sv'));
     for (const [chave, valor] of Object.entries(extras)) gravar(chave, valor);
-  }, { tutorial, extras, muralApoio });
+  }, { tutorial, privacidade, extras, muralApoio });
   await page.goto(`/${hash}`);
   await page.reload();
   if (!muralApoio) {
