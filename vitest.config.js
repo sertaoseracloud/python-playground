@@ -28,7 +28,7 @@ export default defineConfig({
       include: ['src/**/*.js'],
       exclude: ['src/conteudo/**'],
       reporter: ['text-summary', 'json-summary', 'html'],
-      thresholds: { statements: 0, branches: 0, functions: 0, lines: 0 },
+      thresholds: { statements: 76, branches: 72, functions: 78, lines: 77 },
     },
   },
 });
