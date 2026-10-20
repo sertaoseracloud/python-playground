@@ -17,16 +17,26 @@ jobs:
   preparar-pr:
     runs-on: ubuntu-latest
     steps:
+      # Com o secret FEATURE_PR_TOKEN (um token com escrita em Contents e Pull requests), o PR
+      # criado aqui já dispara os checks. Sem ele, usa o token do Actions, como o
+      # terraform-playground: o PR é criado, mas os checks só rodam no próximo push do branch.
+      - name: Avisa quando o PR não vai disparar os checks sozinho
+        env:
+          FEATURE_PR_TOKEN: ${{ secrets.FEATURE_PR_TOKEN }}
+        run: |
+          if [ -z "$FEATURE_PR_TOKEN" ]; then
+            echo "::warning::Sem o secret FEATURE_PR_TOKEN: o PR é criado com o token do Actions e os checks rodam no próximo push."
+          fi
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ github.token }}
+          token: ${{ secrets.FEATURE_PR_TOKEN || github.token }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Garante a branch develop
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.FEATURE_PR_TOKEN || github.token }}
         run: |
           if ! git ls-remote --exit-code --heads origin develop > /dev/null; then
             SHA_MAIN="$(git ls-remote --heads origin main | cut -f1)"
@@ -77,28 +87,34 @@ jobs:
           git push origin "HEAD:$GITHUB_REF_NAME"
       - name: Abre ou atualiza o PR para develop
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.FEATURE_PR_TOKEN || github.token }}
           VERSAO: ${{ steps.versao.outputs.versao }}
         run: |
-          PR="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$GITHUB_REF_NAME" --state all --json number,state,mergedAt --limit 1)"
+          # O --head do gh pr list aceita só o nome do branch (sem "dono:"); com o dono, ele não
+          # achava o PR aberto e tentava criar outro a cada push.
+          PR="$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$GITHUB_REF_NAME" --state all --json number,state,mergedAt,title --limit 1)"
           NUMERO="$(echo "$PR" | jq -r '.[0].number // empty')"
           ESTADO="$(echo "$PR" | jq -r '.[0].state // empty')"
           MESCLADO="$(echo "$PR" | jq -r '.[0].mergedAt // empty')"
+          TITULO_ATUAL="$(echo "$PR" | jq -r '.[0].title // empty')"
+          TITULO="Promove $GITHUB_REF_NAME para develop (v$VERSAO)"
+          CORPO="A versão foi atualizada para $VERSAO. Os checks automáticos de testes e build serão executados neste PR."
+
+          # Título e descrição escritos por pessoas não são trocados: só o texto automático
+          # (que começa com "Promove ") é atualizado com a versão nova.
+          atualizar_texto() {
+            case "$TITULO_ATUAL" in
+              "Promove "*) gh pr edit "$NUMERO" --repo "$GITHUB_REPOSITORY" --title "$TITULO" --body "$CORPO" ;;
+              *) echo "::notice::O PR #$NUMERO tem título e descrição próprios; mantidos como estão." ;;
+            esac
+          }
 
           if [ "$ESTADO" = "OPEN" ]; then
-            gh pr edit "$NUMERO" --repo "$GITHUB_REPOSITORY" \
-              --title "Promove $GITHUB_REF_NAME para develop (v$VERSAO)" \
-              --body "A versão foi atualizada para $VERSAO. Os checks automáticos de testes e build serão executados neste PR."
+            atualizar_texto
           elif [ "$ESTADO" = "CLOSED" ] && [ -z "$MESCLADO" ]; then
             gh pr reopen "$NUMERO" --repo "$GITHUB_REPOSITORY"
-            gh pr edit "$NUMERO" --repo "$GITHUB_REPOSITORY" \
-              --title "Promove $GITHUB_REF_NAME para develop (v$VERSAO)" \
-              --body "A versão foi atualizada para $VERSAO. Os checks automáticos de testes e build serão executados neste PR."
+            atualizar_texto
           else
-            gh pr create \
-              --repo "$GITHUB_REPOSITORY" \
-              --base develop \
-              --head "$GITHUB_REF_NAME" \
-              --title "Promove $GITHUB_REF_NAME para develop (v$VERSAO)" \
-              --body "A versão foi atualizada para $VERSAO. Os checks automáticos de testes e build serão executados neste PR."
+            gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head "$GITHUB_REF_NAME" \
+              --title "$TITULO" --body "$CORPO"
           fi
