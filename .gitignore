@@ -4,3 +4,7 @@ dist/
 .DS_Store
 .vitest/
 __pycache__/
+coverage/
+.lighthouseci/
+test-results/
+playwright-report/
