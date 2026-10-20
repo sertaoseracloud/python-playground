@@ -10,21 +10,32 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.1.0',
+    data: '2026-10-20',
+    titulo: 'Exercício sem nada por cima',
+    resumo: 'Na tela do exercício, o tutorial e o aviso de privacidade não cobrem mais o código, e o troféu da trilha fala o mesmo que mostra.',
+    grupos: [
+      { titulo: '🧭 Tela do exercício', itens: ['O tutorial de boas-vindas abre sozinho só na trilha. Quem chega por um link direto para um exercício vê o código na hora; o tutorial continua no botão ❓.', 'O aviso de privacidade fica dentro da coluna da descrição e não cobre mais o editor nem o terminal.', 'A coluna da descrição tem pelo menos 320 pixels de largura, para o texto continuar fácil de ler com o terminal aberto.'] },
+      { titulo: '♿ Acessibilidade', itens: ['O botão do troféu de cada módulo e os passos da trilha têm como nome o mesmo texto que aparece na tela. Quem usa comando de voz pode falar o que vê, como "Certificado liberado" ou "Começar", e o botão responde.'] },
+    ],
+  },
+  {
     versao: '1.0.4',
     data: '2026-10-19',
-    titulo: 'CI verde e PRs automatizados',
-    resumo: 'Secrets de homologação configurados, permissões de workflow ajustadas e PRs reabertos sem conflitos.',
+    titulo: 'Publicação mais confiável',
+    resumo: 'Ajustes nos bastidores para cada nova versão do site ser testada e publicada sem tropeços.',
     grupos: [
-      { titulo: '⚙️ CI/CD', itens: ['Secret CERTIFICADO_SEGREDO_HOMOLOGACAO criado em ambos os repositórios.', 'Permissões de workflow alteradas para write, permitindo criação automática de PRs pelo GitHub Actions.', 'Push vazio para reacinar o CI após configuração dos secrets.'] },
+      { titulo: '⚙️ Bastidores', itens: ['A versão de testes do site voltou a ser publicada junto com a principal.', 'Cada mudança proposta passa pelos testes automáticos antes de entrar no site.'] },
     ],
   },
   {
     versao: '1.0.3',
     data: '2026-10-18',
-    titulo: 'Mural de apoio e workflows',
-    resumo: 'Correção do workflow de PR da feature e validação das pipelines.',
+    titulo: 'Mural de apoio',
+    resumo: 'Um mural mostra como apoiar o projeto pelo PIX, e a preparação de cada nova versão do site voltou a funcionar.',
     grupos: [
-      { titulo: '⚙️ CI/CD', itens: ['Workflow de PR da feature corrigido (chave duplicada removida) e pipelines validadas.'] },
+      { titulo: '💛 Apoio', itens: ['Um mural mostra como apoiar o projeto pelo PIX, com QR Code.'] },
+      { titulo: '⚙️ Bastidores', itens: ['A preparação automática de cada nova versão do site voltou a funcionar.'] },
     ],
   },
   {
