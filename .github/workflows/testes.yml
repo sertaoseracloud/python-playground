@@ -24,7 +24,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint -- --max-warnings 0
-      - run: npm test
+      - name: Arquivos comuns aos quatro playgrounds (veja comuns.json)
+        run: npm run comuns
+      - name: Testes com cobertura (o limite está no vitest.config.js)
+        run: npm run test:cobertura
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cobertura
+          path: coverage/
       - name: Build e conferência de produção e homologação
         run: |
           CERTIFICADO_SEGREDO="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" npm run build
