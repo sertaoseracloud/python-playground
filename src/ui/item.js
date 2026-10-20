@@ -499,7 +499,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     el.resumoTestes.textContent = curto;
     el.resumoTestes.className = `resumo-testes ${classe}`;
     el.abaTestes.title = `Testes funcionais: ${texto}`;
-    el.abaTestes.setAttribute('aria-label', `Testes funcionais: ${texto}`);
+    el.abaTestes.setAttribute('aria-label', `Testes: ${texto}`); // começa pelo texto visível (WCAG 2.5.3)
   }
 
   /** Antes de executar: lista todos os casos como pendentes. */
