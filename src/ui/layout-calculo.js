@@ -10,7 +10,9 @@ const GAP = 6; // espaço entre painéis
 const DIVISOR = 6; // largura da alça de redimensionar
 const LIMITE_CELULAR = 900;
 
-export const larguraDescricao = (largura) => Math.round(Math.min(420, Math.max(280, largura * 0.26)));
+// Mínimo de 320px: com o terminal aberto, a descrição (roteiro, palavras técnicas, dicas) continua
+// legível em telas de 900 a 1230px, onde 26% da largura daria menos que isso.
+export const larguraDescricao = (largura) => Math.round(Math.min(420, Math.max(320, largura * 0.26)));
 
 /** Largura aproximada do preview em cada modo, para a divisão padrão (50%). */
 export function larguraPreview(modo, { largura, descricao }) {
