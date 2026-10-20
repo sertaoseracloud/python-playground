@@ -212,7 +212,9 @@ export function criarTerminal(elemento, { historico = [], aoMudarHistorico = () 
     } else if (e.key === 'Enter') {
       e.preventDefault();
       enviar();
-    } else if (e.key === 'Tab' && !e.shiftKey) {
+    } else if (e.key === 'Tab' && !e.shiftKey && campo.value.trim()) {
+      // Com algo digitado, o Tab completa (como no bash). Com o campo vazio, ele segue para o
+      // próximo controle da página: o terminal não prende quem usa só o teclado (WCAG 2.1.2).
       e.preventDefault();
       tab();
     } else if (e.key === 'ArrowUp' && leitura.historico) {
