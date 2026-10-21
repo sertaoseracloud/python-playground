@@ -10,6 +10,15 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.3.1',
+    data: '2026-10-21',
+    titulo: 'Seu código mais protegido',
+    resumo: 'Trocar de exercício ou restaurar o exemplo não mistura mais os rascunhos. Os arquivos auxiliares ficaram mais claros para editar.',
+    grupos: [
+      { titulo: 'Editor', itens: ['Rascunhos preservados nas trocas rápidas de tela e aviso quando o navegador não consegue guardar seus dados.', 'Cada arquivo tem identificação e cores adequadas; excluir um arquivo devolve o foco ao editor.'] },
+    ],
+  },
+  {
     versao: '1.3.0',
     data: '2026-10-20',
     titulo: 'A vila da trilha ganhou vida',
