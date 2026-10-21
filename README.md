@@ -155,9 +155,13 @@ de erro seguem o Spark.
 - **🗺️ Cenários da trilha**: cada módulo tem um mapa em tiles de pixel art (como nos RPGs clássicos) que ocupa a
   tela toda e rola junto com a página, com uma estrada que faz curvas pelos exercícios e uma vila que cresce a
   cada exercício resolvido (casas, filhos e filhotes, calculados do progresso, sem nada a mais no navegador), com
-  personagens andando de tile em tile, sem pisar na água nem no
-  caminho (`src/ui/cenarios/`). É só decoração: o leitor de tela não lê, e os personagens param com "reduzir
-  movimento" e no alto contraste.
+  moradores que vão até destinos (casa, perto do passo atual, passos concluídos) sem pisar na água nem no caminho,
+  se cumprimentam, conversam, sentam, entram em casa, comemoram quando um exercício é resolvido, e filhotes que seguem
+  os pais (`src/ui/cenarios/vida.js`). Com placa de vídeo, o cenário é desenhado com PixiJS (WebGL), carregado só na
+  trilha; sem ela, em canvas 2D. Clicar num personagem mostra a definição de um conceito para revisar
+  (`src/conteudo/falas-da-vila.js`), sem cobrir os ícones dos passos. O desenho é decorativo (o leitor de tela não
+  lê): o botão "Conhecer a vila" de cada módulo traz as definições em texto, e "Pausar animação do cenário" para
+  tudo. Com "reduzir movimento", alto contraste ou pausa, nada se move.
 
 ### Certificados: a palavra secreta
 
