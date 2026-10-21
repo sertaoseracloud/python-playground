@@ -12,6 +12,8 @@ import { criarTerminal } from './terminal.js';
 import { criarShell } from './shell.js';
 import { htmlDaExecucao, falaDaExecucao, falaDoStreaming } from './execucao.js';
 import { EditorArquivos } from './editor.js';
+import { criarGravadorRascunho } from '../rascunho.js';
+import { iniciarAvisoArmazenamento } from './aviso-armazenamento.js';
 import { iniciarLeitura } from './acessibilidade.js';
 import { aplicarChecklist } from './neuro.js';
 import { termosDoTexto } from '../conteudo/glossario.js';
@@ -48,16 +50,20 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
 
   const estado = { item: null, pythonPronto: false, ocupado: false, origem: null, vez: 0 };
 
-  let salvarTimer;
+  const rascunhos = criarGravadorRascunho(gravarRascunho);
+  iniciarAvisoArmazenamento($('editor'));
+  window.addEventListener('pagehide', () => rascunhos.descarregar());
+  window.addEventListener('hashchange', () => rascunhos.descarregar());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') rascunhos.descarregar();
+  });
   const editor = new EditorArquivos({
     abas: $('abas-arquivos'),
     editor: $('editor'),
     aoExecutar: () => executarPeloAluno(),
     aoEnviar: () => enviar(),
     aoMudar: (arquivos) => {
-      clearTimeout(salvarTimer);
-      const id = estado.item.id;
-      salvarTimer = setTimeout(() => gravarRascunho(id, arquivos), 300);
+      rascunhos.agendar(estado.item.id, arquivos);
     },
   });
 
@@ -168,6 +174,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
     aplicarChecklist(el.enunciado, item.id);
     $('btn-referencia')?.addEventListener('click', () => {
       if (!confirm('Trocar o seu código pelo código de referência desta etapa?')) return;
+      rascunhos.cancelar(item.id);
       editor.carregar(item.arquivos);
       gravarRascunho(item.id, item.arquivos);
       estado.origem = 'referencia';
@@ -221,6 +228,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
         <button class="btn btn-roxo" id="btn-usar-solucao">Copiar para o editor</button>`;
       $('btn-usar-solucao').onclick = () => {
         if (!confirm('Substituir o seu código pela solução?')) return;
+        rascunhos.cancelar(item.id);
         editor.carregar(item.solucao);
         gravarRascunho(item.id, item.solucao);
         executar();
@@ -258,6 +266,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
   function abrir(id, arquivosCompartilhados) {
     const item = buscarItem(id);
     if (!item) return false;
+    rascunhos.descarregar();
     estado.item = item;
     estado.origem = null;
     let arquivos = arquivosCompartilhados ?? lerRascunho(id);
@@ -602,6 +611,7 @@ export function criarTelaItem({ motor, layout, definirStatus, aoMudarProgresso }
 
   el.restaurar.onclick = () => {
     if (!confirm('Voltar ao código original? Suas alterações serão perdidas.')) return;
+    rascunhos.cancelar(estado.item.id);
     apagarRascunho(estado.item.id);
     editor.carregar(estado.item.arquivos);
     executar();
