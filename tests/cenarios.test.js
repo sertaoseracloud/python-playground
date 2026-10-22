@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
-// Cenários da trilha: tiles em pixel art (estilo Tibia), decoração pura (o leitor de tela não
+// Cenários da trilha: tiles próprios e CC0 em pixel art, decoração pura (o leitor de tela não
 // ouve nada), leve e completa.
 import { describe, it, expect } from 'vitest';
 import { CENARIOS, htmlDoCenario } from '../src/ui/cenarios/index.js';
 import { LADO } from '../src/ui/cenarios/pixel.js';
+import { TILES_TINY_TOWN } from '../src/ui/cenarios/tiny-town.js';
 
 const IDS = ['sertao', 'vale', 'gelo', 'fogo', 'rio', 'cidade', 'jardim'];
 const COM_BLOQUEIO = ['sertao', 'vale', 'gelo', 'fogo', 'rio'];
+const COM_ARVORES_TINY_TOWN = ['vale', 'rio', 'jardim'];
 const PESSOAS = ['vaqueiro', 'agricultora', 'ferreiro', 'jangadeiro', 'jardineira', 'operaria'];
 const camada = (id, semente) => {
   const div = document.createElement('div');
@@ -19,6 +21,27 @@ const spriteValido = (s) => s.linhas.length === LADO
 describe('cenários', () => {
   it('existem os 7 cenários', () => {
     expect(Object.keys(CENARIOS).sort()).toEqual([...IDS].sort());
+  });
+
+  it('usa os pixels CC0 originais do Tiny Town apenas em cenários compatíveis', () => {
+    expect(TILES_TINY_TOWN.map((s) => s.linhas.join('\n'))).toEqual([
+      [
+        '.aaabcccbbbbaaa.', '.aacbcbcbbbbcaa.', '.aacbcccbbbbcaa.', '.aacbbbbbbbbcaa.',
+        'aaacbbbbbbbbcaa.', 'aabccbbbbbbccaa.', 'aaaccccccccccaa.', '.aaccccccccccaa.',
+        '.aaccccccccccaa.', '.aaaccccccccaaa.', '..aaaaccccaaaa..', '...aaaaddaaaa...',
+        '.....aaeeaa.....', '.....aaeeaa.....', '.....aaeeaa.....', '................',
+      ].join('\n'),
+      [
+        '................', '................', '..aaaaa.........', '.aaaaaaa........',
+        'aaabbbaaa.......', 'aabbbbcaaaaaaa..', 'aabccccaaaaaaaa.', 'aaccaccaaabbbaaa',
+        'aaaaaccaacbbbbaa', '.aaaaccaaccccbaa', '...aaccaaccaccaa', '...aaccaaccaaaaa',
+        '...aaccaaccaaaa.', '...aaccaa.......', '................', '................',
+      ].join('\n'),
+    ]);
+    for (const id of IDS) {
+      const usaTilesCC0 = CENARIOS[id].objetos.some((obj) => TILES_TINY_TOWN.includes(obj));
+      expect(usaTilesCC0, id).toBe(COM_ARVORES_TINY_TOWN.includes(id));
+    }
   });
 
   it.each(IDS)('%s: chão, estrada, objetos e 3 personagens de 2 quadros, tudo em 16×16', (id) => {
