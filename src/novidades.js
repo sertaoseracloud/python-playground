@@ -10,6 +10,15 @@ export const REPOSITORIO = 'https://github.com/sertaoseracloud/python-playground
 /** Releases, da mais nova para a mais antiga. Escritas para quem usa o site, sem jargão. */
 export const RELEASES = [
   {
+    versao: '1.3.2',
+    data: '2026-10-22',
+    titulo: 'Mais verde na vila',
+    resumo: 'O vale, o rio e o jardim ganharam árvores em pixel art do pacote Tiny Town, de Kenney.',
+    grupos: [
+      { titulo: 'Cenários', itens: ['A vegetação nova fica nos cenários compatíveis, mantendo os objetos e personagens de cada tema.', 'A origem e a licença CC0 dos sprites estão registradas na página Licença.'] },
+    ],
+  },
+  {
     versao: '1.3.1',
     data: '2026-10-21',
     titulo: 'Seu código mais protegido',
