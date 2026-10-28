@@ -76,6 +76,9 @@ fica no GitHub Pages.
 - **Playground livre** (`#/livre`) com o código salvo no navegador, e um
   `vendas.csv` de exemplo na aba 📦 Dados.
 - **Compartilhar**: link com o código embutido. Nada é enviado a servidor.
+- **Testes**: dois conjuntos independentes — o `vitest` cobre o site (UI, verificações, certificados),
+  e o `pytest` (`pytest.ini`, pasta `python/tests`) valida o runtime Python em CPython nativo.
+  O `npm test` roda só o vitest; para o pytest, use `python -m pytest` dentro da pasta `python/`.
 
 ### Paralelismo
 

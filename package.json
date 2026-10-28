@@ -1,14 +1,17 @@
 {
   "name": "python-playground",
-  "version": "1.0.2",
+  "version": "1.11.0",
   "description": "DivergePython: Python até PySpark no navegador, com dados em paralelo e acessibilidade para pessoas cegas, surdas e neurodivergentes",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:cobertura": "vitest run --coverage",
+    "lighthouse": "npx --yes @lhci/cli@0.15.1 autorun",
     "badges": "node scripts/gerar-badges.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "conferir-build": "node scripts/conferir-build.mjs"
   },
   "type": "module",
   "dependencies": {
@@ -28,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@resvg/resvg-js": "^2.6.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "axe-core": "4.14.0",
     "eslint": "10.12.0",
     "globals": "^17.13.0",
