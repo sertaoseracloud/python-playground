@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   pipeline:
-    uses: sertaoseracloud/playground-ui/.github/workflows/playground.yml@pipeline-v1
+    uses: sertaoseracloud/playground-ui/.github/workflows/playground.yml@pipeline-v1.0.2
     with:
       titulo: 'DivergePython:'
     # CERTIFICADO_SEGREDO, CERTIFICADO_SEGREDO_HOMOLOGACAO e FEATURE_PR_TOKEN (opcional).
