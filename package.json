@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:cobertura": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "lighthouse": "lhci autorun --collect.settings.chromeFlags=\"--no-sandbox\" --upload.target=filesystem --upload.outputDir=.lighthouseci",
+    "lighthouse": "npx --yes @lhci/cli@0.15.1 autorun",
     "badges": "node scripts/gerar-badges.mjs",
     "lint": "eslint .",
     "comuns": "node scripts/comuns.mjs",
